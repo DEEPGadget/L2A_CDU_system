@@ -34,10 +34,9 @@
 
 | 구성 요소 | 역할 |
 |---|---|
-| Rasberry PI | UI와 PCB 사이를 이어주는 제어 게이트웨이 |
-| PCB | 제어 보드, 센서 및 엑츄에이터와 연결 |
+| Raspberry Pi | PCG, UI, DB를 탑재하는 하드웨어 플랫폼 (IP: 10.100.1.10) |
 | Web UI (Svelte + FastAPI) | WEB 기반 유저 인터페이스. http 기반으로 파이썬 기반의 제어모듈(PCG - python control gateway)과 통신. 모니터링 및 제어 화면, 과거 기록 확인 화면 |
-| Touch Display UI (Pyside6) | 로컬 기반 유저 인터페이스. IPC 기반으로 파이썬 기반의 제어모듈(PCG - python control gateway)과 통신. 모니터링 및 제어, 과거 기록 확인 화면 |
+| Touch Display UI (PySide6) | 로컬 기반 유저 인터페이스. IPC 기반으로 파이썬 기반의 제어모듈(PCG - python control gateway)과 통신. 모니터링 및 제어, 과거 기록 확인 화면 |
 | Redis DB | 실시간 DB, UI 에 표시 |
 | PrometheusDB + exporter | History 용 DB, exporter 는 redisDB 로부터 value를 받음 |
 | Python Control Gateway (PCG) | 실질적 Modbus Master (읽기/쓰기). 읽기: pcb 로부터 polling → redis에 전송. 쓰기: UI 로부터 요청받음 → PCB 로 write 명령 |
@@ -96,18 +95,11 @@
 
 ### 4.1 Raspberry Pi (Modbus Master)
 
-- UI와 PCB 사이를 이어주는 제어 게이트웨이
+- PCG, UI, DB를 탑재하는 하드웨어 플랫폼
 - 구성요소
-  - UI
-    - Pyside6 (Local FE + BE Framework)
-    - Svelte (Web FE Framework)
-    - FastAPI (Web BE Framework)
-  - PCG
-    - 4.2 참고
-  - DB
-    - Redis DB : PCG가 polling한 데이터를 key-value 로 저장
-    - Prometheus : 기록용도의 DB
-      - exporter : Redis DB 에 set 되어 있는 key를 prometheus로 전송
+  - UI: 4.3 참고
+  - PCG: 4.2 참고
+  - DB: Redis DB, Prometheus (상세 내용은 4.3 DB 참고)
 
 ### 4.2 Python Control Gateway (PCG)
 
@@ -172,8 +164,8 @@
 `Modbus Data Parser` *(Read 경로 전용)*
 - raw register 값 해석: scaling, signed/unsigned 변환, bitfield decode
 - 센서/상태값 구조화 후 즉시 임계치 판단
-- 임계치 초과 / 복귀 감지 시 → Alarm/Event Manager에 통보 (Redis 조작은 하지 않음)
-- 센서 실시간 값은 항상 Redis SET (예: `sensor:coolant_temp = 41.2`)
+- 센서 실시간 값(`sensor:*`, `control:*`)은 항상 Redis SET
+- 임계치 초과 / 복귀 감지 시 → Alarm/Event Manager에 통보 (알람 키(`alarm:*`) 조작은 하지 않음)
 - 예: `input_reg[3] = 412` → `coolant_temp = 41.2` / `status bit 1` = Leak detected
 
 
@@ -203,15 +195,14 @@
 
 **시나리오 2. 일반 제어 요청 처리**
 - 트리거: UI로부터 제어 요청 수신
-- 흐름: `UI → Command Validator → 제어 처리 큐 → Modbus Request Translator → Modbus Transport Manager → Modbus Data Parser`
+- 흐름: `UI → Command Validator → 제어 처리 큐 → Modbus Request Translator → Modbus Transport Manager → Alarm/Event Manager`
 
 | 순서 | 실행 주체 | 동작 |
 |---|---|---|
 | 1 | Command Validator | 허용 범위 검증 → 통과 시 제어 처리 큐 적재, 실패 시 차단 |
 | 2 | Modbus Request Translator | 제어 요청 → Modbus write 명령 변환 (FC, address, value) |
-| 3 | Modbus Transport Manager | PCB로 write 명령 송신 → ACK/NACK 수신 |
-| 4 | Modbus Data Parser | write 응답 파싱 → 성공 여부 확인 |
-| 5 | Alarm / Event Manager | 제어 결과 이벤트 기록 (성공/실패) |
+| 3 | Modbus Transport Manager | PCB로 write 명령 송신 → ACK/NACK 수신 및 성공 여부 확인 |
+| 4 | Alarm / Event Manager | 제어 결과 이벤트 기록 (성공/실패) |
 
 **시나리오 3. 긴급 상황 처리**
 - 트리거: Modbus Data Parser 임계치 판단에서 긴급 조건 감지
@@ -239,10 +230,10 @@
 
 | 순서 | 실행 주체 | 동작 |
 |---|---|---|
-| 9 | Polling Scheduler | polling 재개 |
-| 10 | Modbus Transport Manager | PCB read 재개 |
-| 11 | Modbus Data Parser | 임계치 복귀 감지 → Alarm/Event Manager에 복구 통보 |
-| 12 | Alarm / Event Manager | `alarm:*` Redis DEL → 복구 이벤트 기록 |
+| 9 | Modbus Transport Manager | PCB read 재개 |
+| 10 | Modbus Data Parser | 임계치 복귀 감지 → Alarm/Event Manager에 복구 통보 |
+| 11 | Alarm / Event Manager | `alarm:*` Redis DEL → 복구 이벤트 기록 → Polling Scheduler·Command Validator 재개 신호 전달 |
+| 12 | Polling Scheduler | polling 정상 재개 |
 | 13 | Command Validator | 긴급 상태 플래그 해제 → 일반 제어 요청 허용 |
 
 ### 4.3 UI
@@ -269,7 +260,6 @@
 - PCG와 REST API 기반 통신 (제어 요청 전달 / 결과 수신)
 - Redis DB 조회 (실시간 데이터 소스)
 - Prometheus DB 조회 (이력 데이터 소스)
-- Exporter: Redis key-value → Prometheus로 주기적 전송 (Pull 방식)
 
 #### DB
 
@@ -291,9 +281,14 @@
 | `alarm:water_level_low` | 수위 부족 | Alarm / Event Manager |
 | `alarm:comm_timeout` | 통신 timeout | Alarm / Event Manager |
 
+**Exporter**
+- 독립 프로세스로 동작
+- Redis의 `sensor:*`, `control:*` key를 참조하여 메트릭 수집 후 Prometheus로 전송 (Pull 방식)
+- `alarm:*` 키는 수집 대상 제외
+
 **Prometheus DB**
-- Exporter가 Redis의 key를 참조하여 메트릭 수집 후 Prometheus로 전송 (Pull 방식)
-- 이력 조회용 시계열 데이터 소스
+- Exporter로부터 수집된 시계열 메트릭 데이터 저장
+- 이력 조회용 데이터 소스
 
 ### 4.4 PCB (Modbus Slave)
 
@@ -309,7 +304,7 @@
 - PCB를 통해 PCG에 의해 간접적으로 제어됨
 
 
-## 5. 사용자 인터페이스 설계
+## 5. 사용자 인터페이스 설계 (참고)
 
 ### 5.1 UI 선정 기준
 
@@ -333,9 +328,18 @@
 
 ## 6. 라즈베리파이 키오스크 모드 설계
 
+**Local UI (PySide6) 키오스크**
+- 부팅 후 자동 로그인
+- PySide6 앱 자동 실행 (브라우저 불필요)
+- 전체화면 모드 강제 적용
+- 앱 비정상 종료 시 자동 재시작
+- 화면 절전 및 전원 관리 비활성화
+- 마우스 커서 숨김
+
+**WEB UI (Svelte) 키오스크**
 - 부팅 후 자동 로그인
 - Chromium 브라우저 자동 실행
-- 키오스크 전용 세션 구성
+- 키오스크 전용 세션 구성 (주소창·탭 숨김)
 - 브라우저 강제 전체화면 실행
 - 브라우저 비정상 종료 시 자동 재시작
 - 화면 절전 및 전원 관리 비활성화
