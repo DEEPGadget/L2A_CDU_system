@@ -15,7 +15,7 @@
 - 기록 확인 페이지: Prometheus에서 센서 이력 및 제어 명령 이력 조회 및 표시
 
 **BE (PySide6)**
-- PCG와 IPC 기반 통신 (제어 요청 전달 / 결과 수신)
+- PCG와 IPC 기반 통신 (제어 요청 전달)
 - Redis DB 직접 조회 (현재값 전용 — `sensor:*`, `comm:*`, `alarm:*`)
 - Prometheus DB 조회 (이력 데이터 소스 — 센서 이력 + 제어 명령 이력)
 
@@ -30,7 +30,7 @@
 - 접속: http://10.100.1.10:3000 (User Laptop 등 외부 브라우저)
 
 **BE (FastAPI)**
-- PCG와 REST API 기반 통신 (제어 요청 전달 / 결과 수신)
+- PCG와 REST API 기반 통신 (제어 요청 전달)
 - Redis DB 조회 (현재값 전용)
   - `GET /api/sensor/` — `sensor:*` 현재값
   - `GET /api/sensor/comm` — `comm:*` 현재값
