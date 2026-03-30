@@ -29,7 +29,10 @@
 
 | Key | 설명 | 설정 주체 |
 |---|---|---|
-| `sensor:coolant_temp` | 수온 | Modbus Data Parser |
+| `sensor:coolant_temp_inlet` | 냉각수 입수 온도 | Modbus Data Parser |
+| `sensor:coolant_temp_outlet` | 냉각수 출수 온도 | Modbus Data Parser |
+| `sensor:ambient_temp` | 외기 온도 | Modbus Data Parser |
+| `sensor:ambient_humidity` | 외기 습도 | Modbus Data Parser |
 | `sensor:pressure` | 유압 | Modbus Data Parser |
 | `sensor:flow_rate` | 유량 | Modbus Data Parser |
 | `sensor:water_level` | 수위 | Modbus Data Parser |
