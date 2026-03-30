@@ -1,9 +1,10 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { fetchSensors, fetchAlarms, setPumpDuty, setFanVoltage } from '../lib/api.js'
+  import { fetchSensors, fetchAlarms, fetchComm, setPumpDuty, setFanVoltage } from '../lib/api.js'
 
   let sensors = {}
   let alarms = {}
+  let comm = {}
   let pumpDuty = 0
   let fanVoltage = 0
   let interval
@@ -21,8 +22,9 @@
     'sensor:fan_status': 'Fan Status',
     'control:pump_duty': 'Pump Duty (%)',
     'control:fan_voltage': 'Fan Voltage (V)',
-    'control:result:pump_duty': 'Pump Cmd Result',
-    'control:result:fan_voltage': 'Fan Cmd Result',
+  }
+
+  const COMM_LABELS = {
     'comm:status': 'Comm Status',
     'comm:consecutive_failures': 'Comm Failures',
     'comm:last_error': 'Last Comm Error',
@@ -36,8 +38,7 @@
   onDestroy(() => clearInterval(interval))
 
   async function refresh() {
-    sensors = await fetchSensors()
-    alarms = await fetchAlarms()
+    ;[sensors, alarms, comm] = await Promise.all([fetchSensors(), fetchAlarms(), fetchComm()])
     pumpDuty = parseFloat(sensors['control:pump_duty'] ?? 0)
     fanVoltage = parseFloat(sensors['control:fan_voltage'] ?? 0)
   }
@@ -57,6 +58,12 @@
       <div class="card">
         <span class="card-label">{label}</span>
         <span class="card-value">{sensors[key] ?? '--'}</span>
+      </div>
+    {/each}
+    {#each Object.entries(COMM_LABELS) as [key, label]}
+      <div class="card">
+        <span class="card-label">{label}</span>
+        <span class="card-value">{comm[key] ?? '--'}</span>
       </div>
     {/each}
   </section>

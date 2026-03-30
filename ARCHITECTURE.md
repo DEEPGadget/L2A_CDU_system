@@ -84,11 +84,13 @@
 
 **Write**
 - 사용자는 엑츄에이터 조절 가능
-- PCG 에서는 Write 후 통신 결과에 대한 피드백을 redis 로 전송
+- PCG 에서는 Write 후 Modbus 결과를 Pushgateway로 직접 전송 (제어 이력)
+- Redis에는 최신 실시간 상태만 유지 (제어 이력 저장 안 함)
 - 추후 사용자는 제어 기록을 확인가능
 - Data Flow
   - 제어요청: UI → PCG → PCB
-  - 피드백: PCB → PCG → Redis DB → exporter → Prometheus
+  - 실시간 상태: PCB → PCG → Redis DB (최신값 덮어쓰기, 이력 없음)
+  - 제어 이력: PCG → Prometheus Pushgateway → Prometheus (이벤트 발생 시 즉시 push)
 
 
 ## 4. 시스템 구성 요소 상세

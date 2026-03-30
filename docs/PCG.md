@@ -30,7 +30,7 @@
 | PCB 대상 단일 Modbus Master | Modbus Transport Manager | ✅ | |
 | 센서/액추에이터 레지스터 주기적 polling | Task Scheduler | ✅ | |
 | UI 제어 요청 수신 및 처리 | Command Validator + Control Queue | ✅ | |
-| 제어 결과 및 통신 상태 Redis 저장 | Alarm/Event Manager (`control:result:*`), Modbus Transport Manager (`comm:*`) | ⚠️ | key 설계 완료. 코드 구현 미완료. 상세 key: `control:result:pump_duty`, `control:result:fan_voltage`, `comm:status`, `comm:consecutive_failures`, `comm:last_error` |
+| 제어 결과 및 통신 상태 저장 | Alarm/Event Manager (Pushgateway push), Modbus Transport Manager (`comm:*` Redis) | ⚠️ | 설계 완료. 코드 구현 미완료. 제어 이력은 Pushgateway → Prometheus. 통신 상태는 Redis: `comm:status`, `comm:consecutive_failures`, `comm:last_error` |
 | 이상 상태 이벤트 생성 및 외부 전달 | Alarm / Event Manager | ✅ | alarm:* → Redis → UI (Local + Web) 경유 외부 노출 확인. Web UI는 원격 브라우저 접근 가능 |
 
 ---
@@ -88,7 +88,8 @@
 - timeout / retry / reconnect 처리, 연속 실패 횟수 관리
 - slave 응답 이상 감지 및 통신 실패 상태 관리
 - Function code별 요청 송신 및 예외 응답 처리
-- 통신 상태 Redis SET: `comm:status`, `comm:consecutive_failures`, `comm:last_error`
+- 통신 상태 Redis SET (실시간 표시용): `comm:status`, `comm:consecutive_failures`, `comm:last_error`
+- 통신 상태 변경 시 Pushgateway POST (이력용): `comm_event{status=...}`, `comm_consecutive_failures`
 
 `Modbus Request Translator` *(Write 경로 전용)*
 - 제어 요청을 Modbus 명령으로 변환 (address 매핑, FC 결정, value encoding)
@@ -108,7 +109,7 @@
 - Modbus Data Parser로부터 임계치 초과/복귀 통보 수신
 - 경고 / 치명 / 복구 이벤트 분류 후 Emergency Queue에 적재
 - 알람 상태 키 관리: 임계치 초과 시 Redis SET (`alarm:*`), 정상 복귀 시 Redis DEL
-- 제어 결과 Redis SET: `control:result:pump_duty`, `control:result:fan_voltage` (성공/실패/오류 포함)
+- 제어 결과 Pushgateway POST: `control_cmd_pump_duty{result=...}`, `control_cmd_fan_voltage{result=...}` (성공/실패/오류 포함, 이벤트 발생 시 즉시 push)
 - 중복 이벤트 억제, 이벤트 발생/해제 시점 기록
 - 주요 이벤트: 온도 임계치 초과, 누수 감지, 수위 부족, 센서 이상, PCB 무응답, 통신 timeout, 복구
 
@@ -152,7 +153,7 @@ sequenceDiagram
     participant MTM as Modbus Transport Manager
     participant PCB as PCB
     participant AEM as Alarm / Event Manager
-    participant Redis as Redis DB
+    participant PGW as Prometheus Pushgateway
 
     Note over TS,MTM: [background] Polling cycle running...
 
@@ -170,7 +171,7 @@ sequenceDiagram
         MTM->>PCB: Modbus RTU write 요청
         PCB-->>MTM: ACK / NACK
         MTM->>AEM: 처리 결과 전달 (success / fail)
-        AEM->>Redis: SET control:result:* (status, value, error, ts)
+        AEM->>PGW: POST control_cmd_* (value, result label, ts)
     end
 ```
 

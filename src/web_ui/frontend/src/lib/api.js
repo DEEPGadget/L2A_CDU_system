@@ -20,6 +20,12 @@ export async function setFanVoltage(voltage) {
   await fetch(`${BASE}/control/fan_voltage?voltage=${voltage}`, { method: 'POST' })
 }
 
+export async function fetchComm() {
+  const res = await fetch(`${BASE}/sensor/comm`)
+  if (!res.ok) return {}
+  return res.json()
+}
+
 export async function fetchHistory(metric, hours = 1) {
   const res = await fetch(`${BASE}/history/${metric}?hours=${hours}`)
   if (!res.ok) return []
