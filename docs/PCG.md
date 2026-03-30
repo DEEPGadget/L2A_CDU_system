@@ -152,20 +152,25 @@ sequenceDiagram
     participant MTM as Modbus Transport Manager
     participant PCB as PCB
     participant AEM as Alarm / Event Manager
+    participant Redis as Redis DB
+
+    Note over TS,MTM: [background] Polling cycle running...
 
     UI->>CV: 제어 요청 (IPC / REST API)
     alt 허용 범위 초과
         CV-->>UI: 차단 (error response)
     else 검증 통과
         CV->>CQ: 요청 적재
-        TS->>CQ: 우선순위 판단 후 dequeue
+        Note over TS: Control Queue 감지 — Polling보다 우선순위 높음
+        TS-->>MTM: Polling 일시 중단
+        TS->>CQ: dequeue
         TS->>MRT: 제어 요청 전달
         MRT->>MRT: FC / address / value 변환
         MRT->>MTM: Modbus write 명령
         MTM->>PCB: Modbus RTU write 요청
         PCB-->>MTM: ACK / NACK
-        MTM->>AEM: 처리 결과 전달
-        AEM->>AEM: 제어 결과 이벤트 기록
+        MTM->>AEM: 처리 결과 전달 (success / fail)
+        AEM->>Redis: SET control:result:* (status, value, error, ts)
     end
 ```
 
