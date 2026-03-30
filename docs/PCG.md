@@ -133,7 +133,7 @@ sequenceDiagram
     PCB-->>MTM: register 응답
     MTM->>MDP: raw register 데이터 전달
     MDP->>MDP: scaling / bitfield 해석 → 임계치 판단
-    MDP->>Redis: SET sensor:* / control:*
+    MDP->>Redis: SET sensor:*
     Note over AEM: 임계치 정상 → 통보 없음
 ```
 

@@ -4,16 +4,16 @@
 
 본 문서는 L2A CDU 시스템의 전체 아키텍처와 요구사항, 그리고 HW/SW 구성 요소를 정의함. 본 문서는 시스템의 큰 구조와 설계 기준을 설명하는 것을 목적으로 하며, 세부 구현 사항은 추후 지속적으로 업데이트한다.
 
-**Last Update:** 2026.03.24
+**Last Update:** 2026.03.30
 
 ## Table of Contents
 
 1. L2A CDU 시스템 전체 구성
 2. 요구사항
-3. 데이터 및 통신
+3. 통신
    - 3.1 통신 구조
    - 3.2 통신 방식
-   - 3.3 데이터 흐름
+   - 3.3 Modbus 동작
 4. 시스템 구성 요소 상세
    - 4.1 Raspberry Pi (Modbus Master)
    - 4.2 Python Control Gateway (PCG)
@@ -37,8 +37,9 @@
 | Raspberry Pi | PCG, UI, DB를 탑재하는 하드웨어 플랫폼 (IP: 10.100.1.10) |
 | Web UI (Svelte + FastAPI) | WEB 기반 유저 인터페이스. http 기반으로 파이썬 기반의 제어모듈(PCG - python control gateway)과 통신. 모니터링 및 제어 화면, 과거 기록 확인 화면 |
 | Touch Display UI (PySide6) | 로컬 기반 유저 인터페이스. IPC 기반으로 파이썬 기반의 제어모듈(PCG - python control gateway)과 통신. 모니터링 및 제어, 과거 기록 확인 화면 |
-| Redis DB | 실시간 DB, UI 에 표시 |
-| PrometheusDB + exporter | History 용 DB, exporter 는 redisDB 로부터 value를 받음 |
+| Redis DB | 현재값 전용 DB (`sensor:*`, `comm:*`, `alarm:*`) — 이력 저장 없음 |
+| Prometheus + Exporter | 센서 이력 DB. Exporter가 Redis `sensor:*` 를 주기적으로 scrape |
+| Prometheus Pushgateway | 제어 명령·통신 장애 이력 수신. PCG가 이벤트 발생 시 직접 push |
 | Python Control Gateway (PCG) | 실질적 Modbus Master (읽기/쓰기). 읽기: pcb 로부터 polling → redis에 전송. 쓰기: UI 로부터 요청받음 → PCB 로 write 명령 |
 | PCB | Modbus Slave, 센서 입력 및 펌프/팬 제어 |
 | 센서 및 엑츄에이터 | 센서: 수온, 유량, 유압, 누수, 수위센서. 엑츄에이터: 펌프, 팬 |
@@ -52,45 +53,26 @@
 - 시스템은 부팅 완료 후 사용자 개입 없이 제어 서비스 및 사용자 인터페이스를 자동으로 실행해야 함
 
 
-## 3. 데이터 및 통신
+## 3. 통신
 
 ### 3.1 통신 구조
 
-- Python Control Gateway(PCG)는 Modbus 통신의 중앙 제어 노드로 동작함
+- PCG는 Modbus 통신의 단일 Master로 동작
 - 모든 센서 데이터 조회 및 제어 요청은 PCG를 통해 처리됨
 - UI는 PCG와만 통신하며 PCB와 직접 통신하지 않음
-- Touch Display UI와 Web UI가 사용하는 DB(Redis, Prometheus)는 동일함
 
 ### 3.2 통신 방식
 
-- **PCG ↔ PCB**
-  - Modbus RTU
-  - Master / Slave 구조
-    - Modbus Master: PCG
-    - Modbus Slave: PCB
-- **UI ↔ PCG**
-  - Touch Display
-    - Inter Process Communication (IPC) 기반
-  - WEB
-    - REST API 기반
+| 구간 | 방식 |
+|---|---|
+| PCG ↔ PCB | Modbus RTU (Master / Slave) |
+| Touch Display UI ↔ PCG | IPC (Unix Domain Socket) |
+| Web UI ↔ PCG | REST API |
 
-### 3.3 데이터 흐름
+### 3.3 Modbus 동작
 
-**Read**
-- PCG는 주기적으로 PCB에 센서 데이터 Read 요청을 전송함(Polling 기반)
-- Data Flow
-  - 실시간 데이터: 센서 및 엑츄에이터 → PCB → PCG → Redis → UI
-  - 기록 확인용: 센서 및 엑츄에이터 → PCB → PCG → Redis → exporter → Prometheus
-
-**Write**
-- 사용자는 엑츄에이터 조절 가능
-- PCG 에서는 Write 후 Modbus 결과를 Pushgateway로 직접 전송 (제어 이력)
-- Redis에는 최신 실시간 상태만 유지 (제어 이력 저장 안 함)
-- 추후 사용자는 제어 기록을 확인가능
-- Data Flow
-  - 제어요청: UI → PCG → PCB
-  - 실시간 상태: PCB → PCG → Redis DB (최신값 덮어쓰기, 이력 없음)
-  - 제어 이력: PCG → Prometheus Pushgateway → Prometheus (이벤트 발생 시 즉시 push)
+- **Read**: PCG가 PCB에 주기적으로 polling → 센서·상태 레지스터 읽기
+- **Write**: UI 제어 요청 수신 시 PCG가 PCB에 write 명령 전송
 
 
 ## 4. 시스템 구성 요소 상세
