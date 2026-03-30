@@ -18,6 +18,14 @@ SENSOR_KEYS = [
     "sensor:fan_status",
     "control:pump_duty",
     "control:fan_voltage",
+    "control:result:pump_duty",
+    "control:result:fan_voltage",
+]
+
+COMM_KEYS = [
+    "comm:status",
+    "comm:consecutive_failures",
+    "comm:last_error",
 ]
 
 
@@ -34,3 +42,9 @@ def get_alarms() -> dict:
         return {}
     values = _r.mget(alarm_keys)
     return {k: v for k, v in zip(alarm_keys, values)}
+
+
+@router.get("/comm")
+def get_comm_status() -> dict:
+    values = _r.mget(COMM_KEYS)
+    return {k: v for k, v in zip(COMM_KEYS, values)}

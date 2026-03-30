@@ -18,9 +18,9 @@
 | 요구사항 | 관련 컴포넌트 | 판정 | 비고 |
 |---|---|---|---|
 | 터치/웹 UI를 통한 모니터링 및 제어 | Command Validator (IPC/REST API 수신), Modbus Data Parser (Redis SET) | ✅ | 양쪽 인터페이스 모두 지원 |
-| 키오스크 사용자에게 제한된 기능만 노출 | Command Validator (허용 범위 검증, 잘못된 값 차단) | ⚠️ | 값 범위 제한은 있으나 사용자 권한 레벨(관리자/일반) 구분 없음 |
+| 키오스크 사용자에게 제한된 기능만 노출 | Command Validator (허용 범위 검증 + privilege check 레이어) | ⚠️ | operator / admin 두 role 설계됨. 코드 구현 미완료. 하단 권한 매트릭스 참고 |
 | 하드웨어 플랫폼 정보 미노출 | PCG 추상화 계층 (UI ↔ PCG ↔ PCB), Redis key 추상화 네이밍 | ✅ | UI는 PCB register에 직접 접근 불가 |
-| 부팅 후 자동 실행 | Task Scheduler (PCG 기동 시 자동 스케쥴링 시작) | ⚠️ | PCG 프로세스 자체의 자동 시작 방식(systemd 등) 미정의 |
+| 부팅 후 자동 실행 | Task Scheduler (PCG 기동 시 자동 스케쥴링 시작) | ✅ | Kiosk.md 섹션 4.1 pcg.service 참고 |
 
 **개요 항목 대비 컴포넌트 커버리지**
 
@@ -30,8 +30,8 @@
 | PCB 대상 단일 Modbus Master | Modbus Transport Manager | ✅ | |
 | 센서/액추에이터 레지스터 주기적 polling | Task Scheduler | ✅ | |
 | UI 제어 요청 수신 및 처리 | Command Validator + Control Queue | ✅ | |
-| 제어 결과 및 통신 상태 Redis 저장 | Alarm/Event Manager (이벤트 기록), Transport Manager (통신 상태 관리) | ⚠️ | 통신 실패 상태의 Redis 저장 key가 미정의. 제어 결과 Redis 저장 경로 불명확 |
-| 이상 상태 이벤트 생성 및 외부 전달 | Alarm / Event Manager | ⚠️ | alarm:* Redis SET이 "외부 전달" 역할이나, UI 외 외부 시스템(알림 등) 전달 수단 미정의 |
+| 제어 결과 및 통신 상태 Redis 저장 | Alarm/Event Manager (`control:result:*`), Modbus Transport Manager (`comm:*`) | ⚠️ | key 설계 완료. 코드 구현 미완료. 상세 key: `control:result:pump_duty`, `control:result:fan_voltage`, `comm:status`, `comm:consecutive_failures`, `comm:last_error` |
+| 이상 상태 이벤트 생성 및 외부 전달 | Alarm / Event Manager | ✅ | alarm:* → Redis → UI (Local + Web) 경유 외부 노출 확인. Web UI는 원격 브라우저 접근 가능 |
 
 ---
 
@@ -40,10 +40,25 @@
 `Command Validator / Safety Checker`
 - UI로부터 제어 요청 수신 (IPC / REST API)
 - 요청값 허용 범위 검증 및 잘못된 값 차단
+- 권한 검증 (privilege check): 요청자 role에 따라 허용 동작 제한
 - 비정상 상태 시 제어 제한, 긴급 상태 시 일반 요청 차단
 - 검증 통과 시 Control Queue에 적재
 - 허용 범위 예시: Pump Duty 0~100%, Fan 전압 0~12V
 - 누수 감지 시 특정 제어 요청 거부
+
+**권한 매트릭스**
+
+| 동작 | operator | admin |
+|---|---|---|
+| 모니터링 조회 | ✅ | ✅ |
+| Pump Duty 변경 | ✅ | ✅ |
+| Fan Voltage 변경 | ✅ | ✅ |
+| 임계치 수정 | ❌ | ✅ |
+| Polling 주기 변경 | ❌ | ✅ |
+| 비상 정지 | ❌ | ✅ |
+
+- Local UI: auto-login → `operator` 고정. PIN 입력 시 `admin` 전환
+- Web UI: Bearer Token에 role 포함, FastAPI에서 검증
 
 **[레이어 2] 스케줄링 & 큐**
 
@@ -73,6 +88,7 @@
 - timeout / retry / reconnect 처리, 연속 실패 횟수 관리
 - slave 응답 이상 감지 및 통신 실패 상태 관리
 - Function code별 요청 송신 및 예외 응답 처리
+- 통신 상태 Redis SET: `comm:status`, `comm:consecutive_failures`, `comm:last_error`
 
 `Modbus Request Translator` *(Write 경로 전용)*
 - 제어 요청을 Modbus 명령으로 변환 (address 매핑, FC 결정, value encoding)
@@ -92,6 +108,7 @@
 - Modbus Data Parser로부터 임계치 초과/복귀 통보 수신
 - 경고 / 치명 / 복구 이벤트 분류 후 Emergency Queue에 적재
 - 알람 상태 키 관리: 임계치 초과 시 Redis SET (`alarm:*`), 정상 복귀 시 Redis DEL
+- 제어 결과 Redis SET: `control:result:pump_duty`, `control:result:fan_voltage` (성공/실패/오류 포함)
 - 중복 이벤트 억제, 이벤트 발생/해제 시점 기록
 - 주요 이벤트: 온도 임계치 초과, 누수 감지, 수위 부족, 센서 이상, PCB 무응답, 통신 timeout, 복구
 
