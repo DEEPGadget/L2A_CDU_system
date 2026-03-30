@@ -99,7 +99,7 @@
 `Modbus Data Parser` *(Read 경로 전용)*
 - raw register 값 해석: scaling, signed/unsigned 변환, bitfield decode
 - 센서/상태값 구조화 후 즉시 임계치 판단
-- 센서 실시간 값(`sensor:*`, `control:*`)은 항상 Redis SET
+- 센서 실시간 값(`sensor:*`)은 항상 Redis SET
 - 임계치 초과 / 복귀 감지 시 → Alarm/Event Manager에 통보 (알람 키(`alarm:*`) 조작은 하지 않음)
 - 예: `input_reg[3] = 412` → `coolant_temp = 41.2` / `status bit 1` = Leak detected
 

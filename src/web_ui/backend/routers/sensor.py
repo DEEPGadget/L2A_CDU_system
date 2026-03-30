@@ -16,8 +16,6 @@ SENSOR_KEYS = [
     "sensor:leak",
     "sensor:pump_status",
     "sensor:fan_status",
-    "control:pump_duty",
-    "control:fan_voltage",
 ]
 
 COMM_KEYS = [

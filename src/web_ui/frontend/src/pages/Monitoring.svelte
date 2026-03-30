@@ -20,8 +20,6 @@
     'sensor:leak': 'Leak',
     'sensor:pump_status': 'Pump Status',
     'sensor:fan_status': 'Fan Status',
-    'control:pump_duty': 'Pump Duty (%)',
-    'control:fan_voltage': 'Fan Voltage (V)',
   }
 
   const COMM_LABELS = {
@@ -39,8 +37,6 @@
 
   async function refresh() {
     ;[sensors, alarms, comm] = await Promise.all([fetchSensors(), fetchAlarms(), fetchComm()])
-    pumpDuty = parseFloat(sensors['control:pump_duty'] ?? 0)
-    fanVoltage = parseFloat(sensors['control:fan_voltage'] ?? 0)
   }
 </script>
 
