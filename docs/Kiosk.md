@@ -182,8 +182,16 @@ sudo apt install openbox
 
 ## 4. 서비스 관리 (systemd)
 
-PCG 및 FastAPI 백엔드는 X11 세션과 독립적으로 systemd 서비스로 관리.
+PCG, FastAPI 백엔드, Redis, Prometheus, Pushgateway는 X11 세션과 독립적으로 systemd 서비스로 관리.
 UI 기동 전에 반드시 실행되어야 하므로 `multi-user.target` 단계에서 시작.
+
+| 서비스 | 관리 방식 | 비고 |
+|---|---|---|
+| Redis | apt 패키지 — systemd 자동 등록 | `redis-server` |
+| Prometheus | 수동 설치 — systemd 등록 필요 | |
+| Pushgateway | 수동 설치 — systemd 등록 필요 | |
+| PCG | 수동 등록 (섹션 4.1) | |
+| FastAPI | 수동 등록 (섹션 4.2) | WEB UI 사용 시 |
 
 ### 4.1 PCG 서비스
 
@@ -231,13 +239,60 @@ StandardError=journal
 WantedBy=multi-user.target
 ```
 
-### 4.3 서비스 등록
+### 4.3 Prometheus 서비스
+
+```ini
+# /etc/systemd/system/prometheus.service
+[Unit]
+Description=Prometheus
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+ExecStart=/home/pi/prometheus/prometheus \
+    --config.file=/home/pi/prometheus/prometheus.yml \
+    --storage.tsdb.path=/home/pi/prometheus/data
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 4.4 Pushgateway 서비스
+
+```ini
+# /etc/systemd/system/pushgateway.service
+[Unit]
+Description=Prometheus Pushgateway
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+ExecStart=/home/pi/pushgateway/pushgateway
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 4.5 서비스 등록
 
 ```bash
+# Redis (apt 설치 시 자동 등록 — 활성화만)
+sudo systemctl enable redis-server
+
+# Prometheus / Pushgateway
 sudo systemctl daemon-reload
+sudo systemctl enable prometheus.service
+sudo systemctl enable pushgateway.service
+
+# PCG / FastAPI
 sudo systemctl enable pcg.service
 sudo systemctl enable fastapi.service   # WEB UI 사용 시
-sudo systemctl start pcg.service
 ```
 
 ---
@@ -249,7 +304,9 @@ sudo systemctl start pcg.service
     │
     ▼
 [systemd: multi-user.target]
-    ├─ redis.service 시작
+    ├─ redis-server.service 시작
+    ├─ prometheus.service 시작
+    ├─ pushgateway.service 시작
     ├─ pcg.service 시작
     └─ fastapi.service 시작 (WEB UI 사용 시)
     │
