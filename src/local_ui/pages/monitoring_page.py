@@ -18,6 +18,11 @@ SENSOR_KEYS = [
     "sensor:fan_status",
     "control:pump_duty",
     "control:fan_voltage",
+    "control:result:pump_duty",
+    "control:result:fan_voltage",
+    "comm:status",
+    "comm:consecutive_failures",
+    "comm:last_error",
 ]
 
 SENSOR_LABELS = {
@@ -33,6 +38,11 @@ SENSOR_LABELS = {
     "sensor:fan_status": "Fan Status",
     "control:pump_duty": "Pump Duty (%)",
     "control:fan_voltage": "Fan Voltage (V)",
+    "control:result:pump_duty": "Pump Cmd Result",
+    "control:result:fan_voltage": "Fan Cmd Result",
+    "comm:status": "Comm Status",
+    "comm:consecutive_failures": "Comm Failures",
+    "comm:last_error": "Last Comm Error",
 }
 
 

@@ -45,11 +45,16 @@
 | `alarm:leak_detected` | 누수 감지 | Alarm / Event Manager |
 | `alarm:water_level_low` | 수위 부족 | Alarm / Event Manager |
 | `alarm:comm_timeout` | 통신 timeout | Alarm / Event Manager |
+| `control:result:pump_duty` | 마지막 pump duty 명령 결과 `{status, value, error, ts}` | Alarm / Event Manager |
+| `control:result:fan_voltage` | 마지막 fan voltage 명령 결과 `{status, value, error, ts}` | Alarm / Event Manager |
+| `comm:status` | 현재 Modbus 통신 상태 `"ok"\|"timeout"\|"disconnected"` | Modbus Transport Manager |
+| `comm:consecutive_failures` | 연속 통신 실패 횟수 (성공 시 0 리셋) | Modbus Transport Manager |
+| `comm:last_error` | 마지막 오류 `{code, message, ts}` | Modbus Transport Manager |
 
 **Exporter**
 - 독립 프로세스로 동작
 - Redis의 `sensor:*`, `control:*` key를 참조하여 메트릭 수집 후 Prometheus로 전송 (Pull 방식)
-- `alarm:*` 키는 수집 대상 제외
+- `alarm:*`, `comm:*` 키는 수집 대상 제외 (실시간 상태 플래그)
 
 **Prometheus DB**
 - Exporter로부터 수집된 시계열 메트릭 데이터 저장
