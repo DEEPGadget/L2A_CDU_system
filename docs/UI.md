@@ -1,5 +1,13 @@
 # UI
 
+## Touch Display Hardware
+
+| 항목 | 스펙 |
+|---|---|
+| 제품 | Raspberry Pi Touch Display 2 |
+| 크기 | 7-inch |
+| 패널 치수 | 154.56 mm × 86.94 mm |
+
 ## Local UI (PySide6)
 
 **FE (PySide6)**
@@ -8,7 +16,7 @@
 
 **BE (PySide6)**
 - PCG와 IPC 기반 통신 (제어 요청 전달 / 결과 수신)
-- Redis DB 직접 조회 (현재값 전용 — `sensor:*`, `control:*`, `comm:*`, `alarm:*`)
+- Redis DB 직접 조회 (현재값 전용 — `sensor:*`, `comm:*`, `alarm:*`)
 - Prometheus DB 조회 (이력 데이터 소스 — 센서 이력 + 제어 명령 이력)
 
 ## WEB UI (Svelte + FastAPI)
@@ -24,7 +32,7 @@
 **BE (FastAPI)**
 - PCG와 REST API 기반 통신 (제어 요청 전달 / 결과 수신)
 - Redis DB 조회 (현재값 전용)
-  - `GET /api/sensor/` — `sensor:*`, `control:*` 현재값
+  - `GET /api/sensor/` — `sensor:*` 현재값
   - `GET /api/sensor/comm` — `comm:*` 현재값
   - `GET /api/sensor/alarms` — `alarm:*` 활성 알람
 - Prometheus DB 조회 (`GET /api/history/{metric}` — 이력 데이터 소스)
@@ -47,8 +55,6 @@
 | `sensor:leak` | 누수 | Modbus Data Parser |
 | `sensor:pump_status` | 펌프 상태 | Modbus Data Parser |
 | `sensor:fan_status` | 팬 상태 | Modbus Data Parser |
-| `control:pump_duty` | 펌프 duty 현재값 (polling으로 읽은 실제 하드웨어 값) | Modbus Data Parser |
-| `control:fan_voltage` | 팬 전압 현재값 (polling으로 읽은 실제 하드웨어 값) | Modbus Data Parser |
 | `alarm:coolant_temp_high` | 수온 임계치 초과 | Alarm / Event Manager |
 | `alarm:leak_detected` | 누수 감지 | Alarm / Event Manager |
 | `alarm:water_level_low` | 수위 부족 | Alarm / Event Manager |
@@ -59,7 +65,7 @@
 
 **Exporter**
 - 독립 프로세스로 동작 (Pull 방식)
-- 수집 대상: `sensor:*`, `control:pump_duty`, `control:fan_voltage`
+- 수집 대상: `sensor:*`
 - 제외 대상: `alarm:*`, `comm:*` (실시간 상태 플래그, 이력 불필요)
 
 **Pushgateway**
@@ -78,6 +84,6 @@
 - Pushgateway 수집분: 제어 명령 이력, 통신 장애 이력
 - 이력 조회 쿼리 예시:
   - `sensor_coolant_temp_inlet` — 냉각수 온도 추이
-  - `control_pump_duty` — 실제 펌프 duty 추이 (polling 기반)
   - `control_cmd_pump_duty{result="success"}` — 성공한 펌프 제어 명령 이력
+  - `control_cmd_fan_voltage{result="fail"}` — 실패한 팬 제어 명령 이력
   - `comm_event{status="timeout"}` — 통신 장애 발생 이력

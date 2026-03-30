@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:manycoresoft.atlassian.net)"
+      "WebFetch(domain:manycoresoft.atlassian.net)",
+      "WebFetch(domain:www.raspberrypi.com)"
     ]
   }
 }

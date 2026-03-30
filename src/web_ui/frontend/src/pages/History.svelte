@@ -9,8 +9,6 @@
     'sensor_pressure',
     'sensor_flow_rate',
     'sensor_water_level',
-    'control_pump_duty',
-    'control_fan_voltage',
     'control_cmd_pump_duty',
     'control_cmd_fan_voltage',
   ]
