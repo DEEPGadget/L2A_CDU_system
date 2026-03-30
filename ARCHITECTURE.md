@@ -105,7 +105,7 @@
 
 - 시스템 내 중앙 제어 및 통신 허브 (Modbus Master)
 - 4개 레이어로 구성: 요청 수신·검증 / 스케줄링·큐 / Modbus 통신 / 이벤트 처리
-- 요청 처리 우선순위: 긴급 요청 큐 > 제어 처리 큐 > Polling Scheduler
+- 작업 소스 우선순위: Emergency Queue > Control Queue > Polling (Task Scheduler가 중재)
 
 > 상세 내용: [PCG.md](docs/PCG.md)
 
