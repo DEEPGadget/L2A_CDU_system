@@ -18,8 +18,6 @@ SENSOR_KEYS = [
     "sensor:fan_status",
     "control:pump_duty",
     "control:fan_voltage",
-    "control:result:pump_duty",
-    "control:result:fan_voltage",
 ]
 
 COMM_KEYS = [

@@ -15,6 +15,8 @@ METRICS = [
     "sensor_water_level",
     "control_pump_duty",
     "control_fan_voltage",
+    "control_cmd_pump_duty",
+    "control_cmd_fan_voltage",
 ]
 
 HOURS_OPTIONS = [("1h", 1), ("6h", 6), ("24h", 24), ("1 Week", 168)]
