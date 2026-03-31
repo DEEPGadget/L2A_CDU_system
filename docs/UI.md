@@ -74,8 +74,8 @@
 
 | Metric | Label | 설명 | push 시점 |
 |---|---|---|---|
-| `control_cmd_pump_duty` | `result="success\|fail"` | 명령한 duty 값 | 제어 명령 완료 시 |
-| `control_cmd_fan_voltage` | `result="success\|fail"` | 명령한 전압 값 | 제어 명령 완료 시 |
+| `control_cmd_pump` | `result="success\|fail"` | 명령한 pump 출력값 0~100% | 제어 명령 완료 시 |
+| `control_cmd_fan` | `result="success\|fail"` | 명령한 fan 출력값 0~100% | 제어 명령 완료 시 |
 | `comm_event` | `status="timeout\|disconnected\|ok"` | 통신 상태 변경 이벤트 | 상태 전환 시 |
 | `comm_consecutive_failures` | — | 연속 실패 횟수 스냅샷 | 실패 발생 시 |
 
@@ -84,6 +84,6 @@
 - Pushgateway 수집분: 제어 명령 이력, 통신 장애 이력
 - 이력 조회 쿼리 예시:
   - `sensor_coolant_temp_inlet` — 냉각수 온도 추이
-  - `control_cmd_pump_duty{result="success"}` — 성공한 펌프 제어 명령 이력
-  - `control_cmd_fan_voltage{result="fail"}` — 실패한 팬 제어 명령 이력
+  - `control_cmd_pump{result="success"}` — 성공한 펌프 제어 명령 이력
+  - `control_cmd_fan{result="fail"}` — 실패한 팬 제어 명령 이력
   - `comm_event{status="timeout"}` — 통신 장애 발생 이력
