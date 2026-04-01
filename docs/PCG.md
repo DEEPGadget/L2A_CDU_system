@@ -37,7 +37,6 @@
 
 `Command Receiver`
 - UI로부터 제어 요청 수신 (IPC / REST API)
-- async 서버로 구현 (asyncio socket / uvicorn), 동일 이벤트 루프에서 동작
 - Control Queue에 적재
 
 **[레이어 2] 스케줄링 & 큐**
@@ -45,7 +44,6 @@
 `Task Scheduler`
 - Control Queue / Polling 두 작업 소스를 소유하고 Modbus Transport Manager에 순차 디스패치
 - **작업 소스 우선순위: Control Queue > Polling** (Modbus 단일 채널 직렬 접근 보장)
-- Polling 루프는 `asyncio.sleep()`으로 주기 제어
 - Polling 주기 설정 및 변경 가능
 - 주요 Polling 대상: 수온(inlet/outlet), 유압, 유량, 수위, 누수, 펌프 상태, 팬 상태, 온습도
 
@@ -71,7 +69,7 @@
 **[레이어 4] 이벤트 처리**
 
 `Alarm / Event Manager`
-- MTM으로부터 디코딩된 센서값 수신 → threshold 검사 → 이상/복귀 판단 (동일 이벤트 루프에서 처리)
+- MTM으로부터 디코딩된 센서값 수신 → threshold 검사 → 이상/복귀 판단
 - 경고 / 치명 이벤트 분류, UI 알람 표시용 Redis 키 관리
 - 알람 상태 키 관리: 임계치 초과 시 Redis SET (`alarm:*`), 정상 복귀 시 Redis DEL
 - 중복 이벤트 억제, 이벤트 발생/해제 시점 기록
@@ -155,6 +153,20 @@ L2A CDU의 1차 목표는 **서버의 안정적인 냉각 유지**다.
 - PCB 무응답으로 중단된 Polling은 통신 복구 확인 후 재개
 
 ## 시나리오
+
+### 동작 사이클 개요
+
+```
+loop:
+  Control Queue에 요청 있음 → MTM write → 다음 cycle
+  Control Queue 비어있음   → MTM read → 디코딩
+                                ├─ Redis SET sensor:* (async)
+                                └─ AEM threshold 검사
+                                      정상 → 다음 cycle
+                                      이상 → Redis SET alarm:* → UI 알람 → 다음 cycle
+```
+
+---
 
 ### 시나리오 1. 주기적 상태 수집 (정상)
 
