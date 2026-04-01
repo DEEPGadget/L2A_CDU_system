@@ -58,8 +58,8 @@
 - timeout / retry / reconnect 처리, 연속 실패 횟수 관리
 - slave 응답 이상 감지 및 통신 실패 상태 관리
 - Function code별 요청 송신 및 예외 응답 처리
-- **Read path**: raw register 값 수신 → scaling / bitfield 디코딩 → Redis SET `sensor:*` → AEM에 값 전달
-- **Write path**: 0\~100% 입력값 → FC / address / register value 변환 → Modbus write 송신
+- **Read path**: raw register 값 수신 → scaling / bitfield 디코딩 → function code 이상 없음 → Redis SET `sensor:*` (async, non-blocking) ∥ AEM에 값 전달
+- **Write path**: 0\~100% 입력값 → FC / address / register value 변환 → Modbus write 송신 → ACK 수신 확인 → Pushgateway POST (result label)
   - 예: `set_pump(70)` → `FC06 / addr=0x0012 / value=700`
   - 예: `set_fan(70)` → 70% → 8.4V → `FC06 / addr=0x0014 / value=840`
 - 통신 상태 Redis SET (실시간 표시용): `comm:status`, `comm:consecutive_failures`, `comm:last_error`
