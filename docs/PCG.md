@@ -44,11 +44,10 @@
 `Task Scheduler`
 - Control Queue / Polling 두 작업 소스를 소유하고 Modbus Transport Manager에 순차 디스패치
 - **작업 소스 우선순위: Control Queue > Polling** (Modbus 단일 채널 직렬 접근 보장)
-- Polling 주기 설정 및 변경 가능
 - 주요 Polling 대상: 수온(inlet/outlet), 유압, 유량, 수위, 누수, 펌프 상태, 팬 상태, 온습도
 
 `Control Queue`
-- Command Receiver로부터 적재된 제어 요청 순차 처리
+- Command Receiver가 적재한 제어 요청을 순서대로 보관
 - Task Scheduler가 Polling보다 우선 디스패치
 - 처리 대상: Pump 출력 변경, Fan 출력 변경, 기타 액추에이터 제어
 
@@ -234,7 +233,7 @@ sequenceDiagram
 
 ---
 
-### 시나리오 3. 이상 감지 → 알람 → 사람 제어 → 복구
+### 시나리오 3. 센서 임계치 초과 → 알람 → 사람 제어 → 복구
 
 트리거: Task Scheduler 주기 도달 → AEM threshold 검사에서 임계치 초과 판단
 
@@ -297,6 +296,54 @@ sequenceDiagram
         MTM->>AEM: 디코딩된 값 전달
         AEM->>AEM: threshold 검사 → 정상 복귀 판단
         AEM->>Redis: DEL alarm:*
+        AEM->>AEM: 복구 이벤트 기록
+        UI->>Redis: alarm:* 키 소멸 감지
+        UI-->>UI: 알람 해제
+    end
+```
+
+---
+
+### 시나리오 4. 통신 오류 → 알람 → 복구
+
+트리거: MTM Modbus 요청 실패
+
+```mermaid
+sequenceDiagram
+    participant UI as UI
+    participant TS as Task Scheduler
+    participant MTM as Modbus Transport Manager
+    participant PCB as PCB
+    participant Redis as Redis DB
+    participant AEM as Alarm / Event Manager
+    participant PGW as Prometheus Pushgateway
+
+    rect rgb(60, 30, 30)
+        Note over TS,AEM: Polling cycle — 통신 오류 감지
+        TS->>MTM: 주기 도달 → read 작업 트리거
+        MTM->>PCB: Modbus RTU read 요청
+        PCB--xMTM: timeout / 무응답
+        MTM->>MTM: retry → 연속 실패 횟수 증가
+        alt 연속 N회 실패 (Warning)
+            MTM->>AEM: 통신 이상 통보
+            AEM->>Redis: SET alarm:comm_timeout
+            AEM->>PGW: POST comm_event (이력)
+            UI->>Redis: alarm:* 폴링으로 알람 감지
+            UI-->>UI: 알람 배너 표시
+        else PCB 무응답 판단 (Critical)
+            MTM->>AEM: 통신 두절 통보
+            AEM->>Redis: SET alarm:comm_disconnected
+            MTM->>MTM: Polling 중단
+        end
+    end
+
+    rect rgb(20, 50, 30)
+        Note over TS,AEM: 복구
+        MTM->>PCB: 재연결 시도
+        PCB-->>MTM: 응답 성공
+        MTM->>MTM: 연속 실패 횟수 초기화, Polling 재개
+        MTM->>AEM: 통신 복구 통보
+        AEM->>Redis: DEL alarm:comm_*
         AEM->>AEM: 복구 이벤트 기록
         UI->>Redis: alarm:* 키 소멸 감지
         UI-->>UI: 알람 해제
