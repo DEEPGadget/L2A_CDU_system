@@ -113,15 +113,17 @@ L2A CDU의 1차 목표는 **서버의 안정적인 냉각 유지**다.
 
 | 예외 | 감지 주체 | 심각도 | AEM 처리 | 복구 조건 |
 |---|---|---|---|---|
-| 수온 경고 (warning threshold 초과) | MTM (polling) | Warning | `alarm:coolant_temp_high` SET | 임계치 이하 복귀 |
-| 수온 위험 (critical threshold 초과) | MTM (polling) | Critical | `alarm:coolant_temp_critical` SET | 임계치 이하 복귀 |
-| 누수 감지 | MTM (polling) | Critical | `alarm:leak_detected` SET | 누수 비트 해제 |
-| 수위 부족 (warning) | MTM (polling) | Warning | `alarm:water_level_low` SET | 수위 복귀 |
-| 수위 위험 (critical) | MTM (polling) | Critical | `alarm:water_level_critical` SET | 수위 복귀 |
-| 유압 이상 | MTM (polling) | Warning | `alarm:pressure_abnormal` SET | 정상 범위 복귀 |
-| 유량 저하 (Pump ON 상태) | MTM (polling) | Warning | `alarm:flow_rate_low` SET | 정상 유량 복귀 |
-| 주변 온도 한계 초과 | MTM (polling) | Critical | `alarm:ambient_temp_limit` SET | 정상 범위 복귀 |
-| 주변 습도 한계 초과 | MTM (polling) | Critical | `alarm:ambient_humidity_limit` SET | 정상 범위 복귀 |
+| 수온 경고 (warning) | AEM | Warning | `alarm:coolant_temp_warning` SET | 임계치 이하 복귀 |
+| 수온 위험 (critical) | AEM | Critical | `alarm:coolant_temp_critical` SET | 임계치 이하 복귀 |
+| 누수 감지 | AEM | Critical | `alarm:leak_detected` SET | 누수 비트 해제 |
+| 수위 부족 (warning) | AEM | Warning | `alarm:water_level_warning` SET | 수위 복귀 |
+| 수위 위험 (critical) | AEM | Critical | `alarm:water_level_critical` SET | 수위 복귀 |
+| 유압 이상 (warning) | AEM | Warning | `alarm:pressure_warning` SET | 정상 범위 복귀 |
+| 유량 저하 (warning, Pump ON 상태) | AEM | Warning | `alarm:flow_rate_warning` SET | 정상 유량 복귀 |
+| 주변 온도 경고 (warning) | AEM | Warning | `alarm:ambient_temp_warning` SET | 임계치 이하 복귀 |
+| 주변 온도 한계 초과 (critical) | AEM | Critical | `alarm:ambient_temp_critical` SET | 정상 범위 복귀 |
+| 주변 습도 경고 (warning) | AEM | Warning | `alarm:ambient_humidity_warning` SET | 임계치 이하 복귀 |
+| 주변 습도 한계 초과 (critical) | AEM | Critical | `alarm:ambient_humidity_critical` SET | 정상 범위 복귀 |
 
 ---
 
@@ -139,7 +141,7 @@ L2A CDU의 1차 목표는 **서버의 안정적인 냉각 유지**다.
 
 | 예외 | 감지 주체 | 처리 | 복구 조건 |
 |---|---|---|---|
-| Write retry 소진 | MTM | MTM → Pushgateway POST (`control_cmd_*{result="fail"}`) | 다음 제어 요청 |
+| PCB NACK / write retry 소진 | MTM | MTM → Pushgateway POST (`control_cmd_*{result="nack"}`) | 다음 제어 요청 |
 
 > 제어 실패는 AEM 개입 없이 이력 기록만. UI 경고 없음.
 
