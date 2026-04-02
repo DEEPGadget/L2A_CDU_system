@@ -2,7 +2,18 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:manycoresoft.atlassian.net)",
-      "WebFetch(domain:www.raspberrypi.com)"
+      "WebFetch(domain:www.raspberrypi.com)",
+      "Bash(echo \"lightdm: $?\")",
+      "Bash(echo \"redis=$?\")",
+      "Bash(echo \"prometheus=$?\")",
+      "Bash(echo \"pushgateway=$?\")",
+      "Bash(echo \"pcg=$?\")",
+      "Bash(echo \"fastapi=$?\")",
+      "Bash(pip3 --version)",
+      "Bash(pip3 index:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python3 -m venv /home/gadgetini/venv)",
+      "Bash(/home/gadgetini/venv/bin/pip install:*)"
     ]
   }
 }

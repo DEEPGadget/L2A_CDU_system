@@ -1,5 +1,40 @@
 # 라즈베리파이 키오스크 모드 설계
 
+---
+
+## 진행 상황 (최종 확인: 2026-04-02)
+
+| 항목 | 섹션 | 상태 | 비고 |
+|---|---|---|---|
+| LightDM 비활성화 | 1.1 | ❌ 미완 | lightdm enabled 상태 |
+| 콘솔 자동 로그인 (autologin.conf) | 1.2 | ✅ 완료 | |
+| 화면 절전 비활성화 (xset) | 1.3 | ⏳ 대기 | .xinitrc 작성 필요 |
+| unclutter 설치 | 1.4 | ❌ 미완 | apt install 필요 |
+| .bash_profile (startx 자동 실행) | 2.2 | ❌ 미완 | 파일 없음 |
+| .xinitrc (앱 재시작 루프) | 2.3 | ❌ 미완 | 파일 없음 |
+| Plymouth 테마 l2a-cdu 설치 | 3.3 | ✅ 완료 | logo.png, script, theme 파일 모두 존재 |
+| Plymouth 테마 적용 (initramfs) | 3.4 | ✅ 완료 | |
+| cmdline.txt 설정 (quiet splash) | 3.5 | ✅ 완료 | console=tty1 제거 확인 |
+| **Python venv 생성** | — | ✅ 완료 | `/home/gadgetini/venv` (Python 3.11) |
+| **UI 프레임워크 설치 (PySide6)** | — | ✅ 완료 | PySide6 6.8.0.2 |
+| **백엔드 패키지 설치** | — | ✅ 완료 | redis 7.4.0, pymodbus 3.12.1, fastapi 0.135.3, uvicorn 0.42.0, prometheus-client 0.24.1, httpx 0.28.1, requests 2.33.1 |
+| redis-server 서비스 | 4.3/4.5 | ✅ 완료 | enabled |
+| prometheus 서비스 | 4.3/4.5 | ✅ 완료 | enabled |
+| pushgateway 서비스 | 4.4/4.5 | ❌ 미완 | 서비스 파일 없음 |
+| PCG 서비스 | 4.1/4.5 | ❌ 미완 | 서비스 파일 없음 |
+| FastAPI 서비스 | 4.2/4.5 | ❌ 미완 | 서비스 파일 없음 |
+
+**남은 작업 순서:**
+1. `sudo systemctl disable lightdm` (1.1)
+2. `sudo apt install unclutter` (1.4)
+3. `~/.bash_profile` 생성 (2.2)
+4. `~/.xinitrc` 생성 (2.3)
+5. `/etc/systemd/system/pcg.service` 생성 + enable (4.1)
+6. `/etc/systemd/system/fastapi.service` 생성 + enable (4.2) — WEB UI 사용 시
+7. `/etc/systemd/system/pushgateway.service` 생성 + enable (4.4) — pushgateway 바이너리 있을 경우
+
+---
+
 ## 개요
 
 - **Target:** Raspberry Pi 4, Raspberry Pi OS Bookworm (64-bit)
