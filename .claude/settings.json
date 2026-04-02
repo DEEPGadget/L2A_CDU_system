@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/home/gadgetini/venv/bin/pip show:*)",
+      "Bash(/home/gadgetini/venv/bin/pip freeze:*)"
+    ]
+  }
+}
