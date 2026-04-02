@@ -6,12 +6,12 @@
 
 | 항목 | 섹션 | 상태 | 비고 |
 |---|---|---|---|
-| LightDM 비활성화 | 1.1 | ❌ 미완 | lightdm enabled 상태 |
+| LightDM 비활성화 | 1.1 | ✅ 완료 | |
 | 콘솔 자동 로그인 (autologin.conf) | 1.2 | ✅ 완료 | |
-| 화면 절전 비활성화 (xset) | 1.3 | ⏳ 대기 | .xinitrc 작성 필요 |
-| unclutter 설치 | 1.4 | ❌ 미완 | apt install 필요 |
+| 화면 절전 비활성화 (xset) | 1.3 | ✅ 완료 | .xinitrc에 포함 |
+| unclutter 설치 | 1.4 | ❌ 미완 | apt install 필요. 설치 후 .xinitrc 주석 해제 |
 | .bash_profile (startx 자동 실행) | 2.2 | ❌ 미완 | 파일 없음 |
-| .xinitrc (앱 재시작 루프) | 2.3 | ❌ 미완 | 파일 없음 |
+| .xinitrc (앱 재시작 루프) | 2.3 | ✅ 완료 | unclutter 줄만 주석 처리 — 설치 후 해제 필요 |
 | Plymouth 테마 l2a-cdu 설치 | 3.3 | ✅ 완료 | logo.png, script, theme 파일 모두 존재 |
 | Plymouth 테마 적용 (initramfs) | 3.4 | ✅ 완료 | |
 | cmdline.txt 설정 (quiet splash) | 3.5 | ✅ 완료 | console=tty1 제거 확인 |
