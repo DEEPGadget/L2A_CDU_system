@@ -3,6 +3,7 @@
 ## 개요
 
 - **Target:** Raspberry Pi 4, Raspberry Pi OS Bookworm (64-bit)
+- **User:** `gadgetini`
 - **Display Server:** X11 (Wayland 미사용 — PySide6 호환성 및 안정성 우선)
 - **UI 모드:** Local UI (PySide6 앱) — 터치 디스플레이 키오스크 전용
 - **핵심 목표:** 부팅 후 자동으로 UI 진입, 비정상 종료 시 자동 재시작, HW 플랫폼 정보 비노출
@@ -11,30 +12,30 @@
 
 ## 1. 공통 설정
 
-### 1.1 콘솔 자동 로그인
+### 1.1 LightDM 비활성화
 
-raspi-config 또는 systemd override로 `pi` 계정을 tty1에 자동 로그인 설정.
+기존 디스플레이 매니저(LightDM)를 비활성화하고 콘솔 자동 로그인으로 전환.
 
 ```bash
-sudo raspi-config
-# System Options → Boot / Auto Login → Console Autologin
+sudo systemctl disable lightdm.service
+sudo systemctl stop lightdm.service
 ```
 
-또는 수동 설정:
+### 1.2 콘솔 자동 로그인
 
 ```bash
 sudo mkdir -p /etc/systemd/system/getty@tty1.service.d/
 sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf << 'EOF'
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty --autologin pi --noclear %I $TERM
+ExecStart=-/sbin/agetty --autologin gadgetini --noclear %I $TERM
 EOF
 sudo systemctl daemon-reload
 ```
 
-### 1.2 화면 절전 및 전원 관리 비활성화
+### 1.3 화면 절전 및 전원 관리 비활성화
 
-X11 세션 시작 시 `.xinitrc`에 아래 명령 추가 (섹션 2.2, 3.2 참고):
+X11 세션 시작 시 `.xinitrc`에 아래 명령 추가 (섹션 2.3 참고):
 
 ```bash
 xset s off          # 화면 보호기 비활성화
@@ -42,7 +43,7 @@ xset -dpms          # DPMS(전원 절약) 비활성화
 xset s noblank      # 화면 블랭킹 비활성화
 ```
 
-### 1.3 마우스 커서 숨김
+### 1.4 마우스 커서 숨김
 
 `unclutter` 설치 후 X11 세션 시작 시 실행:
 
@@ -64,7 +65,7 @@ unclutter -idle 0 -root &
 
 ```
 부팅
- └─ systemd getty auto-login (tty1)
+ └─ systemd getty auto-login (tty1, gadgetini)
      └─ .bash_profile → startx
          └─ .xinitrc
              ├─ 환경 설정 (xset, unclutter)
@@ -91,6 +92,11 @@ fi
 ```bash
 # ~/.xinitrc
 
+# 환경변수
+export DISPLAY=:0
+export QT_QPA_PLATFORM=xcb        # X11 백엔드 명시
+export QT_SCALE_FACTOR=1           # 해상도 스케일 고정
+
 # 화면 절전 비활성화
 xset s off
 xset -dpms
@@ -101,7 +107,7 @@ unclutter -idle 0 -root &
 
 # PySide6 앱 실행 (비정상 종료 시 자동 재시작)
 while true; do
-    /home/pi/venv/bin/python /home/pi/l2a_cdu/ui/main.py
+    /home/gadgetini/venv/bin/python /home/gadgetini/L2A_CDU_system/ui/main.py
     sleep 2
 done
 ```
@@ -109,15 +115,112 @@ done
 > `while true` 루프로 앱 크래시 시 2초 후 자동 재시작.
 > X 서버 종료는 루프 밖이므로 의도적 종료(SIGTERM 등)와 구분됨.
 
-### 2.4 환경변수 설정
+---
 
-PySide6 앱이 올바른 디스플레이를 참조하도록 환경변수 설정:
+## 3. Plymouth 부트 스플래시
+
+### 3.1 개요
+
+OS 부팅 시작(커널 로딩)부터 systemd 서비스 기동 완료까지 전 구간에 커스텀 로고를 표시.
+라즈베리파이 기본 로고 및 부팅 텍스트를 완전히 숨겨 HW 플랫폼 정보를 비노출.
+
+```
+[전원 ON] → [커널] → [Plymouth 스플래시: L2A 로고] → [systemd 서비스 기동] → [PySide6 앱]
+```
+
+### 3.2 설치
 
 ```bash
-# .xinitrc 상단에 추가
-export DISPLAY=:0
-export QT_QPA_PLATFORM=xcb        # X11 백엔드 명시
-export QT_SCALE_FACTOR=1           # 해상도 스케일 고정
+sudo apt install plymouth plymouth-themes
+```
+
+### 3.3 커스텀 테마 생성
+
+테마 디렉토리 생성:
+
+```bash
+sudo mkdir -p /usr/share/plymouth/themes/l2a-cdu
+```
+
+로고 이미지 배치:
+
+```bash
+sudo cp /home/gadgetini/L2A_CDU_system/assets/logo.png /usr/share/plymouth/themes/l2a-cdu/logo.png
+```
+
+> **이미지 스펙**
+> - 디스플레이: Raspberry Pi Touch Display 2, 1280 × 720 (landscape, ~210 PPI)
+> - 권장 로고 크기: **640 × 360 px** (화면의 50%)
+> - 포맷: PNG, 배경 투명 권장
+> - 배치·배경색은 스크립트가 자동 처리 (중앙 배치, 배경 검정)
+
+테마 정의 파일 생성:
+
+```bash
+sudo tee /usr/share/plymouth/themes/l2a-cdu/l2a-cdu.plymouth << 'EOF'
+[Plymouth Theme]
+Name=L2A CDU
+Description=L2A CDU Boot Splash
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/l2a-cdu
+ScriptFile=/usr/share/plymouth/themes/l2a-cdu/l2a-cdu.script
+EOF
+```
+
+스크립트 파일 생성 (로고 중앙 배치, 배경 검정):
+
+```bash
+sudo tee /usr/share/plymouth/themes/l2a-cdu/l2a-cdu.script << 'EOF'
+wallpaper_image = Image("logo.png");
+screen_width = Window.GetWidth();
+screen_height = Window.GetHeight();
+img_width = wallpaper_image.GetWidth();
+img_height = wallpaper_image.GetHeight();
+
+x = (screen_width - img_width) / 2;
+y = (screen_height - img_height) / 2;
+
+sprite = Sprite(wallpaper_image);
+sprite.SetX(x);
+sprite.SetY(y);
+sprite.SetZ(10);
+
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+EOF
+```
+
+### 3.4 테마 적용 및 initramfs 업데이트
+
+```bash
+sudo plymouth-set-default-theme l2a-cdu -R
+```
+
+> `-R` 옵션이 `update-initramfs -u`를 자동 실행함.
+
+### 3.5 cmdline.txt 설정
+
+부팅 텍스트 숨김 및 스플래시 활성화:
+
+```bash
+# /boot/firmware/cmdline.txt 편집
+# 기존 항목에서 console=tty1 제거, 아래 항목 추가
+sudo sed -i 's/console=tty1 //' /boot/firmware/cmdline.txt
+sudo sed -i 's/$/ quiet splash plymouth.ignore-serial-consoles/' /boot/firmware/cmdline.txt
+```
+
+> `quiet`: 커널 부팅 메시지 숨김
+> `splash`: Plymouth 스플래시 활성화
+> `console=tty1` 제거: 부팅 텍스트가 화면에 출력되지 않도록 함
+
+### 3.6 적용 확인
+
+```bash
+# 현재 적용된 테마 확인
+plymouth-set-default-theme --list
+sudo plymouth-set-default-theme  # 현재 기본 테마 출력
 ```
 
 ---
@@ -130,8 +233,8 @@ Local UI 키오스크 진입 전 모두 실행되어야 함. FastAPI는 원격 W
 | 서비스 | 관리 방식 | 비고 |
 |---|---|---|
 | Redis | apt 패키지 — systemd 자동 등록 | `redis-server` |
-| Prometheus | 수동 설치 — systemd 등록 필요 | |
-| Pushgateway | 수동 설치 — systemd 등록 필요 | |
+| Prometheus | apt 패키지 — systemd 자동 등록 | `prometheus` |
+| Pushgateway | 수동 설치 — systemd 등록 필요 | 바이너리: `/home/gadgetini/pushgateway/pushgateway` |
 | PCG | 수동 등록 (섹션 4.1) | |
 | FastAPI | 수동 등록 (섹션 4.2) | 원격 WEB UI 접속용 |
 
@@ -146,9 +249,9 @@ Wants=redis.service
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/l2a_cdu/pcg
-ExecStart=/home/pi/venv/bin/python main.py
+User=gadgetini
+WorkingDirectory=/home/gadgetini/L2A_CDU_system/pcg
+ExecStart=/home/gadgetini/venv/bin/python main.py
 Restart=always
 RestartSec=3
 StandardOutput=journal
@@ -169,9 +272,9 @@ Wants=redis.service
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/l2a_cdu/web
-ExecStart=/home/pi/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+User=gadgetini
+WorkingDirectory=/home/gadgetini/L2A_CDU_system/web
+ExecStart=/home/gadgetini/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=3
 StandardOutput=journal
@@ -183,26 +286,23 @@ WantedBy=multi-user.target
 
 ### 4.3 Prometheus 서비스
 
-```ini
-# /etc/systemd/system/prometheus.service
-[Unit]
-Description=Prometheus
-After=network.target
+apt 설치 시 자동 등록됨. 설정 파일 경로:
 
-[Service]
-Type=simple
-User=pi
-ExecStart=/home/pi/prometheus/prometheus \
-    --config.file=/home/pi/prometheus/prometheus.yml \
-    --storage.tsdb.path=/home/pi/prometheus/data
-Restart=always
-RestartSec=3
+```
+/etc/prometheus/prometheus.yml
+/var/lib/prometheus/           ← 데이터 저장 경로
+```
 
-[Install]
-WantedBy=multi-user.target
+활성화만 확인:
+
+```bash
+sudo systemctl enable prometheus
+sudo systemctl start prometheus
 ```
 
 ### 4.4 Pushgateway 서비스
+
+수동 설치 후 아래 서비스 파일 등록:
 
 ```ini
 # /etc/systemd/system/pushgateway.service
@@ -212,8 +312,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=pi
-ExecStart=/home/pi/pushgateway/pushgateway
+User=gadgetini
+ExecStart=/home/gadgetini/pushgateway/pushgateway
 Restart=always
 RestartSec=3
 
@@ -227,9 +327,11 @@ WantedBy=multi-user.target
 # Redis (apt 설치 시 자동 등록 — 활성화만)
 sudo systemctl enable redis-server
 
-# Prometheus / Pushgateway
+# Prometheus (apt 설치 시 자동 등록 — 활성화만)
+sudo systemctl enable prometheus
+
+# Pushgateway
 sudo systemctl daemon-reload
-sudo systemctl enable prometheus.service
 sudo systemctl enable pushgateway.service
 
 # PCG / FastAPI
@@ -245,6 +347,9 @@ sudo systemctl enable fastapi.service   # WEB UI 사용 시
 [전원 ON]
     │
     ▼
+[커널 로딩 + Plymouth 스플래시 시작: L2A 로고 표시]
+    │
+    ▼
 [systemd: multi-user.target]
     ├─ redis-server.service 시작
     ├─ prometheus.service 시작
@@ -253,7 +358,10 @@ sudo systemctl enable fastapi.service   # WEB UI 사용 시
     └─ fastapi.service 시작 (원격 WEB UI 접속용)
     │
     ▼
-[getty@tty1: auto-login → pi]
+[Plymouth 스플래시 종료]
+    │
+    ▼
+[getty@tty1: auto-login → gadgetini]
     │
     ▼
 [.bash_profile → startx]
@@ -277,3 +385,4 @@ sudo systemctl enable fastapi.service   # WEB UI 사용 시
 | 재시작 방식 | .xinitrc while loop (크래시 시 2초 후 재시작) |
 | 화면 절전 비활성화 | xset (.xinitrc) |
 | 커서 숨김 | unclutter + -nocursor |
+| 부트 스플래시 | Plymouth (script 모듈, 로고 중앙 배치, 배경 검정) |
