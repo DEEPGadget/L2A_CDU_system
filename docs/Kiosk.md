@@ -148,6 +148,12 @@ sudo mkdir -p /usr/share/plymouth/themes/l2a-cdu
 sudo cp /home/gadgetini/L2A_CDU_system/assets/logo.png /usr/share/plymouth/themes/l2a-cdu/logo.png
 ```
 
+> 로고 변경 시 아래 명령으로 재배치 후 initramfs를 다시 빌드해야 적용됨:
+> ```bash
+> sudo cp /home/gadgetini/L2A_CDU_system/assets/logo.png /usr/share/plymouth/themes/l2a-cdu/logo.png
+> sudo plymouth-set-default-theme l2a-cdu -R
+> ```
+
 > **이미지 스펙**
 > - 디스플레이: Raspberry Pi Touch Display 2, 1280 × 720 (landscape, ~210 PPI)
 > - 권장 로고 크기: **640 × 360 px** (화면의 50%)
