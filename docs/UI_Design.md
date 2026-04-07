@@ -17,38 +17,50 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  [●] CDU MONITOR          comm: OK          2024-01-01  12:00  │  ← Top bar (32px)
+│  [Monitoring] [History]          ● OK          2024-01-01  12:00│  ← Top bar
 ├──────────────────────────────────────┬──────────────────────────┤
 │                                      │                          │
-│   COOLING HEALTH                     │   ACTIVE ALARMS          │
+│   COOLING HEALTH  (위치 미확정)       │   ACTIVE ALARMS          │
 │                                      │                          │
-│   [ Fan / Radiator ]                 │  ⚠ coolant_temp_high    │
-│          │                           │  ⚠ comm_timeout         │
-│   [ Reservoir ]                      │  ⚠ water_level_low      │
-│      ↑        ↓                      │                          │
-│   [Pump]   [Pump]                    │  (스크롤 가능)            │
-│          │                           │                          │
-│   ┌─── Inlet Manifold ───┐           ├──────────────────────────┤
-│   │  Inlet  : 00.0 °C   │           │                          │
-│   │  Outlet : 00.0 °C   │           │   CONTROL                │
-│   │  Pressure: 0.00 bar │           │                          │
-│   │  Flow   : 0.0 L/min │           │  Pump  [▼ -] [  0%] [+▲]│
-│   │  Level  : NORMAL    │           │  Fan   [▼ -] [  0%] [+▲]│
-│   │  Leak   : NONE      │           │                          │
-│   └─────────────────────┘           │  [  APPLY  ]             │
+│   [ Fan ]  [ Radiator ]              │  ⚠ coolant_temp_high    │
+│                                      │  ⚠ comm_timeout         │
+│   [ Reservoir ]  Level: NORMAL       │  ⚠ water_level_low      │
 │                                      │                          │
+│   [ Pump ]   status: ON              │  (스크롤 가능)            │
+│                                      │                          │
+│   [ Inlet Manifold ]                 ├──────────────────────────┤
+│     Inlet Temp : 00.0 °C             │                          │
+│     Flow       : 0.0 L/min           │   CONTROL                │
+│     Pressure   : 0.00 bar            │                          │
+│                                      │  Pump  [▼ -] [  0%] [+▲]│
+│   [ Outlet Manifold ]                │  Fan   [▼ -] [  0%] [+▲]│
+│     Outlet Temp: 00.0 °C             │                          │
+│                                      │  [  APPLY  ]             │
+│   [ Leak Sensor ]  Leak: NONE        │                          │
 └──────────────────────────────────────┴──────────────────────────┘
-  ←──────────────── ~520px ──────────────→ ←──── ~280px ────────→
 ```
 
 **패널 구성**
 
 | 패널 | 위치 | 내용 |
 |---|---|---|
-| Top bar | 상단 32px | 시스템 상태 배지 (`OK` / `ALARM` / `COMM ERR`), 통신 상태, 현재 시각 |
-| Cooling Health | 좌측 메인 (~520px) | CDU 흐름 다이어그램 + 센서 수치 (`inlet/outlet temp`, `pressure`, `flow_rate`, `water_level`, `leak`) |
-| Active Alarms | 우상단 (~280px) | `alarm:*` 활성 알람 목록 (스크롤), 없으면 "No active alarms" |
-| Control | 우하단 (~280px) | Pump / Fan 출력(%) 조절 버튼 + APPLY |
+| Top bar | 상단 | 시스템 상태 배지 (`OK` / `ALARM` / `COMM ERR`), 통신 상태, 현재 시각 |
+| Cooling Health | 좌측 메인 | CDU 흐름 다이어그램 — 부품 목록 아래 참고 |
+| Active Alarms | 우상단 | `alarm:*` 활성 알람 목록 (스크롤), 없으면 "No active alarms" |
+| Control | 우하단 | Pump / Fan 출력(%) 조절 버튼 + APPLY |
+
+**Cooling Health 구성 요소** _(위치 미확정 — 추후 업데이트)_
+
+| 구성 요소 | 표시 데이터 | Redis key |
+|---|---|---|
+| Fan | 팬 상태 | `sensor:fan_status` |
+| Radiator | — | — |
+| Reservoir | 수위 | `sensor:water_level` |
+| Pump | 펌프 상태 | `sensor:pump_status` |
+| Inlet Manifold | 입수 온도 | `sensor:coolant_temp_inlet` |
+| Outlet Manifold | 출수 온도 | `sensor:coolant_temp_outlet` |
+| Pipe / Flow | 유량, 유압 | `sensor:flow_rate`, `sensor:pressure` |
+| Leak Sensor | 누수 감지 | `sensor:leak` |
 
 **페이지 전환**: Top bar 우측에 `[HISTORY →]` 버튼 1개
 
@@ -58,7 +70,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  [← BACK]   CDU HISTORY        [ 1H ] [ 6H ] [ 24H ]          │  ← Top bar
+│  [Monitoring] [History]   [ 1H ] [ 6H ] [ 24H ]   2024-01-01  │  ← Top bar
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │   SENSOR TREND                                                   │

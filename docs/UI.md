@@ -10,8 +10,10 @@
 | 항목 | 스펙 |
 |---|---|
 | 제품 | Raspberry Pi Touch Display 2 |
+| 제품 링크 | https://www.adafruit.com/product/6079 |
 | 크기 | 7-inch |
 | 패널 치수 | 154.56 mm × 86.94 mm |
+| 해상도 | 720 × 1280 px (portrait) / 1280 × 720 px (landscape) |
 
 ## Local UI (PySide6)
 
