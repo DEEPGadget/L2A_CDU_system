@@ -1,4 +1,7 @@
-# PCB (Modbus Slave)
+# PCB (Modbus Slave) — v2
+
+> **버전**: v2 — OP_MODE / Watchdog / Auto Control 자율 동작 포함.
+> **v1** (단순 R/W Slave): [v1/PCB.md](../v1/PCB.md)
 
 ## 개요
 

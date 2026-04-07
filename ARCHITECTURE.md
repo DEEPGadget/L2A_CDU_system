@@ -91,7 +91,7 @@
 - 4개 레이어로 구성: 요청 수신·검증 / 스케줄링·큐 / Modbus 통신 / 이벤트 처리
 - 작업 소스 우선순위: Emergency Queue > Control Queue > Polling (Task Scheduler가 중재)
 
-> 상세 내용: [MCG.md](docs/MCG.md)
+> 상세 내용: [v1/MCG.md](docs/v1/MCG.md) (MCG 단독 시퀀스) / [v2/MCG.md](docs/v2/MCG.md) (PCB Watchdog/OP_MODE 연동)
 
 ### 4.3 UI
 
@@ -111,7 +111,7 @@
   - **OP_MODE** (HR addr=19): Normal / Emergency Stop / Default Value / Auto Control 선택
   - **Master Heartbeat Watchdog**: MCG가 `MASTER_HEARTBEAT` (HR addr=20)를 주기적으로 갱신하지 않으면 Timeout 후 자동 모드 전환
   - **Flash 저장 파라미터**: 전원 재인가 후에도 초기값·Watchdog 정책 유지
-- 상세 내용: [docs/PCB.md](docs/PCB.md)
+- 상세 내용: [v1/PCB.md](docs/v1/PCB.md) (단순 R/W) / [v2/PCB.md](docs/v2/PCB.md) (자율 동작)
 
 ### 4.5 Sensor / Actuator
 
