@@ -45,8 +45,8 @@
 | 패널 | 위치 | 내용 |
 |---|---|---|
 | Top bar | 상단 | 탭 네비 (`Monitoring` / `History`), 시스템 상태 배지 (`OK` / `ALARM` / `COMM ERR`), 통신 상태, 현재 시각 |
-| Cooling Health | 좌측 메인 | CDU 흐름 다이어그램 — 부품 목록 아래 참고 |
-| Active Alarms | 우상단 | `alarm:*` 활성 알람 목록 (스크롤), 없으면 "No active alarms" |
+| Cooling Health | 좌측 메인 | CDU 흐름 다이어그램 — Pub/Sub(`sensor:*`, `comm:*`) 수신 시 즉시 갱신, 부품 목록 아래 참고 |
+| Active Alarms | 우상단 | `alarm:*` Keyspace Notification(SET/DEL) 수신 → 즉시 갱신, 없으면 "No active alarms" |
 | Control | 우하단 | Pump / Fan 출력(%) 조절 버튼 + APPLY |
 
 **Cooling Health 구성 요소** _(위치 미확정 — 추후 업데이트)_
