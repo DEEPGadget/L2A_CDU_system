@@ -12,6 +12,7 @@ L2A CDU system running on Raspberry Pi 4. See [ARCHITECTURE.md](ARCHITECTURE.md)
 
 Key components:
 - **PCG** (Python Control Gateway): Modbus RTU master, central control hub — see [docs/PCG.md](docs/PCG.md)
+- **PCB** (Modbus Slave): OP_MODE / Watchdog / Flash 파라미터 기반 자율 동작 — see [docs/PCB.md](docs/PCB.md)
 - **UI** (Local + Web): PySide6 / Svelte + FastAPI — see [docs/UI.md](docs/UI.md)
 - **UI Design**: Layout wireframes (Local + Web, Monitoring + History) — see [docs/UI_Design.md](docs/UI_Design.md)
 - **Kiosk**: Kiosk mode configuration — see [docs/Kiosk.md](docs/Kiosk.md)
@@ -32,6 +33,8 @@ src/
     └── frontend/    # Svelte + Vite
 docs/
 ├── PCG.md
+├── PCB.md
 ├── UI.md
+├── UI_Design.md
 └── Kiosk.md
 ```
