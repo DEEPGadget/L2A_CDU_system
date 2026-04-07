@@ -1,4 +1,7 @@
-# Modbus Control Gateway (MCG)
+# Modbus Control Gateway (MCG) — v1
+
+> **버전**: v1 — MCG가 모든 시퀀스·예외 처리 담당. PCB는 단순 R/W Slave.
+> **v2** (PCB Watchdog / OP_MODE / 비상정지 포함): [v2/MCG.md](../v2/MCG.md)
 
 ## 개요
 
@@ -42,16 +45,14 @@
 **[레이어 2] 스케줄링 & 큐**
 
 `Task Scheduler`
-- Control Queue / Polling / Heartbeat 세 작업 소스를 소유하고 Modbus Transport Manager에 순차 디스패치
+- Control Queue / Polling 두 작업 소스를 소유하고 Modbus Transport Manager에 순차 디스패치
 - **작업 소스 우선순위: Control Queue > Polling** (Modbus 단일 채널 직렬 접근 보장)
 - 주요 Polling 대상: 수온(inlet/outlet), 유압, 유량, 수위, 누수, 펌프 상태, 팬 상태, 온습도
-- **Heartbeat write**: `MASTER_HEARTBEAT` (HR addr=20)를 주기적으로 갱신 (PCB Watchdog 감시 대상)
-  - MCG가 이 값을 갱신하지 않으면 PCB가 `WATCHDOG_TIMEOUT` 경과 후 `WATCHDOG_ACTION_POLICY`에 따라 자동 모드 전환
 
 `Control Queue`
 - Command Receiver가 적재한 제어 요청을 순서대로 보관
 - Task Scheduler가 Polling보다 우선 디스패치
-- 처리 대상: Pump 출력 변경, Fan 출력 변경, `MB_HR_OP_MODE` 변경 (OP_MODE=0 정상복귀)
+- 처리 대상: Pump 출력 변경, Fan 출력 변경
 
 **[레이어 3] Modbus 통신**
 
@@ -64,8 +65,6 @@
 - **Write path**: 0\~100% 입력값 → FC / address / register value 변환 → Modbus write 송신 → ACK 수신 확인 → Pushgateway POST (result label)
   - 예: `set_pump(70)` → `FC06 / addr=0x0012 / value=700`
   - 예: `set_fan(70)` → 70% → 8.4V → `FC06 / addr=0x0014 / value=840`
-  - 예: `set_op_mode(1)` → `FC06 / addr=0x0013 / value=1` (비상정지 — Emergency Queue 경로)
-  - 예: `set_op_mode(0)` → `FC06 / addr=0x0013 / value=0` (정상 제어 복귀)
 - 통신 상태 Redis SET + Pub/Sub publish (실시간 표시용): `comm:status`, `comm:consecutive_failures`, `comm:last_error`
 - 통신 상태 변경 시 Pushgateway POST (이력용): `comm_event{status=...}`, `comm_consecutive_failures`
 
@@ -367,46 +366,10 @@ sequenceDiagram
         MTM-)Redis: SET comm:status=ok / comm:consecutive_failures=0 + Pub/Sub publish
         Redis-->>UI: Pub/Sub (comm:* 변경)
         UI-->>UI: 통신 상태 패널 갱신
-        MTM->>PCB: MB_HR_OP_MODE read (PCB 현재 운전모드 확인)
-        PCB-->>MTM: OP_MODE 응답
-        alt OP_MODE != 0 (Watchdog으로 인해 모드 전환된 상태)
-            MTM->>PCB: MB_HR_OP_MODE=0 write (정상 제어 복귀)
-        end
         MTM->>AEM: 통신 복구 통보
         AEM->>Redis: DEL alarm:comm_*
         AEM->>AEM: 복구 이벤트 기록
         Redis-->>UI: Keyspace Notification (DEL 이벤트)
         UI-->>UI: 알람 해제
     end
-```
-
----
-
-### 시나리오 5. 비상정지 요청
-
-트리거: UI에서 비상정지 요청 (Emergency Queue 경로 — 최우선 처리)
-
-```mermaid
-sequenceDiagram
-    participant UI as UI
-    participant CR as Command Receiver
-    participant EQ as Emergency Queue
-    participant TS as Task Scheduler
-    participant MTM as Modbus Transport Manager
-    participant PCB as PCB
-    participant Redis as Redis DB
-    participant PGW as Prometheus Pushgateway
-
-    UI->>CR: 비상정지 요청 (IPC / REST API)
-    CR->>EQ: Emergency Queue에 OP_MODE=1 적재
-    Note over TS: Emergency Queue 감지 — 진행 중 작업 중단 후 즉시 처리
-    TS->>EQ: dequeue
-    TS->>MTM: OP_MODE=1 write 요청
-    MTM->>PCB: FC06 / addr=0x0013 / value=1
-    PCB-->>MTM: ACK
-    PCB->>PCB: 모든 PWM·DOUT 즉시 0/Off 전환
-    MTM->>PGW: POST control_cmd_op_mode (value=1, result=success)
-    MTM-)Redis: SET comm:status + Pub/Sub publish
-    Redis-->>UI: Pub/Sub 수신
-    UI-->>UI: 비상정지 상태 표시
 ```
