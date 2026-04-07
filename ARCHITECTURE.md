@@ -16,7 +16,7 @@
    - 3.3 Modbus 동작
 4. 시스템 구성 요소 상세
    - 4.1 Raspberry Pi (Modbus Master)
-   - 4.2 Python Control Gateway (PCG)
+   - 4.2 Modbus Control Gateway (MCG)
    - 4.3 UI
    - 4.4 PCB (Modbus Slave)
    - 4.5 Sensor / Actuator
@@ -30,17 +30,17 @@
 
 ## 1. L2A CDU 시스템 전체 구성
 
-![L2A CDU 시스템 전체 구성](l2a_cdu_system_architecture.png)
+![L2A CDU 시스템 전체 구성](assets/l2a_cdu_system_architecture.png)
 
 | 구성 요소 | 역할 |
 |---|---|
-| Raspberry Pi | PCG, UI, DB를 탑재하는 하드웨어 플랫폼 (IP: 10.100.1.10) |
-| Web UI (Svelte + FastAPI) | WEB 기반 유저 인터페이스. http 기반으로 파이썬 기반의 제어모듈(PCG - python control gateway)과 통신. 모니터링 및 제어 화면, 과거 기록 확인 화면 |
-| Touch Display UI (PySide6) | 로컬 기반 유저 인터페이스. IPC 기반으로 파이썬 기반의 제어모듈(PCG - python control gateway)과 통신. 모니터링 및 제어, 과거 기록 확인 화면 |
+| Raspberry Pi | MCG, UI, DB를 탑재하는 하드웨어 플랫폼 (IP: 10.100.1.10) |
+| Web UI (Svelte + FastAPI) | WEB 기반 유저 인터페이스. http 기반으로 파이썬 기반의 제어모듈(MCG - modbus control gateway)과 통신. 모니터링 및 제어 화면, 과거 기록 확인 화면 |
+| Touch Display UI (PySide6) | 로컬 기반 유저 인터페이스. IPC 기반으로 파이썬 기반의 제어모듈(MCG - modbus control gateway)과 통신. 모니터링 및 제어, 과거 기록 확인 화면 |
 | Redis DB | 현재값 전용 DB (`sensor:*`, `comm:*`, `alarm:*`) — 이력 저장 없음 |
 | Prometheus + Exporter | 센서 이력 DB. Exporter가 Redis `sensor:*` 를 주기적으로 scrape |
-| Prometheus Pushgateway | 제어 명령·통신 장애 이력 수신. PCG가 이벤트 발생 시 직접 push |
-| Python Control Gateway (PCG) | 실질적 Modbus Master (읽기/쓰기). 읽기: pcb 로부터 polling → redis에 전송. 쓰기: UI 로부터 요청받음 → PCB 로 write 명령 |
+| Prometheus Pushgateway | 제어 명령·통신 장애 이력 수신. MCG가 이벤트 발생 시 직접 push |
+| Modbus Control Gateway (MCG) | 실질적 Modbus Master (읽기/쓰기). 읽기: pcb 로부터 polling → redis에 전송. 쓰기: UI 로부터 요청받음 → PCB 로 write 명령 |
 | PCB | Modbus Slave, 센서 입력 및 펌프/팬 제어 |
 | 센서 및 엑츄에이터 | 센서: 수온, 유량, 유압, 누수, 수위센서. 엑츄에이터: 펌프, 팬 |
 
@@ -57,46 +57,46 @@
 
 ### 3.1 통신 구조
 
-- PCG는 Modbus 통신의 단일 Master로 동작
-- 모든 센서 데이터 조회 및 제어 요청은 PCG를 통해 처리됨
-- UI는 PCG와만 통신하며 PCB와 직접 통신하지 않음
+- MCG는 Modbus 통신의 단일 Master로 동작
+- 모든 센서 데이터 조회 및 제어 요청은 MCG를 통해 처리됨
+- UI는 MCG와만 통신하며 PCB와 직접 통신하지 않음
 
 ### 3.2 통신 방식
 
 | 구간 | 방식 |
 |---|---|
-| PCG ↔ PCB | Modbus RTU (Master / Slave) |
-| Touch Display UI ↔ PCG | IPC (Unix Domain Socket) |
-| Web UI ↔ PCG | REST API |
+| MCG ↔ PCB | Modbus RTU (Master / Slave) |
+| Touch Display UI ↔ MCG | IPC (Unix Domain Socket) |
+| Web UI ↔ MCG | REST API |
 
 ### 3.3 Modbus 동작
 
-- **Read**: PCG가 PCB에 주기적으로 polling → 센서·상태 레지스터 읽기
-- **Write**: UI 제어 요청 수신 시 PCG가 PCB에 write 명령 전송
+- **Read**: MCG가 PCB에 주기적으로 polling → 센서·상태 레지스터 읽기
+- **Write**: UI 제어 요청 수신 시 MCG가 PCB에 write 명령 전송
 
 
 ## 4. 시스템 구성 요소 상세
 
 ### 4.1 Raspberry Pi (Modbus Master)
 
-- PCG, UI, DB를 탑재하는 하드웨어 플랫폼
+- MCG, UI, DB를 탑재하는 하드웨어 플랫폼
 - 구성요소
   - UI: 4.3 참고
-  - PCG: 4.2 참고
+  - MCG: 4.2 참고
   - DB: Redis DB, Prometheus (상세 내용은 4.3 DB 참고)
 
-### 4.2 Python Control Gateway (PCG)
+### 4.2 Modbus Control Gateway (MCG)
 
 - 시스템 내 중앙 제어 및 통신 허브 (Modbus Master)
 - 4개 레이어로 구성: 요청 수신·검증 / 스케줄링·큐 / Modbus 통신 / 이벤트 처리
 - 작업 소스 우선순위: Emergency Queue > Control Queue > Polling (Task Scheduler가 중재)
 
-> 상세 내용: [PCG.md](docs/PCG.md)
+> 상세 내용: [MCG.md](docs/MCG.md)
 
 ### 4.3 UI
 
-- Local UI (PySide6): 터치 디스플레이 기반, IPC로 PCG와 통신
-- WEB UI (Svelte + FastAPI): 브라우저 기반, REST API로 PCG와 통신
+- Local UI (PySide6): 터치 디스플레이 기반, IPC로 MCG와 통신
+- WEB UI (Svelte + FastAPI): 브라우저 기반, REST API로 MCG와 통신
 - 양쪽 모두 모니터링 페이지 / 기록 확인 페이지로 구성
 - DB: Redis (실시간), Prometheus (이력)
 
@@ -107,9 +107,9 @@
 - 센서 입력 값 제공
 - 펌프 및 팬 제어 출력 수행 (PWM / DOUT)
 - Modbus 레지스터 기반 Read / Write 지원
-- Master(PCG)와 독립적인 자율 동작 기능 내장:
+- Master(MCG)와 독립적인 자율 동작 기능 내장:
   - **OP_MODE** (HR addr=19): Normal / Emergency Stop / Default Value / Auto Control 선택
-  - **Master Heartbeat Watchdog**: PCG가 `MASTER_HEARTBEAT` (HR addr=20)를 주기적으로 갱신하지 않으면 Timeout 후 자동 모드 전환
+  - **Master Heartbeat Watchdog**: MCG가 `MASTER_HEARTBEAT` (HR addr=20)를 주기적으로 갱신하지 않으면 Timeout 후 자동 모드 전환
   - **Flash 저장 파라미터**: 전원 재인가 후에도 초기값·Watchdog 정책 유지
 - 상세 내용: [docs/PCB.md](docs/PCB.md)
 
@@ -117,7 +117,7 @@
 
 - 수위, 유량, 수온 등 시스템 동작에 필요한 센서 데이터 제공
 - 펌프, 팬 등 제어 대상 액추에이터 포함
-- PCB를 통해 PCG에 의해 간접적으로 제어됨
+- PCB를 통해 MCG에 의해 간접적으로 제어됨
 
 
 ## 5. 사용자 인터페이스 설계 (참고)

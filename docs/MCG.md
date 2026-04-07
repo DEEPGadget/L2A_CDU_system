@@ -1,4 +1,4 @@
-# Python Control Gateway (PCG)
+# Modbus Control Gateway (MCG)
 
 ## 개요
 
@@ -17,8 +17,8 @@
 |---|---|---|---|
 | 터치/웹 UI를 통한 모니터링 및 제어 | Command Receiver (IPC/REST API 수신), Modbus Transport Manager (Redis SET) | ✅ | 양쪽 인터페이스 모두 지원 |
 | 키오스크 사용자에게 제한된 기능만 노출 | UI 레이어 (입력 범위 제한) | ✅ | UI에서 허용 범위 내 입력만 가능하도록 처리 |
-| 하드웨어 플랫폼 정보 미노출 | PCG 추상화 계층 (UI ↔ PCG ↔ PCB), Redis key 추상화 네이밍 | ✅ | UI는 PCB register에 직접 접근 불가 |
-| 부팅 후 자동 실행 | Task Scheduler (PCG 기동 시 자동 스케쥴링 시작) | ✅ | Kiosk.md 섹션 4.1 pcg.service 참고 |
+| 하드웨어 플랫폼 정보 미노출 | MCG 추상화 계층 (UI ↔ MCG ↔ PCB), Redis key 추상화 네이밍 | ✅ | UI는 PCB register에 직접 접근 불가 |
+| 부팅 후 자동 실행 | Task Scheduler (MCG 기동 시 자동 스케쥴링 시작) | ✅ | Kiosk.md 섹션 4.1 mcg.service 참고 |
 
 **개요 항목 대비 컴포넌트 커버리지**
 
@@ -46,7 +46,7 @@
 - **작업 소스 우선순위: Control Queue > Polling** (Modbus 단일 채널 직렬 접근 보장)
 - 주요 Polling 대상: 수온(inlet/outlet), 유압, 유량, 수위, 누수, 펌프 상태, 팬 상태, 온습도
 - **Heartbeat write**: `MASTER_HEARTBEAT` (HR addr=20)를 주기적으로 갱신 (PCB Watchdog 감시 대상)
-  - PCG가 이 값을 갱신하지 않으면 PCB가 `WATCHDOG_TIMEOUT` 경과 후 `WATCHDOG_ACTION_POLICY`에 따라 자동 모드 전환
+  - MCG가 이 값을 갱신하지 않으면 PCB가 `WATCHDOG_TIMEOUT` 경과 후 `WATCHDOG_ACTION_POLICY`에 따라 자동 모드 전환
 
 `Control Queue`
 - Command Receiver가 적재한 제어 요청을 순서대로 보관

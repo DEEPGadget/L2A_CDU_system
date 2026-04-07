@@ -22,8 +22,8 @@
 - 기록 확인 페이지: Prometheus에서 센서 이력 및 제어 명령 이력 조회 및 표시
 
 **BE (PySide6)**
-- PCG와 IPC 기반 통신 (제어 요청 전달)
-- Redis Pub/Sub 구독 (`sensor:*`, `comm:*` 현재값 — PCG가 SET 시 publish, UI가 수신)
+- MCG와 IPC 기반 통신 (제어 요청 전달)
+- Redis Pub/Sub 구독 (`sensor:*`, `comm:*` 현재값 — MCG가 SET 시 publish, UI가 수신)
 - Redis Keyspace Notifications 구독 (`alarm:*` SET/DEL 이벤트 — 알람 발생·해제 즉시 감지)
 - Prometheus DB 조회 (이력 데이터 소스 — 센서 이력 + 제어 명령 이력)
 
@@ -38,7 +38,7 @@
 - 접속: http://10.100.1.10:3000 (User Laptop 등 외부 브라우저)
 
 **BE (FastAPI)**
-- PCG와 REST API 기반 통신 (제어 요청 전달)
+- MCG와 REST API 기반 통신 (제어 요청 전달)
 - Redis DB 조회 (현재값 전용)
   - `GET /api/sensor/` — `sensor:*` 현재값
   - `GET /api/sensor/comm` — `comm:*` 현재값
@@ -87,7 +87,7 @@
 - 제외 대상: `alarm:*`, `comm:*` (실시간 상태 플래그, 이력 불필요)
 
 **Pushgateway**
-- PCG가 이벤트 발생 시 직접 push (이벤트 기반 — scrape 주기와 무관하게 누락 없이 기록)
+- MCG가 이벤트 발생 시 직접 push (이벤트 기반 — scrape 주기와 무관하게 누락 없이 기록)
 - push 메트릭:
 
 | Metric | Label | 설명 | push 시점 |
