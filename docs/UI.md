@@ -52,31 +52,41 @@
 
 **Redis DB**
 
-| Key | 설명 | 설정 주체 |
-|---|---|---|
-| `sensor:coolant_temp_inlet` | 냉각수 입수 온도 | Modbus Data Parser |
-| `sensor:coolant_temp_outlet` | 냉각수 출수 온도 | Modbus Data Parser |
-| `sensor:ambient_temp` | 외기 온도 | Modbus Data Parser |
-| `sensor:ambient_humidity` | 외기 습도 | Modbus Data Parser |
-| `sensor:pressure` | 유압 | Modbus Data Parser |
-| `sensor:flow_rate` | 유량 | Modbus Data Parser |
-| `sensor:water_level` | 수위 | Modbus Data Parser |
-| `sensor:leak` | 누수 | Modbus Data Parser |
-| `sensor:pump_status` | 펌프 상태 | Modbus Data Parser |
-| `sensor:fan_status` | 팬 상태 | Modbus Data Parser |
-| `alarm:coolant_temp_warning` | 수온 경고 (warning) | Alarm / Event Manager |
-| `alarm:coolant_temp_critical` | 수온 위험 (critical) | Alarm / Event Manager |
-| `alarm:leak_detected` | 누수 감지 | Alarm / Event Manager |
-| `alarm:water_level_warning` | 수위 부족 경고 (warning) | Alarm / Event Manager |
-| `alarm:water_level_critical` | 수위 위험 (critical) | Alarm / Event Manager |
-| `alarm:pressure_warning` | 유압 이상 (warning) | Alarm / Event Manager |
-| `alarm:flow_rate_warning` | 유량 저하 (warning) | Alarm / Event Manager |
-| `alarm:ambient_temp_warning` | 주변 온도 경고 (warning) | Alarm / Event Manager |
-| `alarm:ambient_temp_critical` | 주변 온도 한계 초과 (critical) | Alarm / Event Manager |
-| `alarm:ambient_humidity_warning` | 주변 습도 경고 (warning) | Alarm / Event Manager |
-| `alarm:ambient_humidity_critical` | 주변 습도 한계 초과 (critical) | Alarm / Event Manager |
-| `alarm:comm_timeout` | 통신 연속 실패 (warning) | Alarm / Event Manager |
-| `alarm:comm_disconnected` | 통신 두절 (critical) | Alarm / Event Manager |
+> **냉각수 흐름**: Water Tank → [P1·P2 → Server1] / [P3·P4 → Server2] → Inlet Manifold → Server (루프 2개) → Outlet Manifold → Radiator → Water Tank
+
+| Key | 설명 | 위치 | 설정 주체 |
+|---|---|---|---|
+| `sensor:coolant_temp_inlet_1` | 냉각수 입수 온도 (루프 1) | Inlet Manifold | Modbus Data Parser |
+| `sensor:coolant_temp_inlet_2` | 냉각수 입수 온도 (루프 2) | Inlet Manifold | Modbus Data Parser |
+| `sensor:coolant_temp_outlet_1` | 냉각수 출수 온도 (루프 1) | Outlet Manifold | Modbus Data Parser |
+| `sensor:coolant_temp_outlet_2` | 냉각수 출수 온도 (루프 2) | Outlet Manifold | Modbus Data Parser |
+| `sensor:flow_rate` | 유량 | Pump ~ Manifold 구간 (예상) | Modbus Data Parser |
+| `sensor:water_level` | 수위 | Water Tank | Modbus Data Parser |
+| `sensor:ph` | pH | Water Tank | Modbus Data Parser |
+| `sensor:conductivity` | 전도도 | Water Tank | Modbus Data Parser |
+| `sensor:leak` | 누수 | 시스템 부착 (위치 미확정) | Modbus Data Parser |
+| `sensor:ambient_temp` | 외기 온도 | 시스템 부착 (위치 미확정) | Modbus Data Parser |
+| `sensor:ambient_humidity` | 외기 습도 | 시스템 부착 (위치 미확정) | Modbus Data Parser |
+| `sensor:pressure` | 유압 (부착 여부 미확정) | — | Modbus Data Parser |
+| `sensor:pump_status_1` | 펌프 상태 (루프 1 — P1·P2 직렬) | — | Modbus Data Parser |
+| `sensor:pump_status_2` | 펌프 상태 (루프 2 — P3·P4 직렬) | — | Modbus Data Parser |
+| `sensor:fan_status_1` | 팬 1 상태 (루프 1) | — | Modbus Data Parser |
+| `sensor:fan_status_2` | 팬 2 상태 (루프 2) | — | Modbus Data Parser |
+| `alarm:coolant_temp_warning` | 수온 경고 (warning) | — | Alarm / Event Manager |
+| `alarm:coolant_temp_critical` | 수온 위험 (critical) | — | Alarm / Event Manager |
+| `alarm:leak_detected` | 누수 감지 | — | Alarm / Event Manager |
+| `alarm:water_level_warning` | 수위 부족 경고 (warning) | — | Alarm / Event Manager |
+| `alarm:water_level_critical` | 수위 위험 (critical) | — | Alarm / Event Manager |
+| `alarm:ph_warning` | pH 이상 (warning) | — | Alarm / Event Manager |
+| `alarm:conductivity_warning` | 전도도 이상 (warning) | — | Alarm / Event Manager |
+| `alarm:flow_rate_warning` | 유량 저하 (warning) | — | Alarm / Event Manager |
+| `alarm:pressure_warning` | 유압 이상 (warning, 부착 시) | — | Alarm / Event Manager |
+| `alarm:ambient_temp_warning` | 주변 온도 경고 (warning) | — | Alarm / Event Manager |
+| `alarm:ambient_temp_critical` | 주변 온도 한계 초과 (critical) | — | Alarm / Event Manager |
+| `alarm:ambient_humidity_warning` | 주변 습도 경고 (warning) | — | Alarm / Event Manager |
+| `alarm:ambient_humidity_critical` | 주변 습도 한계 초과 (critical) | — | Alarm / Event Manager |
+| `alarm:comm_timeout` | 통신 연속 실패 (warning) | — | Alarm / Event Manager |
+| `alarm:comm_disconnected` | 통신 두절 (critical) | — | Alarm / Event Manager |
 | `comm:status` | 현재 Modbus 통신 상태 `"ok"\|"timeout"\|"disconnected"` | Modbus Transport Manager |
 | `comm:consecutive_failures` | 연속 통신 실패 횟수 (성공 시 0 리셋) | Modbus Transport Manager |
 | `comm:last_error` | 마지막 오류 `{code, message, ts}` | Modbus Transport Manager |

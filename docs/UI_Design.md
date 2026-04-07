@@ -20,25 +20,29 @@
 │  [Monitoring] [History]          ● OK          2024-01-01  12:00│  ← Top bar
 ├──────────────────────────────────────┬──────────────────────────┤
 │                                      │                          │
-│   COOLING HEALTH  (위치 미확정)       │   ACTIVE ALARMS          │
+│   COOLING HEALTH                     │   ACTIVE ALARMS          │
 │                                      │                          │
-│   [ Fan ]  [ Radiator ]              │  ⚠ coolant_temp_high    │
-│                                      │  ⚠ comm_timeout         │
-│   [ Reservoir ]  Level: NORMAL       │  ⚠ water_level_low      │
-│                                      │                          │
-│   [ Pump ]   status: ON              │  (스크롤 가능)            │
-│                                      │                          │
-│   [ Inlet Manifold ]                 ├──────────────────────────┤
-│     Inlet Temp : 00.0 °C             │                          │
-│     Flow       : 0.0 L/min           │   CONTROL                │
-│     Pressure   : 0.00 bar            │                          │
-│                                      │  Pump  [▼ -] [  0%] [+▲]│
-│   [ Outlet Manifold ]                │  Fan   [▼ -] [  0%] [+▲]│
-│     Outlet Temp: 00.0 °C             │                          │
+│   [Radiator] ←── [Fan1] [Fan2]        │  ⚠ coolant_temp_high    │
+│       │                              │  ⚠ comm_timeout         │
+│   [Water Tank]                       │  ⚠ water_level_low      │
+│    Level: NORMAL                     │                          │
+│    pH   : 0.0                        │  (스크롤 가능)            │
+│    Cond : 0.0 μS/cm                  │                          │
+│       │                              ├──────────────────────────┤
+│   [P1→P2] Loop1  [P3→P4] Loop2       │                          │
+│    Flow: 0.0 L/min                   │   CONTROL                │
+│       │              │               │                          │
+│   [Inlet Manifold]                   │  Pump1 [▼ -] [  0%] [+▲]│
+│    Loop1: 00.0°C  Loop2: 00.0°C      │  Pump2 [▼ -] [  0%] [+▲]│
+│       │  (Svr1) (Svr2) │             │  Fan1  [▼ -] [  0%] [+▲]│
+│   [Outlet Manifold]                  │  Fan2  [▼ -] [  0%] [+▲]│
 │                                      │  [  APPLY  ]             │
-│   [ Leak Sensor ]  Leak: NONE        │                          │
+│    Loop1: 00.0°C  Loop2: 00.0°C      │                          │
+│                                      │  Leak : NONE             │
 └──────────────────────────────────────┴──────────────────────────┘
 ```
+
+> **냉각수 흐름**: Water Tank → [P1·P2 → Server1] / [P3·P4 → Server2] → Inlet Manifold → Outlet Manifold → Radiator → Water Tank
 
 **패널 구성**
 
@@ -47,22 +51,26 @@
 | Top bar | 상단 | 탭 네비 (`Monitoring` / `History`), 시스템 상태 배지 (`OK` / `ALARM` / `COMM ERR`), 통신 상태, 현재 시각 |
 | Cooling Health | 좌측 메인 | CDU 흐름 다이어그램 — Pub/Sub(`sensor:*`, `comm:*`) 수신 시 즉시 갱신, 부품 목록 아래 참고 |
 | Active Alarms | 우상단 | `alarm:*` Keyspace Notification(SET/DEL) 수신 → 즉시 갱신, 없으면 "No active alarms" |
-| Control | 우하단 | Pump / Fan 출력(%) 조절 버튼 + APPLY |
+| Control | 우하단 | Pump1(Loop1) / Pump2(Loop2) / Fan1(Loop1) / Fan2(Loop2) 출력(%) 조절 버튼 + APPLY, Leak 상태 표시 |
 
-**Cooling Health 구성 요소** _(위치 미확정 — 추후 업데이트)_
+**Cooling Health 구성 요소**
 
-| 구성 요소 | 표시 데이터 | Redis key |
-|---|---|---|
-| Fan | 팬 상태 | `sensor:fan_status` |
-| Radiator | — | — |
-| Reservoir | 수위 | `sensor:water_level` |
-| Pump | 펌프 상태 | `sensor:pump_status` |
-| Inlet Manifold | 입수 온도 | `sensor:coolant_temp_inlet` |
-| Outlet Manifold | 출수 온도 | `sensor:coolant_temp_outlet` |
-| Pipe / Flow | 유량, 유압 | `sensor:flow_rate`, `sensor:pressure` |
-| Leak Sensor | 누수 감지 | `sensor:leak` |
+| 구성 요소 | 위치 | 표시 데이터 | Redis key |
+|---|---|---|---|
+| Radiator | 상단 | — | — |
+| Fan Loop1 | 상단 | 팬 상태 (루프1) | `sensor:fan_status_1` |
+| Fan Loop2 | 상단 | 팬 상태 (루프2) | `sensor:fan_status_2` |
+| Water Tank | 상단 | 수위 / pH / 전도도 | `sensor:water_level`, `sensor:ph`, `sensor:conductivity` |
+| Pump Loop1 (P1·P2 직렬) | 중단 | 펌프 상태 (루프1) | `sensor:pump_status_1` |
+| Pump Loop2 (P3·P4 직렬) | 중단 | 펌프 상태 (루프2) | `sensor:pump_status_2` |
+| Flow | Pump ~ Manifold | 유량 | `sensor:flow_rate` |
+| Inlet Manifold | 중단 | 입수 온도 루프1·2 | `sensor:coolant_temp_inlet_1`, `sensor:coolant_temp_inlet_2` |
+| Outlet Manifold | 하단 | 출수 온도 루프1·2 | `sensor:coolant_temp_outlet_1`, `sensor:coolant_temp_outlet_2` |
+| Leak Sensor | 우하단 표시 | 누수 감지 | `sensor:leak` |
+| Pressure | — | 유압 (부착 여부 미확정) | `sensor:pressure` |
+| Ambient | — | 외기 온/습도 (부착 위치 미확정) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
 
-**페이지 전환**: Top bar 우측에 `[HISTORY →]` 버튼 1개
+**페이지 전환**: Top bar 탭 (`Monitoring` / `History`) 선택
 
 ---
 
