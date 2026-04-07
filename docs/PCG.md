@@ -58,11 +58,11 @@
 - timeout / retry / reconnect 처리, 연속 실패 횟수 관리
 - slave 응답 이상 감지 및 통신 실패 상태 관리
 - Function code별 요청 송신 및 예외 응답 처리
-- **Read path**: raw register 값 수신 → scaling / bitfield 디코딩 → function code 이상 없음 → Redis SET `sensor:*` (async, non-blocking) ∥ AEM에 값 전달
+- **Read path**: raw register 값 수신 → scaling / bitfield 디코딩 → function code 이상 없음 → Redis SET `sensor:*` + Pub/Sub publish (async, non-blocking) ∥ AEM에 값 전달
 - **Write path**: 0\~100% 입력값 → FC / address / register value 변환 → Modbus write 송신 → ACK 수신 확인 → Pushgateway POST (result label)
   - 예: `set_pump(70)` → `FC06 / addr=0x0012 / value=700`
   - 예: `set_fan(70)` → 70% → 8.4V → `FC06 / addr=0x0014 / value=840`
-- 통신 상태 Redis SET (실시간 표시용): `comm:status`, `comm:consecutive_failures`, `comm:last_error`
+- 통신 상태 Redis SET + Pub/Sub publish (실시간 표시용): `comm:status`, `comm:consecutive_failures`, `comm:last_error`
 - 통신 상태 변경 시 Pushgateway POST (이력용): `comm_event{status=...}`, `comm_consecutive_failures`
 
 **[레이어 4] 이벤트 처리**
@@ -161,10 +161,11 @@ L2A CDU의 1차 목표는 **서버의 안정적인 냉각 유지**다.
 loop:
   Control Queue에 요청 있음 → MTM write → 다음 cycle
   Control Queue 비어있음   → MTM read → 디코딩
-                                ├─ Redis SET sensor:* (async)
+                                ├─ Redis SET sensor:* + Pub/Sub publish (async)
+                                │     └─ Redis → UI: Pub/Sub 수신 → 화면 갱신
                                 └─ AEM threshold 검사
                                       정상 → 다음 cycle
-                                      이상 → Redis SET alarm:* → UI 알람 → 다음 cycle
+                                      이상 → Redis SET alarm:* → Keyspace Notification → UI 알람 → 다음 cycle
 ```
 
 ---
@@ -185,7 +186,9 @@ sequenceDiagram
     MTM->>PCB: Modbus RTU read 요청
     PCB-->>MTM: register 응답
     MTM->>MTM: scaling / bitfield 디코딩
-    MTM-)Redis: SET sensor:* (async, non-blocking)
+    MTM-)Redis: SET sensor:* + Pub/Sub publish (async, non-blocking)
+    Redis-->>UI: Pub/Sub (sensor:* 변경)
+    UI-->>UI: 화면 갱신
     MTM->>AEM: 디코딩된 값 전달
     AEM->>AEM: threshold 검사 → 정상 → 처리 없음
 ```
@@ -214,7 +217,9 @@ sequenceDiagram
         MTM->>PCB: Modbus RTU read 요청
         PCB-->>MTM: register 응답
         MTM->>MTM: scaling / bitfield 디코딩
-        MTM-)Redis: SET sensor:* (async)
+        MTM-)Redis: SET sensor:* + Pub/Sub publish (async)
+        Redis-->>UI: Pub/Sub (sensor:* 변경)
+        UI-->>UI: 화면 갱신
         MTM->>AEM: 디코딩된 값 전달
         AEM->>AEM: threshold 검사 → 정상
     end
@@ -257,7 +262,9 @@ sequenceDiagram
         MTM->>PCB: Modbus RTU read 요청
         PCB-->>MTM: register 응답
         MTM->>MTM: scaling / bitfield 디코딩
-        MTM-)Redis: SET sensor:* (async)
+        MTM-)Redis: SET sensor:* + Pub/Sub publish (async)
+        Redis-->>UI: Pub/Sub (sensor:* 변경)
+        UI-->>UI: 화면 갱신
         MTM->>AEM: 디코딩된 값 전달
         AEM->>AEM: threshold 검사 → 정상 → 처리 없음
     end
@@ -268,12 +275,14 @@ sequenceDiagram
         MTM->>PCB: Modbus RTU read 요청
         PCB-->>MTM: register 응답
         MTM->>MTM: scaling / bitfield 디코딩
-        MTM-)Redis: SET sensor:* (async)
+        MTM-)Redis: SET sensor:* + Pub/Sub publish (async)
+        Redis-->>UI: Pub/Sub (sensor:* 변경)
+        UI-->>UI: 화면 갱신
         MTM->>AEM: 디코딩된 값 전달
         AEM->>AEM: threshold 검사 → 임계치 초과 판단
         AEM->>Redis: SET alarm:*
         AEM->>AEM: 이벤트 기록 (발생 시점)
-        UI->>Redis: alarm:* 폴링으로 알람 감지
+        Redis-->>UI: Keyspace Notification (SET 이벤트)
         UI-->>UI: 알람 배너 표시 (강조)
     end
 
@@ -294,12 +303,14 @@ sequenceDiagram
         MTM->>PCB: Modbus RTU read 요청
         PCB-->>MTM: register 응답
         MTM->>MTM: scaling / bitfield 디코딩
-        MTM-)Redis: SET sensor:* (async)
+        MTM-)Redis: SET sensor:* + Pub/Sub publish (async)
+        Redis-->>UI: Pub/Sub (sensor:* 변경)
+        UI-->>UI: 화면 갱신
         MTM->>AEM: 디코딩된 값 전달
         AEM->>AEM: threshold 검사 → 정상 복귀 판단
         AEM->>Redis: DEL alarm:*
         AEM->>AEM: 복구 이벤트 기록
-        UI->>Redis: alarm:* 키 소멸 감지
+        Redis-->>UI: Keyspace Notification (DEL 이벤트)
         UI-->>UI: 알람 해제
     end
 ```
@@ -326,15 +337,20 @@ sequenceDiagram
         MTM->>PCB: Modbus RTU read 요청
         PCB--xMTM: timeout / 무응답
         MTM->>MTM: retry → 연속 실패 횟수 증가
+        MTM-)Redis: SET comm:status / comm:consecutive_failures / comm:last_error + Pub/Sub publish
+        Redis-->>UI: Pub/Sub (comm:* 변경)
+        UI-->>UI: 통신 상태 패널 갱신
         alt 연속 N회 실패 (Warning)
             MTM->>AEM: 통신 이상 통보
             AEM->>Redis: SET alarm:comm_timeout
             AEM->>PGW: POST comm_event (이력)
-            UI->>Redis: alarm:* 폴링으로 알람 감지
+            Redis-->>UI: Keyspace Notification (SET 이벤트)
             UI-->>UI: 알람 배너 표시
         else PCB 무응답 판단 (Critical)
             MTM->>AEM: 통신 두절 통보
             AEM->>Redis: SET alarm:comm_disconnected
+            Redis-->>UI: Keyspace Notification (SET 이벤트)
+            UI-->>UI: 알람 배너 표시 (강조)
             MTM->>MTM: Polling 중단
         end
     end
@@ -344,10 +360,13 @@ sequenceDiagram
         MTM->>PCB: 재연결 시도
         PCB-->>MTM: 응답 성공
         MTM->>MTM: 연속 실패 횟수 초기화, Polling 재개
+        MTM-)Redis: SET comm:status=ok / comm:consecutive_failures=0 + Pub/Sub publish
+        Redis-->>UI: Pub/Sub (comm:* 변경)
+        UI-->>UI: 통신 상태 패널 갱신
         MTM->>AEM: 통신 복구 통보
         AEM->>Redis: DEL alarm:comm_*
         AEM->>AEM: 복구 이벤트 기록
-        UI->>Redis: alarm:* 키 소멸 감지
+        Redis-->>UI: Keyspace Notification (DEL 이벤트)
         UI-->>UI: 알람 해제
     end
 ```

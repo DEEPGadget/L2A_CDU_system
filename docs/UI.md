@@ -23,7 +23,8 @@
 
 **BE (PySide6)**
 - PCG와 IPC 기반 통신 (제어 요청 전달)
-- Redis DB 직접 조회 (현재값 전용 — `sensor:*`, `comm:*`, `alarm:*`)
+- Redis Pub/Sub 구독 (`sensor:*`, `comm:*` 현재값 — PCG가 SET 시 publish, UI가 수신)
+- Redis Keyspace Notifications 구독 (`alarm:*` SET/DEL 이벤트 — 알람 발생·해제 즉시 감지)
 - Prometheus DB 조회 (이력 데이터 소스 — 센서 이력 + 제어 명령 이력)
 
 ## WEB UI (Svelte + FastAPI)
@@ -46,7 +47,8 @@
 
 ## DB
 
-> **Redis 설계 원칙**: Redis는 현재값 읽기 전용 DB. 이벤트 이력·명령 기록은 저장하지 않음.
+> **Redis 설계 원칙**: Redis는 현재값 전용 DB. 이벤트 이력·명령 기록은 저장하지 않음.
+> Local UI는 폴링 없이 Pub/Sub(`sensor:*`, `comm:*`) + Keyspace Notifications(`alarm:*`)로 변경 시 즉시 수신.
 
 **Redis DB**
 
@@ -62,10 +64,19 @@
 | `sensor:leak` | 누수 | Modbus Data Parser |
 | `sensor:pump_status` | 펌프 상태 | Modbus Data Parser |
 | `sensor:fan_status` | 팬 상태 | Modbus Data Parser |
-| `alarm:coolant_temp_high` | 수온 임계치 초과 | Alarm / Event Manager |
+| `alarm:coolant_temp_warning` | 수온 경고 (warning) | Alarm / Event Manager |
+| `alarm:coolant_temp_critical` | 수온 위험 (critical) | Alarm / Event Manager |
 | `alarm:leak_detected` | 누수 감지 | Alarm / Event Manager |
-| `alarm:water_level_low` | 수위 부족 | Alarm / Event Manager |
-| `alarm:comm_timeout` | 통신 timeout | Alarm / Event Manager |
+| `alarm:water_level_warning` | 수위 부족 경고 (warning) | Alarm / Event Manager |
+| `alarm:water_level_critical` | 수위 위험 (critical) | Alarm / Event Manager |
+| `alarm:pressure_warning` | 유압 이상 (warning) | Alarm / Event Manager |
+| `alarm:flow_rate_warning` | 유량 저하 (warning) | Alarm / Event Manager |
+| `alarm:ambient_temp_warning` | 주변 온도 경고 (warning) | Alarm / Event Manager |
+| `alarm:ambient_temp_critical` | 주변 온도 한계 초과 (critical) | Alarm / Event Manager |
+| `alarm:ambient_humidity_warning` | 주변 습도 경고 (warning) | Alarm / Event Manager |
+| `alarm:ambient_humidity_critical` | 주변 습도 한계 초과 (critical) | Alarm / Event Manager |
+| `alarm:comm_timeout` | 통신 연속 실패 (warning) | Alarm / Event Manager |
+| `alarm:comm_disconnected` | 통신 두절 (critical) | Alarm / Event Manager |
 | `comm:status` | 현재 Modbus 통신 상태 `"ok"\|"timeout"\|"disconnected"` | Modbus Transport Manager |
 | `comm:consecutive_failures` | 연속 통신 실패 횟수 (성공 시 0 리셋) | Modbus Transport Manager |
 | `comm:last_error` | 마지막 오류 `{code, message, ts}` | Modbus Transport Manager |
