@@ -21,7 +21,7 @@
 | redis-server 서비스 | 4.3/4.5 | ✅ 완료 | enabled |
 | prometheus 서비스 | 4.3/4.5 | ✅ 완료 | enabled |
 | pushgateway 서비스 | 4.4/4.5 | ❌ 미완 | 서비스 파일 없음 |
-| PCG 서비스 | 4.1/4.5 | ❌ 미완 | 서비스 파일 없음 |
+| MCG 서비스 | 4.1/4.5 | ❌ 미완 | 서비스 파일 없음 |
 | FastAPI 서비스 | 4.2/4.5 | ❌ 미완 | 서비스 파일 없음 |
 
 **남은 작업 순서:**
@@ -29,7 +29,7 @@
 2. `sudo apt install unclutter` (1.4)
 3. `~/.bash_profile` 생성 (2.2)
 4. `~/.xinitrc` 생성 (2.3)
-5. `/etc/systemd/system/pcg.service` 생성 + enable (4.1)
+5. `/etc/systemd/system/mcg.service` 생성 + enable (4.1)
 6. `/etc/systemd/system/fastapi.service` 생성 + enable (4.2) — WEB UI 사용 시
 7. `/etc/systemd/system/pushgateway.service` 생성 + enable (4.4) — pushgateway 바이너리 있을 경우
 
@@ -107,7 +107,7 @@ unclutter -idle 0 -root &
              └─ 재시작 루프: PySide6 앱 실행
 ```
 
-PCG는 UI와 별개로 systemd 서비스로 먼저 기동 (섹션 4.1 참고).
+MCG는 UI와 별개로 systemd 서비스로 먼저 기동 (섹션 4.1 참고).
 
 ### 2.2 .bash_profile 설정
 
@@ -276,15 +276,15 @@ Local UI 키오스크 진입 전 모두 실행되어야 함. FastAPI는 원격 W
 | Redis | apt 패키지 — systemd 자동 등록 | `redis-server` |
 | Prometheus | apt 패키지 — systemd 자동 등록 | `prometheus` |
 | Pushgateway | 수동 설치 — systemd 등록 필요 | 바이너리: `/home/gadgetini/pushgateway/pushgateway` |
-| PCG | 수동 등록 (섹션 4.1) | |
+| MCG | 수동 등록 (섹션 4.1) | |
 | FastAPI | 수동 등록 (섹션 4.2) | 원격 WEB UI 접속용 |
 
-### 4.1 PCG 서비스
+### 4.1 MCG 서비스
 
 ```ini
-# /etc/systemd/system/pcg.service
+# /etc/systemd/system/mcg.service
 [Unit]
-Description=L2A CDU Python Control Gateway
+Description=L2A CDU Modbus Control Gateway
 After=network.target redis.service
 Wants=redis.service
 
@@ -308,7 +308,7 @@ WantedBy=multi-user.target
 # /etc/systemd/system/fastapi.service
 [Unit]
 Description=L2A CDU FastAPI Backend
-After=network.target redis.service pcg.service
+After=network.target redis.service mcg.service
 Wants=redis.service
 
 [Service]
@@ -375,8 +375,8 @@ sudo systemctl enable prometheus
 sudo systemctl daemon-reload
 sudo systemctl enable pushgateway.service
 
-# PCG / FastAPI
-sudo systemctl enable pcg.service
+# MCG / FastAPI
+sudo systemctl enable mcg.service
 sudo systemctl enable fastapi.service   # WEB UI 사용 시
 ```
 
@@ -395,7 +395,7 @@ sudo systemctl enable fastapi.service   # WEB UI 사용 시
     ├─ redis-server.service 시작
     ├─ prometheus.service 시작
     ├─ pushgateway.service 시작
-    ├─ pcg.service 시작
+    ├─ mcg.service 시작
     └─ fastapi.service 시작 (원격 WEB UI 접속용)
     │
     ▼
@@ -410,7 +410,7 @@ sudo systemctl enable fastapi.service   # WEB UI 사용 시
     ▼
 [.xinitrc]
     ├─ xset / unclutter 환경 설정
-    └─ PySide6 앱 재시작 루프 ← IPC → PCG
+    └─ PySide6 앱 재시작 루프 ← IPC → MCG
 ```
 
 ---
@@ -422,7 +422,7 @@ sudo systemctl enable fastapi.service   # WEB UI 사용 시
 | X 서버 기동 | startx (.bash_profile) |
 | 윈도우 매니저 | 불필요 |
 | UI 실행 | PySide6 앱 (.xinitrc while loop) |
-| 백엔드 서비스 | PCG, FastAPI, Redis, Prometheus, Pushgateway (systemd) |
+| 백엔드 서비스 | MCG, FastAPI, Redis, Prometheus, Pushgateway (systemd) |
 | 재시작 방식 | .xinitrc while loop (크래시 시 2초 후 재시작) |
 | 화면 절전 비활성화 | xset (.xinitrc) |
 | 커서 숨김 | unclutter + -nocursor |

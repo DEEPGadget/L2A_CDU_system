@@ -2,9 +2,9 @@
 
 ## 개요
 
-- Modbus RTU Slave (PCG가 단일 Master)
+- Modbus RTU Slave (MCG가 단일 Master)
 - 센서 입력 수집 및 PWM / DOUT 제어 출력
-- Master(PCG)와 독립적인 자율 동작 기능 내장 (Watchdog, OP_MODE, Auto Control)
+- Master(MCG)와 독립적인 자율 동작 기능 내장 (Watchdog, OP_MODE, Auto Control)
 
 ---
 
@@ -23,11 +23,11 @@
 
 | 항목 | 레지스터 | 설명 |
 |---|---|---|
-| `MASTER_HEARTBEAT` | HR addr=20 | PCG가 주기적으로 갱신하는 카운터 (0~65535, 롤오버 허용) |
+| `MASTER_HEARTBEAT` | HR addr=20 | MCG가 주기적으로 갱신하는 카운터 (0~65535, 롤오버 허용) |
 | `WATCHDOG_TIMEOUT` | Flash | 값 변경 없이 경과 허용 시간 (기본값: 5초) |
 | `WATCHDOG_ACTION_POLICY` | Flash | Timeout 시 자동 전환할 OP_MODE 선택 (0=비활성화 / 1=비상정지 / 2=기본값 / 3=자동제어) |
 
-> PCG가 `MASTER_HEARTBEAT`를 갱신하지 않으면 `WATCHDOG_TIMEOUT` 경과 후 PCB가 `WATCHDOG_ACTION_POLICY`에 따라 자동으로 OP_MODE 전환.
+> MCG가 `MASTER_HEARTBEAT`를 갱신하지 않으면 `WATCHDOG_TIMEOUT` 경과 후 PCB가 `WATCHDOG_ACTION_POLICY`에 따라 자동으로 OP_MODE 전환.
 > 롤오버(65535 → 0)는 정상 갱신으로 인정.
 
 ---
@@ -54,7 +54,7 @@
 
 | 시나리오 | 관련 파라미터 | 동작 |
 |---|---|---|
-| PCG 다운 / 통신 두절 | `MASTER_HEARTBEAT`, `WATCHDOG_TIMEOUT`, `WATCHDOG_ACTION_POLICY` | Watchdog Timeout 후 지정된 OP_MODE로 자동 전환 |
+| MCG 다운 / 통신 두절 | `MASTER_HEARTBEAT`, `WATCHDOG_TIMEOUT`, `WATCHDOG_ACTION_POLICY` | Watchdog Timeout 후 지정된 OP_MODE로 자동 전환 |
 | 즉시 출력 차단 | `MB_HR_OP_MODE=1` | 모든 PWM·DOUT 즉시 0/Off (램프업 무시) |
 | 전원 재인가 | `INIT_DUTY_*`, `INIT_DOUT_BITMAP`, `RAMP_UP_DELAY` | Flash 초기값 로드 후 램프업 적용 |
 | 출력 급상승(Inrush) 완화 | `RAMP_UP_DELAY`, `INIT_DUTY_TIM1/2/8` | 기동 시 PWM 듀티를 설정 시간에 따라 단계적으로 상승 — 기동 충격·전원 피크 부하 완화 |
