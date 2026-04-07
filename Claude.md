@@ -12,9 +12,15 @@ L2A CDU system running on Raspberry Pi 4. See [ARCHITECTURE.md](ARCHITECTURE.md)
 
 Key components:
 - **PCG** (Python Control Gateway): Modbus RTU master, central control hub — see [docs/PCG.md](docs/PCG.md)
-- **Local UI**: PySide6, communicates with PCG via Unix Domain Socket IPC
-- **Web UI**: Svelte (FE) + FastAPI (BE), communicates with PCG via REST API
-- **DB**: Redis (real-time), Prometheus (history via exporter)
+- **UI** (Local + Web): PySide6 / Svelte + FastAPI — see [docs/UI.md](docs/UI.md)
+- **UI Design**: Layout wireframes (Local + Web, Monitoring + History) — see [docs/UI_Design.md](docs/UI_Design.md)
+- **Kiosk**: Kiosk mode configuration — see [docs/Kiosk.md](docs/Kiosk.md)
+
+> **Doc rule**: Key components lists only items that have a corresponding file under `docs/`. When a new `docs/*.md` is created, add it here.
+
+## Development Order
+
+> **Code rule**: All source code must be written **after all `docs/*.md` files are finalized**. Do not write implementation code while documentation is still in progress.
 
 ## Project Structure
 

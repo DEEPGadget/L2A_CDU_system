@@ -5,7 +5,8 @@
       "Bash(/home/gadgetini/venv/bin/pip freeze:*)",
       "Bash(chmod +x /home/gadgetini/.xinitrc)",
       "Bash(echo \"exit: $?\")",
-      "Bash(echo \"status: $?\")"
+      "Bash(echo \"status: $?\")",
+      "Read(//etc/lightdm/**)"
     ]
   }
 }
