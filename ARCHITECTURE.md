@@ -105,9 +105,13 @@
 ### 4.4 PCB (Modbus Slave)
 
 - 센서 입력 값 제공
-- 펌프 및 팬 제어 출력 수행
+- 펌프 및 팬 제어 출력 수행 (PWM / DOUT)
 - Modbus 레지스터 기반 Read / Write 지원
-- Slave 설정 및 레지스터 맵은 PCB 명세서 기준으로 정의
+- Master(PCG)와 독립적인 자율 동작 기능 내장:
+  - **OP_MODE** (HR addr=19): Normal / Emergency Stop / Default Value / Auto Control 선택
+  - **Master Heartbeat Watchdog**: PCG가 `MASTER_HEARTBEAT` (HR addr=20)를 주기적으로 갱신하지 않으면 Timeout 후 자동 모드 전환
+  - **Flash 저장 파라미터**: 전원 재인가 후에도 초기값·Watchdog 정책 유지
+- 상세 내용: [docs/PCB.md](docs/PCB.md)
 
 ### 4.5 Sensor / Actuator
 
