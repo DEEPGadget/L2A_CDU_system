@@ -44,7 +44,7 @@
 
 | 패널 | 위치 | 내용 |
 |---|---|---|
-| Top bar | 상단 | 시스템 상태 배지 (`OK` / `ALARM` / `COMM ERR`), 통신 상태, 현재 시각 |
+| Top bar | 상단 | 탭 네비 (`Monitoring` / `History`), 시스템 상태 배지 (`OK` / `ALARM` / `COMM ERR`), 통신 상태, 현재 시각 |
 | Cooling Health | 좌측 메인 | CDU 흐름 다이어그램 — 부품 목록 아래 참고 |
 | Active Alarms | 우상단 | `alarm:*` 활성 알람 목록 (스크롤), 없으면 "No active alarms" |
 | Control | 우하단 | Pump / Fan 출력(%) 조절 버튼 + APPLY |
@@ -70,33 +70,71 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  [Monitoring] [History]   [ 1H ] [ 6H ] [ 24H ]   2024-01-01  │  ← Top bar
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│   SENSOR TREND                                                   │
-│   [ Inlet Temp ▾ ]                                              │  ← 메트릭 선택
-│                                                                  │
-│   ┌──────────────────────────────────────────────────────────┐  │
-│   │  (시계열 라인 차트)                                        │  │
-│   │                                                           │  │
-│   └──────────────────────────────────────────────────────────┘  │
-│                                                                  │
-├─────────────────────────────────────────────────────────────────┤
-│   CONTROL HISTORY                                                │
-│   timestamp          │ target │ value │ result                  │
-│   2024-01-01 11:55  │ pump   │  60%  │ success                 │
-│   2024-01-01 11:30  │ fan    │  40%  │ success                 │
-│   (스크롤 가능)                                                  │
-└─────────────────────────────────────────────────────────────────┘
+│  [Monitoring] [History]          ● OK          2024-01-01  12:00│  ← Top bar (동일)
+├──────────────────┬──────────────────────────────────────────────┤
+│                  │                                               │
+│  Time Range      │                                               │
+│  [ 5m ▾ ]       │                                               │
+│                  │                                               │
+│  Graph Form      │                                               │
+│  (●) Line Graph  │   (선택된 Graph Form에 맞게 렌더링)            │
+│  ( ) Table       │                                               │
+│                  │                                               │
+│  Metric          │                                               │
+│  [✓] temp_inlet  │                                               │
+│  [✓] temp_outlet │                                               │
+│  [ ] pressure    │                                               │
+│  [ ] flow_rate   │                                               │
+│  [ ] pump_status │                                               │
+│  [ ] fan_status  │                                               │
+│  [ ] ctrl_cmd    │                                               │
+│  [ ] comm_event  │                                               │
+│                  │                                               │
+└──────────────────┴──────────────────────────────────────────────┘
 ```
 
 **패널 구성**
 
-| 패널 | 내용 |
+| 패널 | 위치 | 내용 |
+|---|---|---|
+| Top bar | 상단 | Monitoring 페이지와 동일 — 탭 네비, 시스템 상태 배지, 현재 시각 |
+| Sidebar | 좌측 | Time Range 드롭다운 + Graph Form 라디오 버튼 + Metric 체크박스 |
+
+> **Sidebar 드롭다운 동작**: 클릭 시 사이드바 위에 overlay(popup)로 표시. 레이아웃을 밀지 않음. PySide6 `QComboBox` 기본 popup 방식 사용.
+| View area | 우측 메인 | 선택된 Graph Form에 따라 Line Graph or Table 렌더링 |
+
+**Graph Form 옵션**
+
+| 선택 | 렌더링 |
 |---|---|
-| Top bar | `← BACK` 버튼, 시간 범위 선택 (`1H` / `6H` / `24H`) |
-| Sensor Trend | 메트릭 선택 드롭다운 + Prometheus 시계열 라인 차트 |
-| Control History | 제어 명령 이력 테이블 (`timestamp`, `target`, `value`, `result`) |
+| Line Graph | 선택된 Metric을 시계열 꺾은선 그래프로 표시 |
+| Table | 선택된 Metric을 timestamp 기준 테이블로 표시 |
+
+**Metric 선택 항목**
+
+| Metric | 데이터 소스 |
+|---|---|
+| `coolant_temp_inlet` | Prometheus Exporter |
+| `coolant_temp_outlet` | Prometheus Exporter |
+| `pressure` | Prometheus Exporter |
+| `flow_rate` | Prometheus Exporter |
+| `pump_status` | Prometheus Exporter |
+| `fan_status` | Prometheus Exporter |
+| `control_cmd` (pump / fan) | Prometheus Pushgateway |
+| `comm_event` | Prometheus Pushgateway |
+
+**시간 범위별 Prometheus 쿼리 step 기준** _(구현 시 확정)_
+
+> 포인트 수를 고정(~60)하고 step을 범위에 맞게 조정 — 차트 밀도 일정 유지
+
+| 범위 | step | 예상 포인트 수 |
+|---|---|---|
+| 5m | 5s | ~60 |
+| 10m | 10s | ~60 |
+| 30m | 30s | ~60 |
+| 1H | 60s | ~60 |
+| 6H | 6m | ~60 |
+| 24H | 24m | ~60 |
 
 ---
 
