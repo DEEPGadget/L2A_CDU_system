@@ -60,7 +60,7 @@
 | Radiator | 상단 | — | — |
 | Fan Loop1 | 상단 | 팬 상태 (루프1) | `sensor:fan_status_1` |
 | Fan Loop2 | 상단 | 팬 상태 (루프2) | `sensor:fan_status_2` |
-| Water Tank | 상단 | 수위 / pH / 전도도 | `sensor:water_level`, `sensor:ph`, `sensor:conductivity` |
+| Water Tank | 상단 | 수위 / pH / 전도도 | `sensor:water_level_high`, `sensor:water_level_low`, `sensor:ph`, `sensor:conductivity` |
 | Pump Loop1 (P1·P2 직렬) | 중단 | 펌프 상태 (루프1) | `sensor:pump_status_1` |
 | Pump Loop2 (P3·P4 직렬) | 중단 | 펌프 상태 (루프2) | `sensor:pump_status_2` |
 | Flow Loop1 | Pump ~ Manifold (루프1) | 유량 (루프1) | `sensor:flow_rate_1` |
@@ -69,7 +69,7 @@
 | Outlet Manifold | 하단 | 출수 온도 루프1·2 | `sensor:coolant_temp_outlet_1`, `sensor:coolant_temp_outlet_2` |
 | Leak Sensor | 우하단 표시 | 누수 감지 | `sensor:leak` |
 | Pressure | — | 유압 (부착 여부 미확정) | `sensor:pressure` |
-| Ambient | — | 외기 온/습도 (부착 위치 미확정) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
+| Ambient | — | 외기 온/습도 (부착 위치 미확정) — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
 
 **페이지 전환**: Top bar 탭 (`Monitoring` / `History`) 선택
 

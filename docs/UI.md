@@ -65,12 +65,13 @@
 | `sensor:coolant_temp_outlet_2` | 냉각수 출수 온도 (루프 2) | Outlet Manifold | Modbus Data Parser |
 | `sensor:flow_rate_1` | 유량 (루프 1) | Pump ~ Manifold 구간 (루프1) | Modbus Data Parser |
 | `sensor:flow_rate_2` | 유량 (루프 2) | Pump ~ Manifold 구간 (루프2) | Modbus Data Parser |
-| `sensor:water_level` | 수위 | Water Tank | Modbus Data Parser |
+| `sensor:water_level_high` | 상위 수위 광센서 (1: 수위 이상, 0: 수위 이하) | Water Tank | Modbus Data Parser |
+| `sensor:water_level_low` | 하위 수위 광센서 (1: 수위 이상, 0: 수위 이하) | Water Tank | Modbus Data Parser |
 | `sensor:ph` | pH | Water Tank | Modbus Data Parser |
 | `sensor:conductivity` | 전도도 | Water Tank | Modbus Data Parser |
 | `sensor:leak` | 누수 | 시스템 부착 (위치 미확정) | Modbus Data Parser |
-| `sensor:ambient_temp` | 외기 온도 | 시스템 부착 (위치 미확정) | Modbus Data Parser |
-| `sensor:ambient_humidity` | 외기 습도 | 시스템 부착 (위치 미확정) | Modbus Data Parser |
+| `sensor:ambient_temp` | 외기 온도 | 시스템 부착 (위치 미확정) | RPi Ambient Sensor Reader (I2C/GPIO 직접 수집 — Modbus 미경유) |
+| `sensor:ambient_humidity` | 외기 습도 | 시스템 부착 (위치 미확정) | RPi Ambient Sensor Reader (I2C/GPIO 직접 수집 — Modbus 미경유) |
 | `sensor:pressure` | 유압 (부착 여부 미확정) | — | Modbus Data Parser |
 | `sensor:pump_status_1` | 펌프 상태 (루프 1 — P1·P2 직렬) | — | Modbus Data Parser |
 | `sensor:pump_status_2` | 펌프 상태 (루프 2 — P3·P4 직렬) | — | Modbus Data Parser |
@@ -79,8 +80,8 @@
 | `alarm:coolant_temp_warning` | 수온 경고 (warning) | — | Alarm / Event Manager |
 | `alarm:coolant_temp_critical` | 수온 위험 (critical) | — | Alarm / Event Manager |
 | `alarm:leak_detected` | 누수 감지 | — | Alarm / Event Manager |
-| `alarm:water_level_warning` | 수위 부족 경고 (warning) | — | Alarm / Event Manager |
-| `alarm:water_level_critical` | 수위 위험 (critical) | — | Alarm / Event Manager |
+| `alarm:water_level_warning` | 수위 부족 경고 (warning) — `water_level_high`=0 AND `water_level_low`=1 | — | Alarm / Event Manager |
+| `alarm:water_level_critical` | 수위 위험 (critical) — `water_level_low`=0 | — | Alarm / Event Manager |
 | `alarm:ph_warning` | pH 이상 (warning) | — | Alarm / Event Manager |
 | `alarm:conductivity_warning` | 전도도 이상 (warning) | — | Alarm / Event Manager |
 | `alarm:flow_rate_warning` | 유량 저하 (warning) | — | Alarm / Event Manager |

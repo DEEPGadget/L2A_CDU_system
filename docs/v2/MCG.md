@@ -47,7 +47,8 @@
 `Task Scheduler`
 - Control Queue / Polling / Heartbeat 세 작업 소스를 소유하고 Modbus Transport Manager에 순차 디스패치
 - **작업 소스 우선순위: Control Queue > Polling** (Modbus 단일 채널 직렬 접근 보장)
-- 주요 Polling 대상: 수온(inlet/outlet), 유압, 유량, 수위, 누수, 펌프 상태, 팬 상태, 온습도
+- 주요 Polling 대상 (Modbus via PCB): 수온(inlet/outlet), 유압, 유량, 수위, 누수, 펌프 상태, 팬 상태
+- **온/습도는 Polling 대상 제외**: 외기 온/습도는 RPi Ambient Sensor Reader가 I2C/GPIO로 직접 수집하여 Redis에 SET (`sensor:ambient_temp`, `sensor:ambient_humidity`) — MCG Modbus polling 불필요
 - **Heartbeat write**: `MASTER_HEARTBEAT` (HR addr=20)를 주기적으로 갱신 (PCB Watchdog 감시 대상)
   - MCG가 이 값을 갱신하지 않으면 PCB가 `WATCHDOG_TIMEOUT` 경과 후 `WATCHDOG_ACTION_POLICY`에 따라 자동 모드 전환
 
@@ -123,8 +124,8 @@ L2A CDU의 1차 목표는 **서버의 안정적인 냉각 유지**다.
 | 수온 경고 (warning) | AEM | Warning | `alarm:coolant_temp_warning` SET | 임계치 이하 복귀 |
 | 수온 위험 (critical) | AEM | Critical | `alarm:coolant_temp_critical` SET | 임계치 이하 복귀 |
 | 누수 감지 | AEM | Critical | `alarm:leak_detected` SET | 누수 비트 해제 |
-| 수위 부족 (warning) | AEM | Warning | `alarm:water_level_warning` SET | 수위 복귀 |
-| 수위 위험 (critical) | AEM | Critical | `alarm:water_level_critical` SET | 수위 복귀 |
+| 수위 부족 (warning) | AEM | Warning | `alarm:water_level_warning` SET — `water_level_high`=0 AND `water_level_low`=1 (상위 이하, 하위 이상) | `water_level_high` 복귀 |
+| 수위 위험 (critical) | AEM | Critical | `alarm:water_level_critical` SET — `water_level_low`=0 (하위 이하) | `water_level_low` 복귀 |
 | 유압 이상 (warning) | AEM | Warning | `alarm:pressure_warning` SET | 정상 범위 복귀 |
 | 유량 저하 (warning, Pump ON 상태) | AEM | Warning | `alarm:flow_rate_warning` SET | 정상 유량 복귀 |
 | 주변 온도 경고 (warning) | AEM | Warning | `alarm:ambient_temp_warning` SET | 임계치 이하 복귀 |
