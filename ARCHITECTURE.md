@@ -4,7 +4,7 @@
 
 본 문서는 L2A CDU 시스템의 전체 아키텍처와 요구사항, 그리고 HW/SW 구성 요소를 정의함. 본 문서는 시스템의 큰 구조와 설계 기준을 설명하는 것을 목적으로 하며, 세부 구현 사항은 추후 지속적으로 업데이트한다.
 
-**Last Update:** 2026.03.30
+**Last Update:** 2026.04.08
 
 ## Table of Contents
 
@@ -34,7 +34,7 @@
 
 | 구성 요소 | 역할 |
 |---|---|
-| Raspberry Pi | MCG, UI, DB를 탑재하는 하드웨어 플랫폼 (IP: 10.100.1.10) |
+| Raspberry Pi | MCG, UI, DB를 탑재하는 하드웨어 플랫폼 (IP: 10.100.1.10). 온/습도 센서를 I2C/GPIO로 직접 연결하여 읽음 (예외적 직접 수집 — Modbus 미경유) |
 | Web UI (Svelte + FastAPI) | WEB 기반 유저 인터페이스. http 기반으로 파이썬 기반의 제어모듈(MCG - modbus control gateway)과 통신. 모니터링 및 제어 화면, 과거 기록 확인 화면 |
 | Touch Display UI (PySide6) | 로컬 기반 유저 인터페이스. IPC 기반으로 파이썬 기반의 제어모듈(MCG - modbus control gateway)과 통신. 모니터링 및 제어, 과거 기록 확인 화면 |
 | Redis DB | 현재값 전용 DB (`sensor:*`, `comm:*`, `alarm:*`) — 이력 저장 없음 |
@@ -61,6 +61,8 @@
 - 모든 센서 데이터 조회 및 제어 요청은 MCG를 통해 처리됨
 - UI는 MCG와만 통신하며 PCB와 직접 통신하지 않음
 
+> **예외 — 온/습도 센서**: 외기 온도·습도 센서(`sensor:ambient_temp`, `sensor:ambient_humidity`)는 PCB를 경유하지 않고 Raspberry Pi에 직접 연결(I2C/GPIO)하여 수집함. 별도의 RPi Ambient Sensor Reader 프로세스가 값을 읽어 Redis에 직접 SET.
+
 ### 3.2 통신 방식
 
 | 구간 | 방식 |
@@ -68,6 +70,7 @@
 | MCG ↔ PCB | Modbus RTU (Master / Slave) |
 | Touch Display UI ↔ MCG | IPC (Unix Domain Socket) |
 | Web UI ↔ MCG | REST API |
+| RPi ↔ 온/습도 센서 | I2C / GPIO (직접 연결 — Modbus 미경유) |
 
 ### 3.3 Modbus 동작
 
@@ -84,6 +87,10 @@
   - UI: 4.3 참고
   - MCG: 4.2 참고
   - DB: Redis DB, Prometheus (상세 내용은 4.3 DB 참고)
+- **온/습도 센서 직접 수집 (예외)**
+  - 외기 온도·습도 센서를 I2C/GPIO로 직접 연결
+  - RPi Ambient Sensor Reader 프로세스가 주기적으로 값을 읽어 Redis에 SET (`sensor:ambient_temp`, `sensor:ambient_humidity`)
+  - MCG Modbus polling 대상에서 제외
 
 ### 4.2 Modbus Control Gateway (MCG)
 
@@ -118,6 +125,8 @@
 - 수위, 유량, 수온 등 시스템 동작에 필요한 센서 데이터 제공
 - 펌프, 팬 등 제어 대상 액추에이터 포함
 - PCB를 통해 MCG에 의해 간접적으로 제어됨
+
+> **예외 — 온/습도 센서**: 외기 온도·습도 센서는 PCB에 연결되지 않고 Raspberry Pi에 직접 연결(I2C/GPIO)됨. 데이터 경로: 센서 → RPi Ambient Sensor Reader → Redis (`sensor:ambient_temp`, `sensor:ambient_humidity`)
 
 
 ## 5. 사용자 인터페이스 설계 (참고)
