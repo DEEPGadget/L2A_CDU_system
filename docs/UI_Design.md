@@ -16,30 +16,30 @@
 ### 1-1. Monitoring & Control Page
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  [Monitoring] [History]          ● OK          2024-01-01  12:00│  ← Top bar
-├──────────────────────────────────────┬──────────────────────────┤
-│                                      │                          │
-│   COOLING HEALTH                     │   ACTIVE ALARMS          │
-│                                      │                          │
-│   [Radiator] ←── [Fan1] [Fan2]        │  ⚠ coolant_temp_high    │
-│       │                              │  ⚠ comm_timeout         │
-│   [Water Tank]                       │  ⚠ water_level_low      │
-│    Level: NORMAL                     │                          │
-│    pH   : 0.0                        │  (스크롤 가능)            │
-│    Cond : 0.0 μS/cm                  │                          │
-│       │                              ├──────────────────────────┤
-│   [P1→P2] Loop1  [P3→P4] Loop2       │                          │
-│    Flow: 0.0 L/min                   │   CONTROL                │
-│       │              │               │                          │
-│   [Inlet Manifold]                   │  Pump1 [▼ -] [  0%] [+▲]│
-│    Loop1: 00.0°C  Loop2: 00.0°C      │  Pump2 [▼ -] [  0%] [+▲]│
-│       │  (Svr1) (Svr2) │             │  Fan1  [▼ -] [  0%] [+▲]│
-│   [Outlet Manifold]                  │  Fan2  [▼ -] [  0%] [+▲]│
-│                                      │  [  APPLY  ]             │
-│    Loop1: 00.0°C  Loop2: 00.0°C      │                          │
-│                                      │  Leak : NONE             │
-└──────────────────────────────────────┴──────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  [Monitoring] [History]  ● System: Normal  ● Link: Normal  2024-01-01 12:00          │  ← Top bar
+├──────────────────────────────────────────────────────────┬──────────────────────────┤
+│                                                          │                          │
+│   Cooling Health                                         │   Active Alarms          │
+│                                                          │                          │
+│   [Radiator] ←── [Fan1] [Fan2]                           │  ⚠ coolant_temp_high    │
+│       │                                                  │  ⚠ comm_timeout         │
+│   [Water Tank]                                           │  ⚠ water_level_low      │
+│    Level: Normal                                         │                          │
+│    pH   : 0.0                                            │  (스크롤 가능)            │
+│    Cond : 0.0 μS/cm                                      │                          │
+│       │                                                  ├──────────────────────────┤
+│   [P1→P2] Loop1  [P3→P4] Loop2                           │                          │
+│    Flow1: 0.0 L/min  Flow2: 0.0 L/min                    │   Control                │
+│       │              │                                   │                          │
+│   [Inlet Manifold]                                       │  Pump1 [▼ -] [  0%] [+▲]│
+│    Loop1: 00.0°C  Loop2: 00.0°C                          │  Pump2 [▼ -] [  0%] [+▲]│
+│       │  (Svr1) (Svr2) │                                 │  Fan1  [▼ -] [  0%] [+▲]│
+│   [Outlet Manifold]                                      │  Fan2  [▼ -] [  0%] [+▲]│
+│                                                          │  [  Apply  ]             │
+│    Loop1: 00.0°C  Loop2: 00.0°C                          │                          │
+│                                                          │  Leak : None             │
+└──────────────────────────────────────────────────────────┴──────────────────────────┘
 ```
 
 > **냉각수 흐름**: Water Tank → [P1·P2 → Server1] / [P3·P4 → Server2] → Inlet Manifold → Outlet Manifold → Radiator → Water Tank
@@ -48,7 +48,7 @@
 
 | 패널 | 위치 | 내용 |
 |---|---|---|
-| Top bar | 상단 | 탭 네비 (`Monitoring` / `History`), 시스템 상태 배지 (`OK` / `ALARM` / `COMM ERR`), 통신 상태, 현재 시각 |
+| Top bar | 상단 | 탭 네비 (`Monitoring` / `History`), **System 배지** (`Normal` / `Warning` / `Critical` / `-`) — 시스템 내부 상태(센서·알람), Link 통신 오류 시 `-` 표시, **Link 배지** (`Normal` / `Warning` / `Critical`) — Modbus 통신 상태, 현재 시각 |
 | Cooling Health | 좌측 메인 | CDU 흐름 다이어그램 — Pub/Sub(`sensor:*`, `comm:*`) 수신 시 즉시 갱신, 부품 목록 아래 참고 |
 | Active Alarms | 우상단 | `alarm:*` Keyspace Notification(SET/DEL) 수신 → 즉시 갱신, 없으면 "No active alarms" |
 | Control | 우하단 | Pump1(Loop1) / Pump2(Loop2) / Fan1(Loop1) / Fan2(Loop2) 출력(%) 조절 버튼 + APPLY, Leak 상태 표시 |
@@ -63,7 +63,8 @@
 | Water Tank | 상단 | 수위 / pH / 전도도 | `sensor:water_level`, `sensor:ph`, `sensor:conductivity` |
 | Pump Loop1 (P1·P2 직렬) | 중단 | 펌프 상태 (루프1) | `sensor:pump_status_1` |
 | Pump Loop2 (P3·P4 직렬) | 중단 | 펌프 상태 (루프2) | `sensor:pump_status_2` |
-| Flow | Pump ~ Manifold | 유량 | `sensor:flow_rate` |
+| Flow Loop1 | Pump ~ Manifold (루프1) | 유량 (루프1) | `sensor:flow_rate_1` |
+| Flow Loop2 | Pump ~ Manifold (루프2) | 유량 (루프2) | `sensor:flow_rate_2` |
 | Inlet Manifold | 중단 | 입수 온도 루프1·2 | `sensor:coolant_temp_inlet_1`, `sensor:coolant_temp_inlet_2` |
 | Outlet Manifold | 하단 | 출수 온도 루프1·2 | `sensor:coolant_temp_outlet_1`, `sensor:coolant_temp_outlet_2` |
 | Leak Sensor | 우하단 표시 | 누수 감지 | `sensor:leak` |
@@ -77,35 +78,35 @@
 ### 1-2. History Page
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  [Monitoring] [History]          ● OK          2024-01-01  12:00│  ← Top bar (동일)
-├──────────────────┬──────────────────────────────────────────────┤
-│                  │                                               │
-│  Time Range      │                                               │
-│  [ 5m ▾ ]       │                                               │
-│                  │                                               │
-│  Graph Form      │                                               │
-│  (●) Line Graph  │   (선택된 Graph Form에 맞게 렌더링)            │
-│  ( ) Table       │                                               │
-│                  │                                               │
-│  Metric          │                                               │
-│  [✓] temp_inlet  │                                               │
-│  [✓] temp_outlet │                                               │
-│  [ ] pressure    │                                               │
-│  [ ] flow_rate   │                                               │
-│  [ ] pump_status │                                               │
-│  [ ] fan_status  │                                               │
-│  [ ] ctrl_cmd    │                                               │
-│  [ ] comm_event  │                                               │
-│                  │                                               │
-└──────────────────┴──────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  [Monitoring] [History]  ● System: Normal  ● Link: Normal  2024-01-01 12:00          │  ← Top bar (동일)
+├──────────────────┬──────────────────────────────────────────────────────────────────┤
+│                  │                                                                  │
+│  Time Range      │                                                                  │
+│  [ 5m ▾ ]       │                                                                  │
+│                  │                                                                  │
+│  Graph Form      │                                                                  │
+│  (●) Line Graph  │   (선택된 Graph Form에 맞게 렌더링)                              │
+│  ( ) Table       │                                                                  │
+│                  │                                                                  │
+│  Metric          │                                                                  │
+│  [✓] temp_inlet  │                                                                  │
+│  [✓] temp_outlet │                                                                  │
+│  [ ] pressure    │                                                                  │
+│  [ ] flow_rate   │                                                                  │
+│  [ ] pump_status │                                                                  │
+│  [ ] fan_status  │                                                                  │
+│  [ ] ctrl_cmd    │                                                                  │
+│  [ ] comm_event  │                                                                  │
+│                  │                                                                  │
+└──────────────────┴──────────────────────────────────────────────────────────────────┘
 ```
 
 **패널 구성**
 
 | 패널 | 위치 | 내용 |
 |---|---|---|
-| Top bar | 상단 | Monitoring 페이지와 동일 — 탭 네비, 시스템 상태 배지, 현재 시각 |
+| Top bar | 상단 | Monitoring 페이지와 동일 — 탭 네비, System/Link 배지, 현재 시각 |
 | Sidebar | 좌측 | Time Range 드롭다운 + Graph Form 라디오 버튼 + Metric 체크박스 |
 
 > **Sidebar 드롭다운 동작**: 클릭 시 사이드바 위에 overlay(popup)로 표시. 레이아웃을 밀지 않음. PySide6 `QComboBox` 기본 popup 방식 사용.
