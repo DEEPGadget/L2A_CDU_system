@@ -24,7 +24,10 @@
 **BE (PySide6)**
 - MCG와 IPC 기반 통신 (제어 요청 전달)
 - Redis Pub/Sub 구독 (`sensor:*`, `comm:*` 현재값 — MCG가 SET 시 publish, UI가 수신)
+  - `comm:status` 수신 → Top bar **Link 배지** 즉시 갱신 (`Normal` / `Warning` / `Critical`)
 - Redis Keyspace Notifications 구독 (`alarm:*` SET/DEL 이벤트 — 알람 발생·해제 즉시 감지)
+  - 활성 알람 유무/등급 → Top bar **System 배지** 즉시 갱신 (`Normal` / `Warning` / `Critical`)
+  - Link `Warning` / `Critical` 시 System 배지 `-` 표시 (데이터 없음)
 - Prometheus DB 조회 (이력 데이터 소스 — 센서 이력 + 제어 명령 이력)
 
 ## WEB UI (Svelte + FastAPI)
@@ -60,7 +63,8 @@
 | `sensor:coolant_temp_inlet_2` | 냉각수 입수 온도 (루프 2) | Inlet Manifold | Modbus Data Parser |
 | `sensor:coolant_temp_outlet_1` | 냉각수 출수 온도 (루프 1) | Outlet Manifold | Modbus Data Parser |
 | `sensor:coolant_temp_outlet_2` | 냉각수 출수 온도 (루프 2) | Outlet Manifold | Modbus Data Parser |
-| `sensor:flow_rate` | 유량 | Pump ~ Manifold 구간 (예상) | Modbus Data Parser |
+| `sensor:flow_rate_1` | 유량 (루프 1) | Pump ~ Manifold 구간 (루프1) | Modbus Data Parser |
+| `sensor:flow_rate_2` | 유량 (루프 2) | Pump ~ Manifold 구간 (루프2) | Modbus Data Parser |
 | `sensor:water_level` | 수위 | Water Tank | Modbus Data Parser |
 | `sensor:ph` | pH | Water Tank | Modbus Data Parser |
 | `sensor:conductivity` | 전도도 | Water Tank | Modbus Data Parser |
