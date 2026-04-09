@@ -24,7 +24,7 @@
 **BE (PySide6)**
 - MCG와 IPC 기반 통신 (제어 요청 전달)
 - Redis Pub/Sub 구독 (`sensor:*`, `comm:*` 현재값 — MCG가 SET 시 publish, UI가 수신)
-  - `comm:status` 수신 → Top bar **Link 배지** 즉시 갱신 (`Normal` / `Warning` / `Critical`)
+  - `comm:status` 수신 → Top bar **Link 배지** 즉시 갱신 (`ok` / `timeout` / `disconnected` — `comm:status` 값 그대로 표시)
 - Redis Keyspace Notifications 구독 (`alarm:*` SET/DEL 이벤트 — 알람 발생·해제 즉시 감지)
   - 활성 알람 유무/등급 → Top bar **System 배지** 즉시 갱신 (`Normal` / `Warning` / `Critical`)
   - Link `Warning` / `Critical` 시 System 배지 `-` 표시 (데이터 없음)

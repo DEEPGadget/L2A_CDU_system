@@ -17,7 +17,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
-│  [Monitoring] [History]  ● System: Normal  ● Link: Normal  2024-01-01 12:00          │  ← Top bar
+│  [Monitoring] [History]  ● System: Normal  ● Link: ok  2024-01-01 12:00             │  ← Top bar
 ├──────────────────────────────────────────────────────────┬──────────────────────────┤
 │                                                          │                          │
 │   Cooling Health                                         │   Active Alarms          │
@@ -48,7 +48,7 @@
 
 | 패널 | 위치 | 내용 |
 |---|---|---|
-| Top bar | 상단 | 탭 네비 (`Monitoring` / `History`), **System 배지** (`Normal` / `Warning` / `Critical` / `-`) — 시스템 내부 상태(센서·알람), Link 통신 오류 시 `-` 표시, **Link 배지** (`Normal` / `Warning` / `Critical`) — Modbus 통신 상태, 현재 시각 |
+| Top bar | 상단 | 탭 네비 (`Monitoring` / `History`), **System 배지** (`Normal` / `Warning` / `Critical` / `-`) — 시스템 내부 상태(센서·알람), Link 통신 오류 시 `-` 표시, **Link 배지** (`ok` / `timeout` / `disconnected`) — `comm:status` 값 그대로 표시, 현재 시각 |
 | Cooling Health | 좌측 메인 | CDU 흐름 다이어그램 — Pub/Sub(`sensor:*`, `comm:*`) 수신 시 즉시 갱신, 부품 목록 아래 참고 |
 | Active Alarms | 우상단 | `alarm:*` Keyspace Notification(SET/DEL) 수신 → 즉시 갱신, 없으면 "No active alarms" |
 | Control | 우하단 | Pump1(Loop1) / Pump2(Loop2) / Fan1(Loop1) / Fan2(Loop2) 출력(%) 조절 버튼 + APPLY, Leak 상태 표시 |
@@ -79,7 +79,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
-│  [Monitoring] [History]  ● System: Normal  ● Link: Normal  2024-01-01 12:00          │  ← Top bar (동일)
+│  [Monitoring] [History]  ● System: Normal  ● Link: ok  2024-01-01 12:00             │  ← Top bar (동일)
 ├──────────────────┬──────────────────────────────────────────────────────────────────┤
 │                  │                                                                  │
 │  Time Range      │                                                                  │
