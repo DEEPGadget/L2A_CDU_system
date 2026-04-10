@@ -55,8 +55,6 @@
 
 **Redis DB**
 
-> **냉각수 흐름**: Water Tank → [P1·P2 → Server1] / [P3·P4 → Server2] → Inlet Manifold → Server (루프 2개) → Outlet Manifold → Radiator → Water Tank
-
 | Key | 설명 | 위치 | 설정 주체 |
 |---|---|---|---|
 | `sensor:coolant_temp_inlet_1` | 냉각수 입수 온도 (루프 1) | Inlet Manifold | Modbus Data Parser |
@@ -73,10 +71,10 @@
 | `sensor:ambient_temp` | 외기 온도 | 시스템 부착 (위치 미확정) | RPi Ambient Sensor Reader (I2C/GPIO 직접 수집 — Modbus 미경유) |
 | `sensor:ambient_humidity` | 외기 습도 | 시스템 부착 (위치 미확정) | RPi Ambient Sensor Reader (I2C/GPIO 직접 수집 — Modbus 미경유) |
 | `sensor:pressure` | 유압 (부착 여부 미확정) | — | Modbus Data Parser |
-| `sensor:pump_status_1` | 펌프 상태 (루프 1 — P1·P2 직렬) | — | Modbus Data Parser |
-| `sensor:pump_status_2` | 펌프 상태 (루프 2 — P3·P4 직렬) | — | Modbus Data Parser |
-| `sensor:fan_status_1` | 팬 1 상태 (루프 1) | — | Modbus Data Parser |
-| `sensor:fan_status_2` | 팬 2 상태 (루프 2) | — | Modbus Data Parser |
+| `sensor:pump_pwm_duty_1` | 펌프 PWM duty (루프 1 — P1·P2 직렬, 0–100 %) | — | Modbus Data Parser |
+| `sensor:pump_pwm_duty_2` | 펌프 PWM duty (루프 2 — P3·P4 직렬, 0–100 %) | — | Modbus Data Parser |
+| `sensor:fan_pwm_duty_1` | 팬 1 PWM duty (루프 1, 0–100 %) | — | Modbus Data Parser |
+| `sensor:fan_pwm_duty_2` | 팬 2 PWM duty (루프 2, 0–100 %) | — | Modbus Data Parser |
 | `alarm:coolant_temp_warning` | 수온 경고 (warning) | — | Alarm / Event Manager |
 | `alarm:coolant_temp_critical` | 수온 위험 (critical) | — | Alarm / Event Manager |
 | `alarm:leak_detected` | 누수 감지 | — | Alarm / Event Manager |
