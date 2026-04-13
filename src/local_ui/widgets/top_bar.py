@@ -1,7 +1,7 @@
 """Top bar widget.
 
 Layout (left → right):
-  [Monitoring] [History]          [System badge]  [Link badge]  [HH:MM:SS]
+  [Monitoring] [History]    [IP]  [System badge]  [Link badge]  [HH:MM:SS]
 
 System badge logic:
   comm disconnected → "-"   (grey)
@@ -11,9 +11,19 @@ System badge logic:
 
 Link badge:
   Displays comm:status value directly: ok | timeout | disconnected
+
+IP display:
+  Ethernet (eth*, en*) takes priority over wireless (wlan*, wl*).
+  Refreshed every 30 seconds. Shows "--" if no interface is up.
 """
 
 from __future__ import annotations
+
+import datetime
+import fcntl
+import os
+import socket
+import struct
 
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import (
@@ -24,7 +34,38 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from PySide6.QtGui import QFont
-import datetime
+
+_SIOCGIFADDR = 0x8915
+_IP_REFRESH_INTERVAL_MS = 30_000
+
+
+def _iface_ip(iface: str) -> str | None:
+    """Return IPv4 address for a network interface, or None if unavailable."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            raw = fcntl.ioctl(
+                s.fileno(), _SIOCGIFADDR,
+                struct.pack("256s", iface[:15].encode())
+            )
+            return socket.inet_ntoa(raw[20:24])
+    except OSError:
+        return None
+
+
+def get_display_ip() -> str:
+    """Return the best available IP: ethernet first, then wireless."""
+    try:
+        ifaces = sorted(os.listdir("/sys/class/net/"))
+    except OSError:
+        return "--"
+
+    for prefix_group in (("eth", "en"), ("wlan", "wl")):
+        for iface in ifaces:
+            if any(iface.startswith(p) for p in prefix_group):
+                ip = _iface_ip(iface)
+                if ip and ip != "0.0.0.0":
+                    return ip
+    return "--"
 
 
 _SYSTEM_BADGE_STYLES: dict[str, str] = {
@@ -89,12 +130,21 @@ class TopBarWidget(QWidget):
         self._link_badge.setFont(badge_font)
         self._link_badge.setAlignment(Qt.AlignCenter)
 
+        info_font = QFont()
+        info_font.setPointSize(12)
+
+        self._ip_label = QLabel("--")
+        self._ip_label.setFont(info_font)
+        self._ip_label.setAlignment(Qt.AlignCenter)
+        self._ip_label.setStyleSheet("color:#bdc3c7;")
+
         self._clock_label = QLabel()
         clock_font = QFont()
         clock_font.setPointSize(14)
         self._clock_label.setFont(clock_font)
         self._clock_label.setAlignment(Qt.AlignCenter)
 
+        layout.addWidget(self._ip_label)
         layout.addWidget(self._system_badge)
         layout.addWidget(self._link_badge)
         layout.addWidget(self._clock_label)
@@ -102,6 +152,7 @@ class TopBarWidget(QWidget):
         self._switch_tab(0)
         self._refresh_system_badge()
         self._refresh_link_badge("ok")
+        self._refresh_ip()
 
     # ------------------------------------------------------------------
     # Tab switching
@@ -120,14 +171,21 @@ class TopBarWidget(QWidget):
 
     def _start_clock(self) -> None:
         self._tick()
-        timer = QTimer(self)
-        timer.timeout.connect(self._tick)
-        timer.start(1000)
+        clock_timer = QTimer(self)
+        clock_timer.timeout.connect(self._tick)
+        clock_timer.start(1000)
+
+        ip_timer = QTimer(self)
+        ip_timer.timeout.connect(self._refresh_ip)
+        ip_timer.start(_IP_REFRESH_INTERVAL_MS)
 
     def _tick(self) -> None:
         self._clock_label.setText(
             datetime.datetime.now().strftime("%H:%M:%S")
         )
+
+    def _refresh_ip(self) -> None:
+        self._ip_label.setText(get_display_ip())
 
     # ------------------------------------------------------------------
     # Badge update (called by main window via signals)

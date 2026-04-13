@@ -34,7 +34,7 @@
 
 | 구성 요소 | 역할 |
 |---|---|
-| Raspberry Pi | MCG, UI, DB를 탑재하는 하드웨어 플랫폼 (IP: 10.100.1.10). 온/습도 센서를 I2C/GPIO로 직접 연결하여 읽음 (예외적 직접 수집 — Modbus 미경유) |
+| Raspberry Pi | MCG, UI, DB를 탑재하는 하드웨어 플랫폼 (IP: DHCP 할당 — Local UI Top bar에서 확인). 온/습도 센서를 I2C/GPIO로 직접 연결하여 읽음 (예외적 직접 수집 — Modbus 미경유) |
 | Web UI (Svelte + FastAPI) | WEB 기반 유저 인터페이스. http 기반으로 파이썬 기반의 제어모듈(MCG - modbus control gateway)과 통신. 모니터링 및 제어 화면, 과거 기록 확인 화면 |
 | Touch Display UI (PySide6) | 로컬 기반 유저 인터페이스. IPC 기반으로 파이썬 기반의 제어모듈(MCG - modbus control gateway)과 통신. 모니터링 및 제어, 과거 기록 확인 화면 |
 | Redis DB | 현재값 전용 DB (`sensor:*`, `comm:*`, `alarm:*`) — 이력 저장 없음 |
@@ -164,4 +164,4 @@
 - 화면 절전 및 전원 관리 비활성화
 - 마우스 커서 숨김
 
-> WEB UI는 원격 브라우저 접속용 (http://10.100.1.10:3000) — 키오스크 모드 해당 없음
+> WEB UI는 원격 브라우저 접속용 (http://\<RPi-IP\>:3000) — 키오스크 모드 해당 없음

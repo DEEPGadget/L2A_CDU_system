@@ -49,4 +49,4 @@ npm run dev        # 개발 서버 (http://localhost:3000)
 npm run build      # 프로덕션 빌드
 ```
 
-접속: `http://10.100.1.10:3000` (외부 브라우저)
+접속: `http://<RPi-IP>:3000` (외부 브라우저 — IP는 Local UI Top bar에서 확인)
