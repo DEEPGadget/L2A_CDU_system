@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 680" font-family="monospace" font-size="11">
+
+  <!-- ================================================================
+       CDU Cooling Health Diagram
+       Placeholders: {KEY} are replaced at runtime by cooling_health.py
+       Flow direction: Reservoir → Pump → Flow → Inlet Manifold
+                       → Server 1/2 → Outlet Manifold → Fan → Radiator
+                       → back to Reservoir
+       ================================================================ -->
+
+  <!-- Background -->
+  <rect width="560" height="680" fill="#1a1a2e" rx="8"/>
+
+  <!-- Title -->
+  <text x="280" y="28" text-anchor="middle" fill="#ecf0f1" font-size="15" font-weight="bold">Cooling Health</text>
+
+  <!-- ── RESERVOIR ─────────────────────────────────────────── -->
+  <rect x="190" y="40" width="180" height="60" rx="6" fill="#2c3e50" stroke="#3498db" stroke-width="1.5"/>
+  <text x="280" y="62" text-anchor="middle" fill="#bdc3c7" font-size="11" font-weight="bold">Reservoir</text>
+  <text x="210" y="78" fill="#ecf0f1" font-size="10">Level: <tspan fill="#2ecc71">{WATER_LEVEL}</tspan></text>
+  <text x="210" y="91" fill="#ecf0f1" font-size="10">pH: <tspan fill="#2ecc71">{PH}</tspan>   Cond: <tspan fill="#2ecc71">{CONDUCTIVITY}</tspan> μS</text>
+
+  <!-- ↓ pipe Reservoir → Pump -->
+  <line x1="280" y1="100" x2="280" y2="128" stroke="#3498db" stroke-width="3"/>
+
+  <!-- ── PUMP ROW ───────────────────────────────────────────── -->
+  <!-- Pump Loop1 -->
+  <rect x="80"  y="128" width="140" height="50" rx="6" fill="#2c3e50" stroke="#9b59b6" stroke-width="1.5"/>
+  <text x="150" y="148" text-anchor="middle" fill="#bdc3c7" font-size="11" font-weight="bold">Pump Loop 1</text>
+  <text x="150" y="164" text-anchor="middle" fill="#ecf0f1" font-size="11">PWM: <tspan fill="#e67e22">{PUMP_DUTY_1}</tspan>%</text>
+
+  <!-- Pump Loop2 -->
+  <rect x="340" y="128" width="140" height="50" rx="6" fill="#2c3e50" stroke="#9b59b6" stroke-width="1.5"/>
+  <text x="410" y="148" text-anchor="middle" fill="#bdc3c7" font-size="11" font-weight="bold">Pump Loop 2</text>
+  <text x="410" y="164" text-anchor="middle" fill="#ecf0f1" font-size="11">PWM: <tspan fill="#e67e22">{PUMP_DUTY_2}</tspan>%</text>
+
+  <!-- Reservoir → Pump splits -->
+  <line x1="280" y1="128" x2="150" y2="128" stroke="#3498db" stroke-width="3"/>
+  <line x1="280" y1="128" x2="410" y2="128" stroke="#3498db" stroke-width="3"/>
+
+  <!-- ↓ pipe Pump → Flow -->
+  <line x1="150" y1="178" x2="150" y2="205" stroke="#3498db" stroke-width="3"/>
+  <line x1="410" y1="178" x2="410" y2="205" stroke="#3498db" stroke-width="3"/>
+
+  <!-- ── FLOW SENSOR ROW ────────────────────────────────────── -->
+  <!-- Flow Loop1 -->
+  <rect x="80"  y="205" width="140" height="40" rx="6" fill="#1e3a5f" stroke="#3498db" stroke-width="1"/>
+  <text x="150" y="222" text-anchor="middle" fill="#bdc3c7" font-size="10">Flow Loop 1</text>
+  <text x="150" y="237" text-anchor="middle" fill="#ecf0f1" font-size="11"><tspan fill="#3498db">{FLOW_1}</tspan> L/min</text>
+
+  <!-- Flow Loop2 -->
+  <rect x="340" y="205" width="140" height="40" rx="6" fill="#1e3a5f" stroke="#3498db" stroke-width="1"/>
+  <text x="410" y="222" text-anchor="middle" fill="#bdc3c7" font-size="10">Flow Loop 2</text>
+  <text x="410" y="237" text-anchor="middle" fill="#ecf0f1" font-size="11"><tspan fill="#3498db">{FLOW_2}</tspan> L/min</text>
+
+  <!-- ↓ pipe Flow → Inlet Manifold -->
+  <line x1="150" y1="245" x2="150" y2="268" stroke="#3498db" stroke-width="3"/>
+  <line x1="410" y1="245" x2="410" y2="268" stroke="#3498db" stroke-width="3"/>
+
+  <!-- ── INLET MANIFOLD ────────────────────────────────────── -->
+  <rect x="80" y="268" width="400" height="50" rx="6" fill="#2c3e50" stroke="#3498db" stroke-width="1.5"/>
+  <text x="280" y="288" text-anchor="middle" fill="#bdc3c7" font-size="11" font-weight="bold">Coolant Inlet Manifold</text>
+  <text x="160" y="307" text-anchor="middle" fill="#ecf0f1" font-size="11">Loop1: <tspan fill="#e74c3c">{INLET_1}</tspan>°C</text>
+  <text x="400" y="307" text-anchor="middle" fill="#ecf0f1" font-size="11">Loop2: <tspan fill="#e74c3c">{INLET_2}</tspan>°C</text>
+
+  <!-- ↓ pipe Inlet → Servers -->
+  <line x1="150" y1="318" x2="150" y2="345" stroke="#e74c3c" stroke-width="3"/>
+  <line x1="410" y1="318" x2="410" y2="345" stroke="#e74c3c" stroke-width="3"/>
+
+  <!-- ── SERVER ROW ─────────────────────────────────────────── -->
+  <rect x="60"  y="345" width="160" height="50" rx="6" fill="#34495e" stroke="#e74c3c" stroke-width="1.5"/>
+  <text x="140" y="366" text-anchor="middle" fill="#bdc3c7" font-size="12" font-weight="bold">Server 1</text>
+  <text x="140" y="384" text-anchor="middle" fill="#7f8c8d" font-size="10">(heat source)</text>
+
+  <rect x="340" y="345" width="160" height="50" rx="6" fill="#34495e" stroke="#e74c3c" stroke-width="1.5"/>
+  <text x="420" y="366" text-anchor="middle" fill="#bdc3c7" font-size="12" font-weight="bold">Server 2</text>
+  <text x="420" y="384" text-anchor="middle" fill="#7f8c8d" font-size="10">(heat source)</text>
+
+  <!-- ↓ pipe Servers → Outlet Manifold -->
+  <line x1="150" y1="395" x2="150" y2="418" stroke="#e74c3c" stroke-width="3"/>
+  <line x1="410" y1="395" x2="410" y2="418" stroke="#e74c3c" stroke-width="3"/>
+
+  <!-- ── OUTLET MANIFOLD ───────────────────────────────────── -->
+  <rect x="80" y="418" width="400" height="50" rx="6" fill="#2c3e50" stroke="#e74c3c" stroke-width="1.5"/>
+  <text x="280" y="438" text-anchor="middle" fill="#bdc3c7" font-size="11" font-weight="bold">Coolant Outlet Manifold</text>
+  <text x="160" y="457" text-anchor="middle" fill="#ecf0f1" font-size="11">Loop1: <tspan fill="#e74c3c">{OUTLET_1}</tspan>°C</text>
+  <text x="400" y="457" text-anchor="middle" fill="#ecf0f1" font-size="11">Loop2: <tspan fill="#e74c3c">{OUTLET_2}</tspan>°C</text>
+
+  <!-- ↓ pipe Outlet → Fan -->
+  <line x1="150" y1="468" x2="150" y2="495" stroke="#e74c3c" stroke-width="3"/>
+  <line x1="410" y1="468" x2="410" y2="495" stroke="#e74c3c" stroke-width="3"/>
+
+  <!-- ── FAN ROW ────────────────────────────────────────────── -->
+  <rect x="80"  y="495" width="140" height="45" rx="6" fill="#2c3e50" stroke="#1abc9c" stroke-width="1.5"/>
+  <text x="150" y="514" text-anchor="middle" fill="#bdc3c7" font-size="11" font-weight="bold">Fan Loop 1</text>
+  <text x="150" y="530" text-anchor="middle" fill="#ecf0f1" font-size="11">PWM: <tspan fill="#1abc9c">{FAN_DUTY_1}</tspan>%</text>
+
+  <rect x="340" y="495" width="140" height="45" rx="6" fill="#2c3e50" stroke="#1abc9c" stroke-width="1.5"/>
+  <text x="410" y="514" text-anchor="middle" fill="#bdc3c7" font-size="11" font-weight="bold">Fan Loop 2</text>
+  <text x="410" y="530" text-anchor="middle" fill="#ecf0f1" font-size="11">PWM: <tspan fill="#1abc9c">{FAN_DUTY_2}</tspan>%</text>
+
+  <!-- ↓ pipe Fan → Radiator -->
+  <line x1="150" y1="540" x2="150" y2="563" stroke="#1abc9c" stroke-width="3"/>
+  <line x1="410" y1="540" x2="410" y2="563" stroke="#1abc9c" stroke-width="3"/>
+
+  <!-- ── RADIATOR ───────────────────────────────────────────── -->
+  <rect x="80" y="563" width="400" height="40" rx="6" fill="#2c3e50" stroke="#1abc9c" stroke-width="1.5"/>
+  <text x="280" y="588" text-anchor="middle" fill="#bdc3c7" font-size="12" font-weight="bold">Radiator</text>
+
+  <!-- ── BOTTOM INFO ROW ───────────────────────────────────── -->
+  <rect x="20" y="615" width="520" height="55" rx="6" fill="#0d1b2a" stroke="#2c3e50" stroke-width="1"/>
+
+  <text x="40"  y="633" fill="#7f8c8d" font-size="10">ΔT Loop1</text>
+  <text x="40"  y="647" fill="#e67e22" font-size="12" font-weight="bold">{DELTA_1}°C</text>
+
+  <text x="130" y="633" fill="#7f8c8d" font-size="10">ΔT Loop2</text>
+  <text x="130" y="647" fill="#e67e22" font-size="12" font-weight="bold">{DELTA_2}°C</text>
+
+  <text x="225" y="633" fill="#7f8c8d" font-size="10">Leak</text>
+  <text x="225" y="647" fill="#2ecc71" font-size="12" font-weight="bold">{LEAK}</text>
+
+  <text x="310" y="633" fill="#7f8c8d" font-size="10">Ambient</text>
+  <text x="310" y="647" fill="#ecf0f1" font-size="12">{AMBIENT_TEMP}°C / {AMBIENT_HUM}%</text>
+
+  <text x="450" y="633" fill="#7f8c8d" font-size="10">Pressure</text>
+  <text x="450" y="647" fill="#ecf0f1" font-size="12">{PRESSURE} bar</text>
+
+</svg>
