@@ -89,14 +89,14 @@
 
 | Metric | 데이터 소스 |
 |---|---|
-| `coolant_temp_inlet` | Prometheus Exporter |
-| `coolant_temp_outlet` | Prometheus Exporter |
-| `pressure` | Prometheus Exporter |
-| `flow_rate` | Prometheus Exporter |
-| `pump_pwm_duty` | Prometheus Exporter |
-| `fan_pwm_duty` | Prometheus Exporter |
-| `control_cmd` (pump / fan) | Prometheus Pushgateway |
-| `comm_event` | Prometheus Pushgateway |
+| `coolant_temp_inlet` | Prometheus |
+| `coolant_temp_outlet` | Prometheus |
+| `pressure` | Prometheus |
+| `flow_rate` | Prometheus |
+| `pump_pwm_duty` | Prometheus |
+| `fan_pwm_duty` | Prometheus |
+| `control_cmd` (pump / fan) | Prometheus |
+| `comm_event` | Prometheus |
 
 **시간 범위별 Prometheus 쿼리 step 기준** _(구현 시 확정)_
 
