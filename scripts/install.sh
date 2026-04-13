@@ -46,6 +46,13 @@ print(d.get('mode', 'fake'))
 do_install() {
     require_root
 
+    # System dependencies required by PySide6 xcb platform plugin (Qt 6.5+)
+    log "Installing system dependencies..."
+    apt-get install -y --no-install-recommends \
+        libxcb-cursor0 \
+        unclutter \
+        2>/dev/null || warn "apt-get failed — install libxcb-cursor0 and unclutter manually if needed"
+
     MODE=$(read_mode)
     log "Config mode: $MODE"
 

@@ -122,7 +122,11 @@ def main() -> None:
     window = MainWindow(subscriber)
 
     if _IS_RPI:
-        window.showFullScreen()
+        from PySide6.QtCore import Qt
+        screen_geo = app.primaryScreen().geometry()
+        window.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        window.setGeometry(screen_geo)
+        window.show()
     else:
         window.resize(1280, 720)
         window.show()
