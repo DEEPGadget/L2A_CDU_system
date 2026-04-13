@@ -3,7 +3,7 @@
 > **Layout policy**: Local UI (PySide6) and Web UI (Svelte) use **separate layouts**.
 > They share the same data sources and pages (real-time monitoring, history), but layout, information density,
 > and interaction model are designed independently for each environment.
-> See [UI_Design.md](UI_Design.md) for detailed wireframes.
+> See [UI_Design.md](UI_Design.md) for detailed layout and component specifications.
 
 ## Touch Display Hardware
 

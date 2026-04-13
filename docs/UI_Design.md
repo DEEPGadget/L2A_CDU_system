@@ -8,7 +8,7 @@
 
 ## 1. Local UI (PySide6)
 
-**Environment**: Raspberry Pi Touch Display 2 — 800×480, touch interaction
+**Environment**: Raspberry Pi Touch Display 2 — 1280×720 (landscape), touch interaction
 **Design principle**: Low information density, large touch targets, critical values only at a glance
 
 ---
@@ -33,9 +33,9 @@
 | Fan1 (Loop1) | 〃 |
 | Fan2 (Loop2) | 〃 |
 | Leak | 상태 표시 (`None` / `Detected`) |
-| **Apply** | 변경된 값을 PCG로 일괄 전송 |
+| **Apply** | 변경된 값을 MCG로 일괄 전송 |
 
-> **조작 흐름**: 값 터치 → 숫자 키패드 팝업 (0–100, Range validation) → 입력 + Enter → 팝업 닫힘 → 필요 시 다른 장비도 변경 → **Apply** 터치 시 PCG로 전송.
+> **조작 흐름**: 값 터치 → 숫자 키패드 팝업 (0–100, Range validation) → 입력 + Enter → 팝업 닫힘 → 필요 시 다른 장비도 변경 → **Apply** 터치 시 MCG로 전송.
 > PySide6 구현: `QDialog` + `QGridLayout` 버튼 키패드.
 
 **Cooling Health 구성 요소**
@@ -57,7 +57,7 @@
 | ↓ (합류) | Coolant Outlet Manifold | 출수 온도 루프1·2 | `sensor:coolant_temp_outlet_1`, `sensor:coolant_temp_outlet_2` |
 | ↓ | Fan Loop1 / Fan Loop2 | PWM duty (0–100 %) | `sensor:fan_pwm_duty_1`, `sensor:fan_pwm_duty_2` |
 | 최하단 | Radiator | (표시만) | — |
-| 다이어그램 하단 텍스트 | Coolant ΔT1 / ΔT2 | inlet − outlet 계산값 | (계산) |
+| 다이어그램 하단 텍스트 | Coolant ΔT1 / ΔT2 | outlet − inlet 계산값 | (계산) |
 | 다이어그램 하단 텍스트 | Leak Detection | 누수 감지 | `sensor:leak` |
 | 다이어그램 하단 텍스트 | Ambient Temp / Humidity | 외기 온·습도 — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
 | 다이어그램 하단 텍스트 | Pressure | 유압 (부착 여부 미확정) | `sensor:pressure` |
