@@ -22,27 +22,45 @@
 | Top bar | 상단 전체 | 탭 네비 (`Monitoring` / `History`), **System 배지** (`Normal` / `Warning` / `Critical` / `-`) — 시스템 내부 상태(센서·알람), Link 통신 오류 시 `-` 표시, **Link 배지** (`ok` / `timeout` / `disconnected`) — `comm:status` 값 그대로 표시, 현재 시각 |
 | Cooling Health | 좌측 메인 (약 70%) | CDU 냉각수 흐름 다이어그램 — Pub/Sub(`sensor:*`, `comm:*`) 수신 시 즉시 갱신, 부품 목록 아래 참고 |
 | Active Alarms | 우상단 | `alarm:*` Keyspace Notification(SET/DEL) 수신 → 즉시 갱신, 없으면 "No active alarms" (스크롤 가능) |
-| Control | 우하단 | Pump1(Loop1) / Pump2(Loop2) / Fan1(Loop1) / Fan2(Loop2) PWM duty (0–100%) 조절 버튼 + APPLY, Leak 상태 표시 |
+| Control | 우하단 | Pump/Fan PWM duty 설정 + Apply, Leak 상태 — 상세 아래 참고 |
+
+**Control 패널 상세**
+
+| 항목 | 표시 |
+|---|---|
+| Pump1 (Loop1) | 현재 PWM duty `XX%` — 터치 시 숫자 키패드 팝업 |
+| Pump2 (Loop2) | 〃 |
+| Fan1 (Loop1) | 〃 |
+| Fan2 (Loop2) | 〃 |
+| Leak | 상태 표시 (`None` / `Detected`) |
+| **Apply** | 변경된 값을 PCG로 일괄 전송 |
+
+> **조작 흐름**: 값 터치 → 숫자 키패드 팝업 (0–100, Range validation) → 입력 + Enter → 팝업 닫힘 → 필요 시 다른 장비도 변경 → **Apply** 터치 시 PCG로 전송.
+> PySide6 구현: `QDialog` + `QGridLayout` 버튼 키패드.
 
 **Cooling Health 구성 요소**
 
-> **냉각수 흐름**: Water Tank → [P1·P2 → Server1] / [P3·P4 → Server2] → Inlet Manifold → Server (루프 2개) → Outlet Manifold → Radiator → Water Tank
+> **렌더링 방식**: SVG 템플릿 (`cooling_health.svg`) + `QSvgWidget`. 센서값 수신 시 플레이스홀더를 치환하여 리로드.
+> **참고 이미지**: `assets/UI example/dg5r dashboard.png` (Cooling Health 패널), `assets/UI example/l2a cdu structure 1~3.png` (CDU 실물 구조)
 
-| 구성 요소 | 위치 | 표시 데이터 | Redis key |
+> **냉각수 흐름**: Reservoir → Pump → (Flow Sensor) → Coolant Inlet Manifold → Server 1 / Server 2 → Coolant Outlet Manifold → Fan → Radiator → Reservoir (순환)
+
+**다이어그램 배치 (위→아래)**
+
+| 다이어그램 위치 | 구성 요소 | 표시 데이터 | Redis key |
 |---|---|---|---|
-| Radiator | 상단 | — | — |
-| Fan Loop1 | 상단 | 팬 PWM duty (루프1) | `sensor:fan_pwm_duty_1` |
-| Fan Loop2 | 상단 | 팬 PWM duty (루프2) | `sensor:fan_pwm_duty_2` |
-| Water Tank | 상단 | 수위 / pH / 전도도 | `sensor:water_level_high`, `sensor:water_level_low`, `sensor:ph`, `sensor:conductivity` |
-| Pump Loop1 (P1·P2 직렬) | 중단 | 펌프 PWM duty (루프1) | `sensor:pump_pwm_duty_1` |
-| Pump Loop2 (P3·P4 직렬) | 중단 | 펌프 PWM duty (루프2) | `sensor:pump_pwm_duty_2` |
-| Flow Loop1 | Pump ~ Manifold (루프1) | 유량 (루프1) | `sensor:flow_rate_1` |
-| Flow Loop2 | Pump ~ Manifold (루프2) | 유량 (루프2) | `sensor:flow_rate_2` |
-| Inlet Manifold | 중단 | 입수 온도 루프1·2 | `sensor:coolant_temp_inlet_1`, `sensor:coolant_temp_inlet_2` |
-| Outlet Manifold | 하단 | 출수 온도 루프1·2 | `sensor:coolant_temp_outlet_1`, `sensor:coolant_temp_outlet_2` |
-| Leak Sensor | 우하단 표시 | 누수 감지 | `sensor:leak` |
-| Pressure | — | 유압 (부착 여부 미확정) | `sensor:pressure` |
-| Ambient | — | 외기 온/습도 (부착 위치 미확정) — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
+| 최상단 | Reservoir (Water Tank) | Coolant Level, pH, 전도도 | `sensor:water_level_high`, `sensor:water_level_low`, `sensor:ph`, `sensor:conductivity` |
+| ↓ | Pump Loop1 (P1·P2 직렬) / Pump Loop2 (P3·P4 직렬) | PWM duty (0–100 %) | `sensor:pump_pwm_duty_1`, `sensor:pump_pwm_duty_2` |
+| ↓ (배관 중간) | Flow Loop1 / Flow Loop2 | 유량 | `sensor:flow_rate_1`, `sensor:flow_rate_2` |
+| ↓ | Coolant Inlet Manifold | 입수 온도 루프1·2 | `sensor:coolant_temp_inlet_1`, `sensor:coolant_temp_inlet_2` |
+| ↓ (좌·우 분기) | Server 1 / Server 2 | (열원 표시, 센서 없음) | — |
+| ↓ (합류) | Coolant Outlet Manifold | 출수 온도 루프1·2 | `sensor:coolant_temp_outlet_1`, `sensor:coolant_temp_outlet_2` |
+| ↓ | Fan Loop1 / Fan Loop2 | PWM duty (0–100 %) | `sensor:fan_pwm_duty_1`, `sensor:fan_pwm_duty_2` |
+| 최하단 | Radiator | (표시만) | — |
+| 다이어그램 하단 텍스트 | Coolant ΔT1 / ΔT2 | inlet − outlet 계산값 | (계산) |
+| 다이어그램 하단 텍스트 | Leak Detection | 누수 감지 | `sensor:leak` |
+| 다이어그램 하단 텍스트 | Ambient Temp / Humidity | 외기 온·습도 — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
+| 다이어그램 하단 텍스트 | Pressure | 유압 (부착 여부 미확정) | `sensor:pressure` |
 
 **페이지 전환**: Top bar 탭 (`Monitoring` / `History`) 선택
 
