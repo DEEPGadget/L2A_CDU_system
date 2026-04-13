@@ -5,6 +5,21 @@
 > and interaction model are designed independently for each environment.
 > See [UI_Design.md](UI_Design.md) for detailed layout and component specifications.
 
+## System Access (Admin)
+
+키오스크 모드에서 관리자가 시스템에 접근하는 방법.
+
+| 방법 | 조건 | 명령 |
+|---|---|---|
+| **TTY 전환** | 물리 키보드 연결 시 | `Ctrl+Alt+F2` → tty2 터미널 로그인, `Ctrl+Alt+F1` 로 UI 복귀 |
+| **SSH** | 네트워크 연결 시 | `ssh gadgetini@<IP>` — Top bar에 IP 표시됨 |
+
+> TTY 전환 설명: PySide6 UI는 X11(`tty1`)에서 실행 중. `Ctrl+Alt+F2`로 독립된 `tty2` 터미널로 전환되며 UI는 영향받지 않음. 작업 후 `Ctrl+Alt+F1`(또는 `F7`)로 복귀.
+
+> IP 확인: Top bar 우측에 현재 IP가 항상 표시됨 (ethernet 우선, fallback → wlan).
+
+---
+
 ## Touch Display Hardware
 
 | 항목 | 스펙 |
@@ -38,7 +53,7 @@
   - `/api/sensor/comm` — 통신 상태 현재값 (별도 fetch)
   - `/api/sensor/alarms` — 활성 알람 목록
 - 기록 확인 페이지: Prometheus에서 센서 이력 및 제어 명령 이력 조회 및 표시
-- 접속: http://10.100.1.10:3000 (User Laptop 등 외부 브라우저)
+- 접속: http://<RPi-IP>:3000 (User Laptop 등 외부 브라우저 — IP는 Local UI Top bar에서 확인)
 
 **BE (FastAPI)**
 - MCG와 REST API 기반 통신 (제어 요청 전달)
