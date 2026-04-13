@@ -10,7 +10,7 @@
 | 콘솔 자동 로그인 (autologin.conf) | 1.2 | ✅ 완료 | |
 | 화면 절전 비활성화 (xset) | 1.3 | ✅ 완료 | .xinitrc에 포함 |
 | unclutter 설치 | 1.4 | ❌ 미완 | apt install 필요. 설치 후 .xinitrc 주석 해제 |
-| .bash_profile (startx 자동 실행) | 2.2 | ❌ 미완 | 파일 없음 |
+| .bash_profile (startx 자동 실행) | 2.2 | ✅ 완료 | `install.sh`가 없을 경우 자동 생성 |
 | .xinitrc (앱 재시작 루프) | 2.3 | ✅ 완료 | unclutter 줄만 주석 처리 — 설치 후 해제 필요 |
 | Plymouth 테마 l2a-cdu 설치 | 3.3 | ✅ 완료 | logo.png, script, theme 파일 모두 존재 |
 | Plymouth 테마 적용 (initramfs) | 3.4 | ✅ 완료 | |
@@ -20,18 +20,17 @@
 | **백엔드 패키지 설치** | — | ✅ 완료 | redis 7.4.0, pymodbus 3.12.1, fastapi 0.135.3, uvicorn 0.42.0, prometheus-client 0.24.1, httpx 0.28.1, requests 2.33.1 |
 | redis-server 서비스 | 4.3/4.5 | ✅ 완료 | enabled |
 | prometheus 서비스 | 4.3/4.5 | ✅ 완료 | enabled |
-| pushgateway 서비스 | 4.4/4.5 | ❌ 미완 | 서비스 파일 없음 |
-| MCG 서비스 | 4.1/4.5 | ❌ 미완 | 서비스 파일 없음 |
+| pushgateway 서비스 | 4.4/4.5 | ✅ 완료 | `scripts/services/pushgateway.service` 작성 완료, `install.sh`로 배포 |
+| cdu-fake-simulator 서비스 | — | ✅ 완료 | `scripts/services/cdu-fake-simulator.service`, fake 모드 전용 |
+| MCG 서비스 | 4.1/4.5 | ❌ 미완 | 서비스 파일 없음 (real 모드 구현 시 추가 예정) |
 | FastAPI 서비스 | 4.2/4.5 | ❌ 미완 | 서비스 파일 없음 |
 
 **남은 작업 순서:**
 1. `sudo systemctl disable lightdm` (1.1)
 2. `sudo apt install unclutter` (1.4)
-3. `~/.bash_profile` 생성 (2.2)
-4. `~/.xinitrc` 생성 (2.3)
-5. `/etc/systemd/system/mcg.service` 생성 + enable (4.1)
-6. `/etc/systemd/system/fastapi.service` 생성 + enable (4.2) — WEB UI 사용 시
-7. `/etc/systemd/system/pushgateway.service` 생성 + enable (4.4) — pushgateway 바이너리 있을 경우
+3. `sudo bash scripts/install.sh` — 서비스 배포 + `.bash_profile` + `.xinitrc` 자동 생성
+4. `/etc/systemd/system/mcg.service` 생성 + enable (4.1) — real 모드 구현 시
+5. `/etc/systemd/system/fastapi.service` 생성 + enable (4.2) — WEB UI 사용 시
 
 ---
 

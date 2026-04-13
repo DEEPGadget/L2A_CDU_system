@@ -1,0 +1,19 @@
+[Unit]
+Description=L2A CDU Fake Data Simulator
+After=redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=gadgetini
+WorkingDirectory=/home/gadgetini/L2A_CDU_system
+ExecStart=/home/gadgetini/venv/bin/python src/fake_data/simulator.py \
+    --scenario normal \
+    --interval 2
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
