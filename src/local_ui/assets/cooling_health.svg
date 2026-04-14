@@ -161,7 +161,7 @@
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Inlet</text>
   <text x="610" y="189" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Manifold</text>
-  <text x="610" y="229" text-anchor="middle"
+  <text x="610" y="240" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="{INLET_1_C}">{INLET_1}<tspan dx="8" font-size="18">°C</tspan></text>
 
   <!-- ── Inlet Manifold L2 ── -->
@@ -169,7 +169,7 @@
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Inlet</text>
   <text x="610" y="369" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Manifold</text>
-  <text x="610" y="409" text-anchor="middle"
+  <text x="610" y="420" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="{INLET_2_C}">{INLET_2}<tspan dx="8" font-size="18">°C</tspan></text>
 
   <!-- ── Server 1 (cx=790, box y=30-85) ── -->
@@ -185,7 +185,7 @@
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Outlet</text>
   <text x="970" y="189" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Manifold</text>
-  <text x="970" y="229" text-anchor="middle"
+  <text x="970" y="240" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="{OUTLET_1_C}">{OUTLET_1}<tspan dx="8" font-size="18">°C</tspan></text>
 
   <!-- ── Outlet Manifold L2 ── -->
@@ -193,7 +193,7 @@
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Outlet</text>
   <text x="970" y="369" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Manifold</text>
-  <text x="970" y="409" text-anchor="middle"
+  <text x="970" y="420" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="{OUTLET_2_C}">{OUTLET_2}<tspan dx="8" font-size="18">°C</tspan></text>
 
   <!-- ── Fan+Radiator L1 (cx=1175, box y=115-265) ── -->
