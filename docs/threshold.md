@@ -32,10 +32,10 @@ Used as the source of truth for `src/fake_data/scenarios.py` and alarm manager l
 
 ## Coolant Leakage
 
-| Redis Key | Value | Level | Alarm |
-|---|---|---|---|
-| `sensor:leak` | `NORMAL` | Normal | — |
-| `sensor:leak` | `LEAKED` | Critical | `alarm:leak_detected` |
+| Redis Key | Value | UI 표시 | Level | Alarm |
+|---|---|---|---|---|
+| `sensor:leak` | `NORMAL` | `None` | Normal | — |
+| `sensor:leak` | `LEAKED` | `Detected` | Critical | `alarm:leak_detected` |
 
 ## Ambient (Chassis)
 
