@@ -33,9 +33,11 @@
   -->
 
   <!-- ═══ RETURN PIPES ═══ -->
-  <polyline points="1240,219 1250,219 1250,16 40,16 40,219"
+  <!-- L1: Fan+Rad 상단 중앙(1175,164) → 상단 엣지 → Reservoir 상단 중앙(95,164) -->
+  <polyline points="1175,164 1175,16 95,16 95,164"
     fill="none" stroke="#4a90d9" stroke-width="3" stroke-linejoin="round" opacity="0.7"/>
-  <polyline points="1240,389 1250,389 1250,588 40,588 40,389"
+  <!-- L2: Fan+Rad 하단 중앙(1175,444) → 하단 엣지 → Reservoir 하단 중앙(95,444) -->
+  <polyline points="1175,444 1175,588 95,588 95,444"
     fill="none" stroke="#4a90d9" stroke-width="3" stroke-linejoin="round" opacity="0.7"/>
 
   <!-- ═══ COLD PIPES — Lane 1 ═══ -->
