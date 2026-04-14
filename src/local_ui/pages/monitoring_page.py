@@ -1,49 +1,81 @@
 """Monitoring page.
 
-Layout:
-  QHBoxLayout
-  ├── 70%  CoolingHealthWidget
-  └── 30%  QVBoxLayout
-            ├── ActiveAlarmsWidget
-            └── ControlPanelWidget
+Layout (top → bottom):
+  QVBoxLayout
+  ├── CoolingHealthWidget   (stretch=1, full-width SVG diagram)
+  └── StatusStripWidget     (fixed 60px, ΔT / Leak / Ambient / Pressure)
 
-Receives sensor / alarm signals from main window and routes them to widgets.
+AlarmOverlayWidget is a floating child (not in layout).
+Toggled by TopBarWidget.bell_tapped signal via toggle_alarm_overlay().
+Tap-outside dismissal via eventFilter.
 """
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
+from PySide6.QtCore import QEvent, Qt
+from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from src.local_ui.widgets.active_alarms import ActiveAlarmsWidget
-from src.local_ui.widgets.control_panel import ControlPanelWidget
+from src.local_ui.widgets.alarm_overlay import AlarmOverlayWidget
 from src.local_ui.widgets.cooling_health import CoolingHealthWidget
+from src.local_ui.widgets.status_strip import StatusStripWidget
 
 
 class MonitoringPage(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
+        self._alarm_overlay: AlarmOverlayWidget | None = None
         self._build_ui()
+        self.installEventFilter(self)
 
     def _build_ui(self) -> None:
-        main_layout = QHBoxLayout(self)
-        main_layout.setContentsMargins(8, 8, 8, 8)
-        main_layout.setSpacing(8)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
         self.cooling_health = CoolingHealthWidget()
-        main_layout.addWidget(self.cooling_health, stretch=7)
+        layout.addWidget(self.cooling_health, stretch=1)
 
-        right_panel = QVBoxLayout()
-        right_panel.setSpacing(8)
+        self.status_strip = StatusStripWidget()
+        layout.addWidget(self.status_strip)
 
-        self.active_alarms = ActiveAlarmsWidget()
-        self.control_panel = ControlPanelWidget()
+        # Floating overlay — parented to this widget, not in any layout
+        self._alarm_overlay = AlarmOverlayWidget(self)
 
-        right_panel.addWidget(self.active_alarms, stretch=1)
-        right_panel.addWidget(self.control_panel, stretch=1)
+    # ------------------------------------------------------------------
+    # Alarm overlay control
 
-        right_widget = QWidget()
-        right_widget.setLayout(right_panel)
-        main_layout.addWidget(right_widget, stretch=3)
+    def toggle_alarm_overlay(self) -> None:
+        if self._alarm_overlay.isVisible():
+            self._alarm_overlay.hide()
+        else:
+            self._reposition_overlay()
+            self._alarm_overlay.show()
+            self._alarm_overlay.raise_()
+
+    def _reposition_overlay(self) -> None:
+        overlay = self._alarm_overlay
+        overlay.adjustSize()
+        ow = overlay.width() or 320
+        oh = overlay.height()
+        x = self.width() - ow - 8
+        y = 8
+        overlay.setGeometry(x, y, ow, oh)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if self._alarm_overlay and self._alarm_overlay.isVisible():
+            self._reposition_overlay()
+
+    def eventFilter(self, obj, event) -> bool:
+        if (
+            obj is self
+            and event.type() == QEvent.MouseButtonPress
+            and self._alarm_overlay
+            and self._alarm_overlay.isVisible()
+        ):
+            if not self._alarm_overlay.geometry().contains(event.pos()):
+                self._alarm_overlay.hide()
+        return super().eventFilter(obj, event)
 
     # ------------------------------------------------------------------
     # Signal routing (called by main window)
@@ -55,10 +87,10 @@ class MonitoringPage(QWidget):
             self.cooling_health.on_water_level_low(value)
         else:
             self.cooling_health.on_sensor_updated(key, value)
-        self.control_panel.on_sensor_updated(key, value)
+        self.status_strip.on_sensor_updated(key, value)
 
     def on_alarm_set(self, key: str) -> None:
-        self.active_alarms.on_alarm_set(key)
+        self._alarm_overlay.on_alarm_set(key)
 
     def on_alarm_deleted(self, key: str) -> None:
-        self.active_alarms.on_alarm_deleted(key)
+        self._alarm_overlay.on_alarm_deleted(key)
