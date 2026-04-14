@@ -4,252 +4,242 @@
   <rect width="1280" height="608" fill="#ffffff"/>
 
   <!--
-    Layout (1280px canvas):
-      Reservoir  x=5-145   w=140
-      gap=77
-      Pump       x=222-342 w=120
-      gap=77
-      Flow       x=419-529 w=110
-      gap=77
-      Inlet      x=606-736 w=130
-      Server zone x=736-886 (w=150, vertical pipes only)
-      Outlet     x=886-1016 w=130
-      gap=79
-      Fan+Rad    x=1095-1265 w=170
-      Return pipe corner x=1272
+    Horizontal (left margin=40, right margin=40):
+      Reservoir  x=40-150   w=110  cx=95
+      gap=60
+      Pump       x=210-330  w=120  cx=270
+      gap=60
+      Flow       x=390-500  w=110  cx=445
+      gap=60
+      Inlet      x=560-690  w=130  cx=625
+      Server zone x=690-920  w=230
+        cold_conn x=690-720, server_box x=720-890, hot_conn x=890-920, cx=805
+      Outlet     x=920-1050 w=130  cx=985
+      gap=60
+      Fan+Rad    x=1110-1240 w=130 cx=1175
+      right margin=40, return pipe corner x=1250
 
-    Lane 1 pipe y=167  (boxes y=120-215)
-    Lane 2 pipe y=437  (boxes y=390-485)
-    Server1 box y=15-90   pipe y=52
-    Server2 box y=505-580 pipe y=542
+    Vertical:
+      Return top:  y=16
+      Server1:     y=50-105  pipe_y=77
+      [visible gap: 59px]
+      Lane 1:      y=164-274 pipe_y=219
+      Lane gap:    60px
+      Lane 2:      y=334-444 pipe_y=389
+      [visible gap: 56px]
+      Server2:     y=500-555 pipe_y=527
+      Return bot:  y=588
+      Reservoir:   y=164-444
   -->
 
-  <!-- ═══ RETURN PIPES (behind everything) ═══ -->
-  <polyline points="1265,167 1272,167 1272,10 8,10 8,167"
-    fill="none" stroke="#4a90d9" stroke-width="4" stroke-linejoin="round"/>
-  <polyline points="1265,437 1272,437 1272,598 8,598 8,437"
-    fill="none" stroke="#4a90d9" stroke-width="4" stroke-linejoin="round"/>
+  <!-- ═══ RETURN PIPES ═══ -->
+  <polyline points="1240,219 1250,219 1250,16 40,16 40,219"
+    fill="none" stroke="#4a90d9" stroke-width="3" stroke-linejoin="round" opacity="0.7"/>
+  <polyline points="1240,389 1250,389 1250,588 40,588 40,389"
+    fill="none" stroke="#4a90d9" stroke-width="3" stroke-linejoin="round" opacity="0.7"/>
 
-  <!-- ═══ COLD PIPES — Lane 1 (blue) ═══ -->
-  <line x1="145" y1="167" x2="222" y2="167" stroke="#4a90d9" stroke-width="4"/>
-  <line x1="342" y1="167" x2="419" y2="167" stroke="#4a90d9" stroke-width="4"/>
-  <line x1="529" y1="167" x2="606" y2="167" stroke="#4a90d9" stroke-width="4"/>
-  <!-- Inlet1 → Server1 entry (up) -->
-  <polyline points="736,167 741,167 741,52"
-    fill="none" stroke="#4a90d9" stroke-width="4" stroke-linejoin="round"/>
-  <!-- Server1 left half (cold) -->
-  <line x1="741" y1="52" x2="811" y2="52" stroke="#4a90d9" stroke-width="4"/>
+  <!-- ═══ COLD PIPES — Lane 1 ═══ -->
+  <line x1="150" y1="219" x2="210" y2="219" stroke="#4a90d9" stroke-width="4"/>
+  <line x1="330" y1="219" x2="390" y2="219" stroke="#4a90d9" stroke-width="4"/>
+  <line x1="500" y1="219" x2="560" y2="219" stroke="#4a90d9" stroke-width="4"/>
+  <!-- Inlet1 right → vertical up (59px visible) → Server1 → cold connector -->
+  <line x1="690" y1="219" x2="690" y2="77"  stroke="#4a90d9" stroke-width="4"/>
+  <line x1="690" y1="77"  x2="720" y2="77"  stroke="#4a90d9" stroke-width="4"/>
 
-  <!-- ═══ COLD PIPES — Lane 2 (blue) ═══ -->
-  <line x1="145" y1="437" x2="222" y2="437" stroke="#4a90d9" stroke-width="4"/>
-  <line x1="342" y1="437" x2="419" y2="437" stroke="#4a90d9" stroke-width="4"/>
-  <line x1="529" y1="437" x2="606" y2="437" stroke="#4a90d9" stroke-width="4"/>
-  <!-- Inlet2 → Server2 entry (down) -->
-  <polyline points="736,437 741,437 741,542"
-    fill="none" stroke="#4a90d9" stroke-width="4" stroke-linejoin="round"/>
-  <!-- Server2 left half (cold) -->
-  <line x1="741" y1="542" x2="811" y2="542" stroke="#4a90d9" stroke-width="4"/>
+  <!-- ═══ COLD PIPES — Lane 2 ═══ -->
+  <line x1="150" y1="389" x2="210" y2="389" stroke="#4a90d9" stroke-width="4"/>
+  <line x1="330" y1="389" x2="390" y2="389" stroke="#4a90d9" stroke-width="4"/>
+  <line x1="500" y1="389" x2="560" y2="389" stroke="#4a90d9" stroke-width="4"/>
+  <!-- Inlet2 right → vertical down (56px visible) → Server2 → cold connector -->
+  <line x1="690" y1="389" x2="690" y2="527" stroke="#4a90d9" stroke-width="4"/>
+  <line x1="690" y1="527" x2="720" y2="527" stroke="#4a90d9" stroke-width="4"/>
 
-  <!-- ═══ HOT PIPES — Server exit (red) ═══ -->
-  <!-- Server1 right half + down to Outlet1 -->
-  <line x1="811" y1="52" x2="881" y2="52" stroke="#d94a4a" stroke-width="4"/>
-  <polyline points="881,52 881,167 886,167"
-    fill="none" stroke="#d94a4a" stroke-width="4" stroke-linejoin="round"/>
-  <!-- Server2 right half + up to Outlet2 -->
-  <line x1="811" y1="542" x2="881" y2="542" stroke="#d94a4a" stroke-width="4"/>
-  <polyline points="881,542 881,437 886,437"
-    fill="none" stroke="#d94a4a" stroke-width="4" stroke-linejoin="round"/>
-  <!-- Outlet → Fan+Rad (red) -->
-  <line x1="1016" y1="167" x2="1095" y2="167" stroke="#d94a4a" stroke-width="4"/>
-  <line x1="1016" y1="437" x2="1095" y2="437" stroke="#d94a4a" stroke-width="4"/>
+  <!-- ═══ HOT PIPES — Server exit ═══ -->
+  <line x1="890" y1="77"  x2="920" y2="77"  stroke="#d94a4a" stroke-width="4"/>
+  <line x1="920" y1="77"  x2="920" y2="219" stroke="#d94a4a" stroke-width="4"/>
+  <line x1="890" y1="527" x2="920" y2="527" stroke="#d94a4a" stroke-width="4"/>
+  <line x1="920" y1="527" x2="920" y2="389" stroke="#d94a4a" stroke-width="4"/>
+
+  <!-- ═══ HOT PIPES — Outlet → Fan+Rad ═══ -->
+  <line x1="1050" y1="219" x2="1110" y2="219" stroke="#d94a4a" stroke-width="4"/>
+  <line x1="1050" y1="389" x2="1110" y2="389" stroke="#d94a4a" stroke-width="4"/>
 
   <!-- ═══ COMPONENT BOXES ═══ -->
 
-  <!-- Reservoir (blue border, x=5-145, y=120-485) -->
-  <rect x="5" y="120" width="140" height="365" rx="6"
+  <!-- Reservoir (blue, x=40-150, y=164-444) -->
+  <rect x="40" y="164" width="110" height="280" rx="6"
     fill="#ffffff" stroke="#4a90d9" stroke-width="2"/>
-  <line x1="5" y1="167" x2="145" y2="167" stroke="#4a90d9" stroke-width="4" opacity="0.5"/>
-  <line x1="5" y1="437" x2="145" y2="437" stroke="#4a90d9" stroke-width="4" opacity="0.5"/>
 
-  <!-- Pump L1 (gray, x=222-342, y=120-215) -->
-  <rect x="222" y="120" width="120" height="95" rx="6"
+  <!-- Pump L1/L2 (gray) -->
+  <rect x="210" y="164" width="120" height="110" rx="6"
     fill="#ffffff" stroke="#9e9e9e" stroke-width="2"/>
-  <line x1="222" y1="167" x2="342" y2="167" stroke="#4a90d9" stroke-width="4" opacity="0.4"/>
-
-  <!-- Pump L2 (gray, x=222-342, y=390-485) -->
-  <rect x="222" y="390" width="120" height="95" rx="6"
+  <rect x="210" y="334" width="120" height="110" rx="6"
     fill="#ffffff" stroke="#9e9e9e" stroke-width="2"/>
-  <line x1="222" y1="437" x2="342" y2="437" stroke="#4a90d9" stroke-width="4" opacity="0.4"/>
 
-  <!-- Flow L1 (gray, x=419-529, y=120-215) -->
-  <rect x="419" y="120" width="110" height="95" rx="6"
+  <!-- Flow L1/L2 (gray) -->
+  <rect x="390" y="164" width="110" height="110" rx="6"
     fill="#ffffff" stroke="#9e9e9e" stroke-width="2"/>
-  <line x1="419" y1="167" x2="529" y2="167" stroke="#4a90d9" stroke-width="4" opacity="0.4"/>
-
-  <!-- Flow L2 (gray, x=419-529, y=390-485) -->
-  <rect x="419" y="390" width="110" height="95" rx="6"
+  <rect x="390" y="334" width="110" height="110" rx="6"
     fill="#ffffff" stroke="#9e9e9e" stroke-width="2"/>
-  <line x1="419" y1="437" x2="529" y2="437" stroke="#4a90d9" stroke-width="4" opacity="0.4"/>
 
-  <!-- Inlet Manifold L1 (blue, x=606-736, y=120-215) -->
-  <rect x="606" y="120" width="130" height="95" rx="6"
+  <!-- Inlet Manifold L1/L2 (blue) -->
+  <rect x="560" y="164" width="130" height="110" rx="6"
     fill="#ffffff" stroke="#4a90d9" stroke-width="2"/>
-  <line x1="606" y1="167" x2="736" y2="167" stroke="#4a90d9" stroke-width="4" opacity="0.4"/>
-
-  <!-- Inlet Manifold L2 (blue, x=606-736, y=390-485) -->
-  <rect x="606" y="390" width="130" height="95" rx="6"
+  <rect x="560" y="334" width="130" height="110" rx="6"
     fill="#ffffff" stroke="#4a90d9" stroke-width="2"/>
-  <line x1="606" y1="437" x2="736" y2="437" stroke="#4a90d9" stroke-width="4" opacity="0.4"/>
 
-  <!-- Server 1 (gray dashed, x=741-881, y=15-90) -->
-  <rect x="741" y="15" width="140" height="75" rx="6"
+  <!-- Outlet Manifold L1/L2 (red) -->
+  <rect x="920" y="164" width="130" height="110" rx="6"
+    fill="#ffffff" stroke="#d94a4a" stroke-width="2"/>
+  <rect x="920" y="334" width="130" height="110" rx="6"
+    fill="#ffffff" stroke="#d94a4a" stroke-width="2"/>
+
+  <!-- Fan+Radiator L1/L2 (gray) -->
+  <rect x="1110" y="164" width="130" height="110" rx="6"
+    fill="#ffffff" stroke="#9e9e9e" stroke-width="2"/>
+  <rect x="1110" y="334" width="130" height="110" rx="6"
+    fill="#ffffff" stroke="#9e9e9e" stroke-width="2"/>
+
+  <!-- Server boxes — drawn after lane boxes -->
+  <!-- Server1 (gray dashed, x=720-890, y=50-105) -->
+  <rect x="720" y="50" width="170" height="55" rx="6"
+    fill="#ffffff" stroke="#9e9e9e" stroke-width="2" stroke-dasharray="8,4"/>
+  <!-- Server2 (gray dashed, x=720-890, y=500-555) -->
+  <rect x="720" y="500" width="170" height="55" rx="6"
     fill="#ffffff" stroke="#9e9e9e" stroke-width="2" stroke-dasharray="8,4"/>
 
-  <!-- Server 2 (gray dashed, x=741-881, y=505-580) -->
-  <rect x="741" y="505" width="140" height="75" rx="6"
-    fill="#ffffff" stroke="#9e9e9e" stroke-width="2" stroke-dasharray="8,4"/>
+  <!-- Server internal pipes ON TOP of server boxes -->
+  <line x1="720" y1="77"  x2="805" y2="77"  stroke="#4a90d9" stroke-width="4"/>
+  <line x1="805" y1="77"  x2="890" y2="77"  stroke="#d94a4a" stroke-width="4"/>
+  <line x1="720" y1="527" x2="805" y2="527" stroke="#4a90d9" stroke-width="4"/>
+  <line x1="805" y1="527" x2="890" y2="527" stroke="#d94a4a" stroke-width="4"/>
 
-  <!-- Outlet Manifold L1 (red, x=886-1016, y=120-215) -->
-  <rect x="886" y="120" width="130" height="95" rx="6"
-    fill="#ffffff" stroke="#d94a4a" stroke-width="2"/>
-  <line x1="886" y1="167" x2="1016" y2="167" stroke="#d94a4a" stroke-width="4" opacity="0.4"/>
+  <!-- ═══ TEXT (name:14bold / value:22 / unit:14) ═══ -->
 
-  <!-- Outlet Manifold L2 (red, x=886-1016, y=390-485) -->
-  <rect x="886" y="390" width="130" height="95" rx="6"
-    fill="#ffffff" stroke="#d94a4a" stroke-width="2"/>
-  <line x1="886" y1="437" x2="1016" y2="437" stroke="#d94a4a" stroke-width="4" opacity="0.4"/>
-
-  <!-- Fan+Radiator L1 (gray, x=1095-1265, y=120-215) -->
-  <rect x="1095" y="120" width="170" height="95" rx="6"
-    fill="#ffffff" stroke="#9e9e9e" stroke-width="2"/>
-  <line x1="1095" y1="167" x2="1265" y2="167" stroke="#d94a4a" stroke-width="4" opacity="0.4"/>
-
-  <!-- Fan+Radiator L2 (gray, x=1095-1265, y=390-485) -->
-  <rect x="1095" y="390" width="170" height="95" rx="6"
-    fill="#ffffff" stroke="#9e9e9e" stroke-width="2"/>
-  <line x1="1095" y1="437" x2="1265" y2="437" stroke="#d94a4a" stroke-width="4" opacity="0.4"/>
-
-  <!-- ═══ TEXT (min 14px — name:14 bold / value:22 / unit:14) ═══ -->
-
-  <!-- ── Reservoir (cx=75) ── -->
-  <text x="75" y="140" text-anchor="middle"
+  <!-- ── Reservoir (cx=95, y=164-444) ── -->
+  <text x="95" y="184" text-anchor="middle"
     font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Reservoir</text>
-  <rect x="20" y="150" width="22" height="100" rx="3"
-    fill="#f0f4f8" stroke="#4a90d9" stroke-width="1"/>
-  <rect x="21" y="151" width="20" height="98" rx="2" fill="#4a90d9" opacity="0.2"/>
-  <text x="75" y="188" text-anchor="middle"
-    font-family="sans-serif" font-size="16" fill="{WATER_LEVEL_C}">{WATER_LEVEL}</text>
-  <text x="75" y="282" text-anchor="middle"
-    font-family="sans-serif" font-size="14" fill="#000000">pH</text>
-  <text x="75" y="304" text-anchor="middle"
-    font-family="sans-serif" font-size="16" fill="#000000">{PH}</text>
-  <text x="75" y="355" text-anchor="middle"
-    font-family="sans-serif" font-size="14" fill="#000000">Conductivity</text>
-  <text x="75" y="377" text-anchor="middle"
-    font-family="sans-serif" font-size="16" fill="#000000">{CONDUCTIVITY}</text>
-  <text x="75" y="397" text-anchor="middle"
-    font-family="sans-serif" font-size="14" fill="#000000">µS/cm</text>
+  <text x="95" y="216" text-anchor="middle"
+    font-family="sans-serif" font-size="18" fill="{WATER_LEVEL_C}">{WATER_LEVEL}</text>
+  <text x="95" y="264" text-anchor="middle"
+    font-family="sans-serif" font-size="15" fill="#000000">pH</text>
+  <text x="95" y="290" text-anchor="middle"
+    font-family="sans-serif" font-size="18" fill="#000000">{PH}</text>
+  <text x="95" y="336" text-anchor="middle"
+    font-family="sans-serif" font-size="15" fill="#000000">Conductivity</text>
+  <text x="95" y="362" text-anchor="middle"
+    font-family="sans-serif" font-size="18" fill="#000000">{CONDUCTIVITY}</text>
+  <text x="95" y="384" text-anchor="middle"
+    font-family="sans-serif" font-size="15" fill="#000000">µS/cm</text>
 
-  <!-- Loop labels (cx=183, between Reservoir and Pump) -->
-  <text x="183" y="161" text-anchor="middle"
+  <!-- Loop labels (cx=180, above pipe) -->
+  <text x="180" y="205" text-anchor="middle"
     font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">L1</text>
-  <text x="183" y="431" text-anchor="middle"
+  <text x="180" y="375" text-anchor="middle"
     font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">L2</text>
 
-  <!-- ── Pump L1 (cx=282) ── -->
-  <text x="282" y="140" text-anchor="middle"
+  <!-- ── Pump L1 (cx=270, pipe_y=219) ── -->
+  <text x="270" y="184" text-anchor="middle"
     font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Pump</text>
-  <text x="334" y="137" text-anchor="end"
+  <text x="322" y="181" text-anchor="end"
     font-family="sans-serif" font-size="14" fill="#555555">✎</text>
-  <text x="282" y="172" text-anchor="middle"
+  <text x="270" y="227" text-anchor="middle"
     font-family="sans-serif" font-size="22" fill="#000000">{PUMP_DUTY_1}</text>
-  <text x="282" y="190" text-anchor="middle"
+  <text x="270" y="240" text-anchor="middle"
     font-family="sans-serif" font-size="14" fill="#000000">%</text>
 
-  <!-- ── Pump L2 (cx=282) ── -->
-  <text x="282" y="410" text-anchor="middle"
+  <!-- ── Pump L2 (cx=270, pipe_y=389) ── -->
+  <text x="270" y="354" text-anchor="middle"
     font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Pump</text>
-  <text x="334" y="407" text-anchor="end"
+  <text x="322" y="351" text-anchor="end"
     font-family="sans-serif" font-size="14" fill="#555555">✎</text>
-  <text x="282" y="442" text-anchor="middle"
+  <text x="270" y="397" text-anchor="middle"
     font-family="sans-serif" font-size="22" fill="#000000">{PUMP_DUTY_2}</text>
-  <text x="282" y="460" text-anchor="middle"
+  <text x="270" y="410" text-anchor="middle"
     font-family="sans-serif" font-size="14" fill="#000000">%</text>
 
-  <!-- ── Flow L1 (cx=474) ── -->
-  <text x="474" y="140" text-anchor="middle"
+  <!-- ── Flow L1 (cx=445, pipe_y=219) ── -->
+  <text x="445" y="184" text-anchor="middle"
     font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Flow</text>
-  <text x="474" y="165" text-anchor="middle"
+  <text x="445" y="224" text-anchor="middle"
     font-family="sans-serif" font-size="22" fill="#000000">{FLOW_1}</text>
-  <text x="474" y="184" text-anchor="middle"
+  <text x="445" y="243" text-anchor="middle"
     font-family="sans-serif" font-size="14" fill="#000000">L/min</text>
 
-  <!-- ── Flow L2 (cx=474) ── -->
-  <text x="474" y="410" text-anchor="middle"
+  <!-- ── Flow L2 (cx=445, pipe_y=389) ── -->
+  <text x="445" y="354" text-anchor="middle"
     font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Flow</text>
-  <text x="474" y="435" text-anchor="middle"
+  <text x="445" y="394" text-anchor="middle"
     font-family="sans-serif" font-size="22" fill="#000000">{FLOW_2}</text>
-  <text x="474" y="454" text-anchor="middle"
+  <text x="445" y="413" text-anchor="middle"
     font-family="sans-serif" font-size="14" fill="#000000">L/min</text>
 
-  <!-- ── Inlet Manifold L1 (cx=671) ── -->
-  <text x="671" y="140" text-anchor="middle"
-    font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Inlet Manifold</text>
-  <text x="671" y="165" text-anchor="middle"
+  <!-- ── Inlet Manifold L1 — two lines (cx=625, pipe_y=219) ── -->
+  <text x="625" y="181" text-anchor="middle"
+    font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Inlet</text>
+  <text x="625" y="197" text-anchor="middle"
+    font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Manifold</text>
+  <text x="625" y="224" text-anchor="middle"
     font-family="sans-serif" font-size="22" fill="{INLET_1_C}">{INLET_1}</text>
-  <text x="671" y="184" text-anchor="middle"
+  <text x="625" y="243" text-anchor="middle"
     font-family="sans-serif" font-size="14" fill="#000000">°C</text>
 
-  <!-- ── Inlet Manifold L2 (cx=671) ── -->
-  <text x="671" y="410" text-anchor="middle"
-    font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Inlet Manifold</text>
-  <text x="671" y="435" text-anchor="middle"
+  <!-- ── Inlet Manifold L2 ── -->
+  <text x="625" y="351" text-anchor="middle"
+    font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Inlet</text>
+  <text x="625" y="367" text-anchor="middle"
+    font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Manifold</text>
+  <text x="625" y="394" text-anchor="middle"
     font-family="sans-serif" font-size="22" fill="{INLET_2_C}">{INLET_2}</text>
-  <text x="671" y="454" text-anchor="middle"
+  <text x="625" y="413" text-anchor="middle"
     font-family="sans-serif" font-size="14" fill="#000000">°C</text>
 
-  <!-- ── Server 1 (cx=811) ── -->
-  <text x="811" y="57" text-anchor="middle"
+  <!-- ── Server 1 (cx=805, pipe_y=77) ── -->
+  <text x="805" y="68" text-anchor="middle"
     font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Server 1</text>
 
-  <!-- ── Server 2 (cx=811) ── -->
-  <text x="811" y="547" text-anchor="middle"
+  <!-- ── Server 2 (cx=805, pipe_y=527) ── -->
+  <text x="805" y="518" text-anchor="middle"
     font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Server 2</text>
 
-  <!-- ── Outlet Manifold L1 (cx=951) ── -->
-  <text x="951" y="140" text-anchor="middle"
-    font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Outlet Manifold</text>
-  <text x="951" y="165" text-anchor="middle"
+  <!-- ── Outlet Manifold L1 — two lines (cx=985, pipe_y=219) ── -->
+  <text x="985" y="181" text-anchor="middle"
+    font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Outlet</text>
+  <text x="985" y="197" text-anchor="middle"
+    font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Manifold</text>
+  <text x="985" y="224" text-anchor="middle"
     font-family="sans-serif" font-size="22" fill="{OUTLET_1_C}">{OUTLET_1}</text>
-  <text x="951" y="184" text-anchor="middle"
+  <text x="985" y="243" text-anchor="middle"
     font-family="sans-serif" font-size="14" fill="#000000">°C</text>
 
-  <!-- ── Outlet Manifold L2 (cx=951) ── -->
-  <text x="951" y="410" text-anchor="middle"
-    font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Outlet Manifold</text>
-  <text x="951" y="435" text-anchor="middle"
+  <!-- ── Outlet Manifold L2 ── -->
+  <text x="985" y="351" text-anchor="middle"
+    font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Outlet</text>
+  <text x="985" y="367" text-anchor="middle"
+    font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Manifold</text>
+  <text x="985" y="394" text-anchor="middle"
     font-family="sans-serif" font-size="22" fill="{OUTLET_2_C}">{OUTLET_2}</text>
-  <text x="951" y="454" text-anchor="middle"
+  <text x="985" y="413" text-anchor="middle"
     font-family="sans-serif" font-size="14" fill="#000000">°C</text>
 
-  <!-- ── Fan+Radiator L1 (cx=1180) ── -->
-  <text x="1180" y="140" text-anchor="middle"
+  <!-- ── Fan+Radiator L1 (cx=1175, pipe_y=219) ── -->
+  <text x="1175" y="184" text-anchor="middle"
     font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Fan + Radiator</text>
-  <text x="1257" y="137" text-anchor="end"
+  <text x="1232" y="181" text-anchor="end"
     font-family="sans-serif" font-size="14" fill="#555555">✎</text>
-  <text x="1180" y="172" text-anchor="middle"
+  <text x="1175" y="227" text-anchor="middle"
     font-family="sans-serif" font-size="22" fill="#000000">{FAN_DUTY_1}</text>
-  <text x="1180" y="190" text-anchor="middle"
+  <text x="1175" y="240" text-anchor="middle"
     font-family="sans-serif" font-size="14" fill="#000000">%</text>
 
-  <!-- ── Fan+Radiator L2 (cx=1180) ── -->
-  <text x="1180" y="410" text-anchor="middle"
+  <!-- ── Fan+Radiator L2 (cx=1175, pipe_y=389) ── -->
+  <text x="1175" y="354" text-anchor="middle"
     font-family="sans-serif" font-size="14" font-weight="bold" fill="#000000">Fan + Radiator</text>
-  <text x="1257" y="407" text-anchor="end"
+  <text x="1232" y="351" text-anchor="end"
     font-family="sans-serif" font-size="14" fill="#555555">✎</text>
-  <text x="1180" y="442" text-anchor="middle"
+  <text x="1175" y="397" text-anchor="middle"
     font-family="sans-serif" font-size="22" fill="#000000">{FAN_DUTY_2}</text>
-  <text x="1180" y="460" text-anchor="middle"
+  <text x="1175" y="410" text-anchor="middle"
     font-family="sans-serif" font-size="14" fill="#000000">%</text>
 
 </svg>
