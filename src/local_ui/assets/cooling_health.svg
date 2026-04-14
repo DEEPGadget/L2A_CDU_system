@@ -201,8 +201,8 @@
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Fan +</text>
   <text x="1175" y="192" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Radiator</text>
-  <text x="1175" y="218" text-anchor="middle"
-    font-family="sans-serif" font-size="32" fill="#000000">{FAN_DUTY_1}<tspan dx="8" font-size="18">%</tspan></text>
+  <text x="1175" y="228" text-anchor="middle"
+    font-family="sans-serif" font-size="32" fill="#000000">{FAN_DUTY_1}<tspan dx="8" font-size="18"> %</tspan></text>
   <text x="1175" y="260" text-anchor="middle"
     font-family="sans-serif" font-size="38" fill="#2980b9">⚙</text>
 
@@ -211,8 +211,8 @@
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Fan +</text>
   <text x="1175" y="372" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Radiator</text>
-  <text x="1175" y="398" text-anchor="middle"
-    font-family="sans-serif" font-size="32" fill="#000000">{FAN_DUTY_2}<tspan dx="8" font-size="18">%</tspan></text>
+  <text x="1175" y="408" text-anchor="middle"
+    font-family="sans-serif" font-size="32" fill="#000000">{FAN_DUTY_2}<tspan dx="8" font-size="18"> %</tspan></text>
   <text x="1175" y="440" text-anchor="middle"
     font-family="sans-serif" font-size="38" fill="#2980b9">⚙</text>
 
