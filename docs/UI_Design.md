@@ -100,8 +100,8 @@
 > **렌더링 방식**: SVG 템플릿 (`cooling_health.svg`) + `QSvgWidget`. 센서값 수신 시 플레이스홀더를 치환하여 리로드.
 > **참고 이미지**: `assets/UI example/dg5r dashboard.png` (Cooling Health 패널), `assets/UI example/l2a cdu structure 1~3.png` (CDU 실물 구조)
 
-> **냉각수 흐름** (루프별 독립): Reservoir → Pump → Flow Sensor → Inlet Manifold → Server → Outlet Manifold → Fan → Radiator → Reservoir (순환)
-> Loop 1 → Server 1, Loop 2 → Server 2 각 1:1 독립 연결. Reservoir·Radiator는 CDU 내부 공유.
+> **냉각수 흐름** (루프별 독립): Reservoir → Pump → Flow → Inlet Manifold → Server → Outlet Manifold → Fan+Radiator → Reservoir (순환)
+> Loop 1 → Server 1, Loop 2 → Server 2 각 1:1 독립 연결. Reservoir는 CDU 내부 공유, Fan+Radiator는 루프별 독립.
 
 **다이어그램 배치 (좌→우, 2-lane)**
 
@@ -125,9 +125,9 @@
 
 | 항목 | 표시 데이터 | Redis key |
 |---|---|---|
-| Coolant ΔT1 / ΔT2 | outlet − inlet 계산값 (°C) | (계산) |
+| Coolant ΔT1 / ΔT2 | outlet − inlet 계산값 (°C), 색상 코딩 적용 — ≤15°C=green / 15–20°C=orange / >20°C=red | (계산) |
 | Leak Detection | `None` (green) / `Detected` (red) | `sensor:leak` |
-| Ambient Temp / Humidity | 외기 온·습도 — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
+| Ambient Temp / Humidity | 외기 온·습도 (°C / % RH) — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
 | Pressure | 유압 (bar, 부착 여부 미확정) | `sensor:pressure` |
 
 **페이지 전환**: Top bar 탭 (`Monitoring` / `History`) 선택
