@@ -33,18 +33,17 @@
 **레이아웃 개요**
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│  [Monitoring]  [History]  │  🔔 N   IP: 192.168.x.x   System: Warning   Link: ok  │  12:34:56 │
-│   ←── 좌측 ──────────────│──────────────── 중앙 ────────────────────────────────│── 우측 ──→ │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
-                                                                          Top bar (52px)
-├──────────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│              Cooling Health (SVG, 전체 1280px 폭)                     │  ~668px
-│    센서값 색상 코딩 — 정상 green / 경고 orange / 위급 red              │
-│    Pump·Fan 노드: 탭 가능 (✎ 표시) → 숫자 키패드 팝업                │
-│                                                                        │
-└──────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│ [Monitoring] [History] │ 🔔N  IP:x.x.x.x  System:Warning  Link:ok │ 12:34:56│  52px
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│                   Cooling Health (SVG, 전체 1280px 폭)                    │  ~608px
+│       센서값 색상 코딩 — 정상 green / 경고 orange / 위급 red              │
+│       Pump·Fan 노드: 탭 가능 (✎) → 숫자 키패드 팝업                      │
+│                                                                            │
+├────────────────────────────────────────────────────────────────────────────┤
+│  ΔT1:__°C  ΔT2:__°C  Leak:None  Ambient:__°C/__% RH  Pressure:__ bar     │  ~60px
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **패널 구성**
@@ -81,7 +80,7 @@
 | 알람 없음 | 배지 숨김 |
 | Warning 1개 이상 (Critical 없음) | `🔔 N` (주황) |
 | Critical 1개 이상 | `🔔 N` (빨강) — Warning 동시 존재 시 Critical 우선 |
-| 배지 탭 | top-right floating overlay로 알람 목록 펼침 (스크롤 가능, ✕ 또는 영역 밖 탭으로 닫기) |
+| 배지 탭 | 배지 위치 기준 floating overlay로 알람 목록 펼침 (스크롤 가능, ✕ 또는 영역 밖 탭으로 닫기) |
 | 알람 전부 해소 | overlay auto-close + 배지 숨김 |
 
 **Pump·Fan 인라인 제어**
@@ -93,7 +92,7 @@
 | Fan Loop1 | 〃 | 〃 |
 | Fan Loop2 | 〃 | 〃 |
 
-> **조작 흐름**: 다이어그램 내 Pump/Fan 노드 탭 (✎ 표시로 편집 가능 인지) → 숫자 키패드 팝업 (0–100, Range validation) → 입력 후 **Apply** → 즉시 MCG 전송 + SVG 값 갱신.
+> **조작 흐름**: 다이어그램 내 Pump/Fan 노드 탭 (✎ 표시로 편집 가능 인지) → 숫자 키패드 팝업 (0–100, Range validation) → 입력 후 **Apply** → MCG 전송 (real mode) / Redis 직접 쓰기 (fake mode) → SVG 값 갱신.
 > PySide6 구현: `QSvgWidget` 위에 투명 `QPushButton` 오버레이 (절대 위치), 팝업은 `QDialog` + `QGridLayout` 키패드.
 
 **Cooling Health 구성 요소**
@@ -106,27 +105,30 @@
 
 **다이어그램 배치 (좌→우, 2-lane)**
 
-         ΔT1: __°C   ΔT2: __°C   Leak: None   Ambient: __°C / __%   Pressure: __
-
 | 레인 | 구성 요소 | 표시 데이터 | Redis key |
 |---|---|---|---|
 | 공유 (좌단) | Reservoir (Water Tank) | Coolant Level (레벨 바 + HIGH/MID/LOW 텍스트), pH, 전도도 (µS/cm) | `sensor:water_level_high`, `sensor:water_level_low`, `sensor:ph`, `sensor:conductivity` |
 | Loop 1 → | Pump Loop1 (P1·P2 직렬) | PWM duty (0–100 %) ✎ | `sensor:pump_pwm_duty_1` |
 | Loop 1 → | Flow Loop1 | 유량 (L/min) | `sensor:flow_rate_1` |
-| Loop 1 → | Coolant Inlet Manifold L1 | 입수 온도 | `sensor:coolant_temp_inlet_1` |
+| Loop 1 → | Coolant Inlet Manifold L1 | 입수 온도 (°C) | `sensor:coolant_temp_inlet_1` |
 | Loop 1 ↑ 분기 | Server 1 | (열원 표시, 센서 없음, CDU 외부 — 위로 분기) | — |
-| Loop 1 → | Coolant Outlet Manifold L1 | 출수 온도 | `sensor:coolant_temp_outlet_1` |
+| Loop 1 → | Coolant Outlet Manifold L1 | 출수 온도 (°C) | `sensor:coolant_temp_outlet_1` |
 | Loop 1 → | Fan1 + Radiator | PWM duty (0–100 %) ✎ | `sensor:fan_pwm_duty_1` |
 | Loop 2 → | Pump Loop2 (P3·P4 직렬) | PWM duty (0–100 %) ✎ | `sensor:pump_pwm_duty_2` |
 | Loop 2 → | Flow Loop2 | 유량 (L/min) | `sensor:flow_rate_2` |
-| Loop 2 → | Coolant Inlet Manifold L2 | 입수 온도 | `sensor:coolant_temp_inlet_2` |
+| Loop 2 → | Coolant Inlet Manifold L2 | 입수 온도 (°C) | `sensor:coolant_temp_inlet_2` |
 | Loop 2 ↓ 분기 | Server 2 | (열원 표시, 센서 없음, CDU 외부 — 아래로 분기) | — |
-| Loop 2 → | Coolant Outlet Manifold L2 | 출수 온도 | `sensor:coolant_temp_outlet_2` |
+| Loop 2 → | Coolant Outlet Manifold L2 | 출수 온도 (°C) | `sensor:coolant_temp_outlet_2` |
 | Loop 2 → | Fan2 + Radiator | PWM duty (0–100 %) ✎ | `sensor:fan_pwm_duty_2` |
-| 하단 strip | Coolant ΔT1 / ΔT2 | outlet − inlet 계산값 | (계산) |
-| 하단 strip | Leak Detection | 누수 감지 | `sensor:leak` |
-| 하단 strip | Ambient Temp / Humidity | 외기 온·습도 — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
-| 하단 strip | Pressure | 유압 (bar, 부착 여부 미확정) | `sensor:pressure` |
+
+**Status strip 항목 (SVG 아래 별도 QWidget)**
+
+| 항목 | 표시 데이터 | Redis key |
+|---|---|---|
+| Coolant ΔT1 / ΔT2 | outlet − inlet 계산값 (°C) | (계산) |
+| Leak Detection | `None` (green) / `Detected` (red) | `sensor:leak` |
+| Ambient Temp / Humidity | 외기 온·습도 — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
+| Pressure | 유압 (bar, 부착 여부 미확정) | `sensor:pressure` |
 
 **페이지 전환**: Top bar 탭 (`Monitoring` / `History`) 선택
 
@@ -138,7 +140,7 @@
 
 | 영역 | 위치 | 내용 |
 |---|---|---|
-| Top bar | 상단 | Monitoring 페이지와 동일 — 탭 네비, System/Link 배지, 현재 시각 |
+| Top bar | 상단 | Monitoring 페이지와 동일 — 탭 네비, 알람 배지, System/Link 상태 텍스트, 현재 시각 |
 | Sidebar | 좌측 (좁은 폭) | Time Range 드롭다운 + Graph Form 라디오 버튼 + Metric 체크박스 |
 | View area | 우측 메인 | 선택된 Graph Form에 따라 Line Graph or Table 렌더링 |
 
