@@ -55,11 +55,13 @@ _C_NO_DATA  = "#000000"  # 원칙 2: 회색 금지 — no-data는 검정으로, 
 # Pump:    x=222-342, y=120-215  →  rx=222/1280, ry=120/608, rw=120/1280, rh=95/608
 # Fan+Rad: x=1095-1265, y=120-215 → rx=1095/1280, ry=120/608, rw=170/1280, rh=95/608
 _OVERLAY_POSITIONS: dict[str, tuple[float, float, float, float]] = {
-    "pump1": (0.173, 0.197, 0.094, 0.156),  # Pump Loop1 (x=222,y=120,w=120,h=95)
-    "pump2": (0.173, 0.641, 0.094, 0.156),  # Pump Loop2 (x=222,y=390,w=120,h=95)
-    "fan1":  (0.855, 0.197, 0.133, 0.156),  # Fan+Rad Loop1 (x=1095,y=120,w=170,h=95)
-    "fan2":  (0.855, 0.641, 0.133, 0.156),  # Fan+Rad Loop2 (x=1095,y=390,w=170,h=95)
+    "pump1": (0.164, 0.270, 0.094, 0.181),  # Pump Loop1 (x=210,y=164,w=120,h=110)
+    "pump2": (0.164, 0.549, 0.094, 0.181),  # Pump Loop2 (x=210,y=334,w=120,h=110)
+    "fan1":  (0.867, 0.270, 0.102, 0.181),  # Fan+Rad Loop1 (x=1110,y=164,w=130,h=110)
+    "fan2":  (0.867, 0.549, 0.102, 0.181),  # Fan+Rad Loop2 (x=1110,y=334,w=130,h=110)
 }
+# Note: Server box positions for reference (not overlay buttons)
+# Server1: x=771-871, y=20-75  / Server2: x=771-871, y=523-578
 
 _DUTY_KEYS: dict[str, str] = {
     "pump1": "sensor:pump_pwm_duty_1",
