@@ -18,11 +18,11 @@
 | 2 | **회색·흐릿한 글씨 금지** — 모든 텍스트는 충분한 명도 대비 확보, 비활성 표현은 색상 대신 레이아웃으로 |
 | 3 | **상태값 색상 3종 통일 (global)** — Normal/OK `#27ae60` · Warning `#e67e22` · Critical `#e74c3c`. 상태가 없는 일반 값은 `#000000` (검정) |
 | 4 | **Bold는 제목(heading)만** — 센서값·배지값·레이블 등 제목 외 모든 텍스트는 regular weight |
-| 5 | Low information density, large touch targets, critical values only at a glance |
 | 6 | **배관 중앙 관통 원칙** — 냉각수 루프(배관 라인)는 각 컴포넌트 박스의 중앙을 관통하도록 렌더링. 컴포넌트는 배관이 지나가는 역(station)처럼 표현. 박스 좌측 엣지로 유입 → 박스 중앙에 값·레이블 표시 → 박스 우측 엣지로 유출. 컴포넌트 간 배관 세그먼트로 연결. (`assets/UI example/cooling health.svg.png` 참고) |
 | 7 | **유로(배관) 색상** — 냉각수 온도 상태에 따라 구간별 색상 구분: 냉각수 공급측(Reservoir→Pump→Flow→Inlet Manifold) 파랑 계열, 환수측(Outlet Manifold→Fan+Radiator) 빨강 계열. Server 박스에서 파랑→빨강 전환. |
 | 8 | **컴포넌트 경계선 색상** — 열적 역할에 따라 고정: Reservoir·Inlet Manifold = 파란 border / Server·Outlet Manifold = 빨간 border / Pump·Fan+Radiator = 회색 border (중립 기계 요소) |
 | 9 | **컴포넌트 이름 상단 공통 헤더** — 2-lane 레이아웃에서 Loop 1·2가 동일 컴포넌트를 공유하므로, 이름을 각 박스 내부에 중복 표시하지 않고 다이어그램 상단에 한 번만 표시. 박스 내부는 값만 렌더링. Reservoir는 공유 컴포넌트로 예외 — 박스 내부에 이름 표시. |
+| 10 | **Server 외부 분기 표현** — Inlet Manifold에서 차가운 냉각수가 서버로 나갔다가 뜨거워져 Outlet Manifold로 돌아오는 흐름을 수직 분기로 표현. Loop 1(상단 레인)의 서버는 레인 위쪽으로, Loop 2(하단 레인)의 서버는 레인 아래쪽으로 분기하여 CDU 외부 장치임을 시각적으로 구분. Inlet→Server→Outlet 은 하나의 연결된 유로. |
 
 ---
 
@@ -92,15 +92,7 @@
 
 **다이어그램 배치 (좌→우, 2-lane)**
 
-```
-좌 ← CDU 내부 →←── 외부 서버 ──→← CDU 내부 → 우
-
-[Reservoir] ─ [P1·P2] ─ [Flow1] ─ [Inlet1] ─── [Server 1] ─── [Outlet1] ─ [Fan1+Radiator]
-     │
-     └────── [P3·P4] ─ [Flow2] ─ [Inlet2] ─── [Server 2] ─── [Outlet2] ─ [Fan2+Radiator]
-
-     ΔT1: __°C   ΔT2: __°C   Leak: None   Ambient: __°C / __%   Pressure: __
-```
+         ΔT1: __°C   ΔT2: __°C   Leak: None   Ambient: __°C / __%   Pressure: __
 
 | 레인 | 구성 요소 | 표시 데이터 | Redis key |
 |---|---|---|---|
@@ -108,13 +100,13 @@
 | Loop 1 → | Pump Loop1 (P1·P2 직렬) | PWM duty (0–100 %) ✎ | `sensor:pump_pwm_duty_1` |
 | Loop 1 → | Flow Loop1 | 유량 | `sensor:flow_rate_1` |
 | Loop 1 → | Coolant Inlet Manifold L1 | 입수 온도 | `sensor:coolant_temp_inlet_1` |
-| Loop 1 → | Server 1 | (열원 표시, 센서 없음) | — |
+| Loop 1 ↑ 분기 | Server 1 | (열원 표시, 센서 없음, CDU 외부 — 위로 분기) | — |
 | Loop 1 → | Coolant Outlet Manifold L1 | 출수 온도 | `sensor:coolant_temp_outlet_1` |
 | Loop 1 → | Fan1 + Radiator | PWM duty (0–100 %) ✎ | `sensor:fan_pwm_duty_1` |
 | Loop 2 → | Pump Loop2 (P3·P4 직렬) | PWM duty (0–100 %) ✎ | `sensor:pump_pwm_duty_2` |
 | Loop 2 → | Flow Loop2 | 유량 | `sensor:flow_rate_2` |
 | Loop 2 → | Coolant Inlet Manifold L2 | 입수 온도 | `sensor:coolant_temp_inlet_2` |
-| Loop 2 → | Server 2 | (열원 표시, 센서 없음) | — |
+| Loop 2 ↓ 분기 | Server 2 | (열원 표시, 센서 없음, CDU 외부 — 아래로 분기) | — |
 | Loop 2 → | Coolant Outlet Manifold L2 | 출수 온도 | `sensor:coolant_temp_outlet_2` |
 | Loop 2 → | Fan2 + Radiator | PWM duty (0–100 %) ✎ | `sensor:fan_pwm_duty_2` |
 | 하단 strip | Coolant ΔT1 / ΔT2 | outlet − inlet 계산값 | (계산) |
