@@ -9,58 +9,118 @@
 ## 1. Local UI (PySide6)
 
 **Environment**: Raspberry Pi Touch Display 2 — 1280×720 (landscape), touch interaction
-**Design principle**: Low information density, large touch targets, critical values only at a glance
+
+**Design principles**
+
+| # | 원칙 |
+|---|---|
+| 1 | **흰 배경** — 전체 배경색 white (`#ffffff`) |
+| 2 | **회색·흐릿한 글씨 금지** — 모든 텍스트는 충분한 명도 대비 확보, 비활성 표현은 색상 대신 레이아웃으로 |
+| 3 | **상태값 색상 3종 통일 (global)** — Normal/OK `#27ae60` · Warning `#e67e22` · Critical `#e74c3c`. 상태가 없는 일반 값은 `#000000` (검정) |
+| 4 | **Bold는 제목(heading)만** — 센서값·배지값·레이블 등 제목 외 모든 텍스트는 regular weight |
+| 5 | Low information density, large touch targets, critical values only at a glance |
+| 6 | **배관 중앙 관통 원칙** — 냉각수 루프(배관 라인)는 각 컴포넌트 박스의 중앙을 관통하도록 렌더링. 컴포넌트는 배관이 지나가는 역(station)처럼 표현. 박스 좌측 엣지로 유입 → 박스 중앙에 값·레이블 표시 → 박스 우측 엣지로 유출. 컴포넌트 간 배관 세그먼트로 연결. (`assets/UI example/cooling health.svg.png` 참고) |
+| 7 | **유로(배관) 색상** — 냉각수 온도 상태에 따라 구간별 색상 구분: 냉각수 공급측(Reservoir→Pump→Flow→Inlet Manifold) 파랑 계열, 환수측(Outlet Manifold→Fan+Radiator) 빨강 계열. Server 박스에서 파랑→빨강 전환. |
+| 8 | **컴포넌트 경계선 색상** — 열적 역할에 따라 고정: Reservoir·Inlet Manifold = 파란 border / Server·Outlet Manifold = 빨간 border / Pump·Fan+Radiator = 회색 border (중립 기계 요소) |
+| 9 | **컴포넌트 이름 상단 공통 헤더** — 2-lane 레이아웃에서 Loop 1·2가 동일 컴포넌트를 공유하므로, 이름을 각 박스 내부에 중복 표시하지 않고 다이어그램 상단에 한 번만 표시. 박스 내부는 값만 렌더링. Reservoir는 공유 컴포넌트로 예외 — 박스 내부에 이름 표시. |
 
 ---
 
 ### 1-1. Monitoring & Control Page
 
+**레이아웃 개요**
+
+```
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│ [Monitoring] [History]  ···  [🔔 N]  IP: 192.168.x.x  System: Warning  Link: ok  12:34:56 │  Top bar (52px)
+├───────────────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│              Cooling Health (SVG, 전체 1280px 폭)                     │  ~668px
+│    센서값 색상 코딩 — 정상 green / 경고 orange / 위급 red              │
+│    Pump·Fan 노드: 탭 가능 (✎ 표시) → 숫자 키패드 팝업                │
+│                                                                        │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
 **패널 구성**
 
 | 패널 | 위치 | 내용 |
 |---|---|---|
-| Top bar | 상단 전체 | 탭 네비 (`Monitoring` / `History`), **System 배지** (`Normal` / `Warning` / `Critical` / `-`) — 시스템 내부 상태(센서·알람), Link 통신 오류 시 `-` 표시, **Link 배지** (`ok` / `timeout` / `disconnected`) — `comm:status` 값 그대로 표시, 현재 시각 |
-| Cooling Health | 좌측 메인 (약 70%) | CDU 냉각수 흐름 다이어그램 — Pub/Sub(`sensor:*`, `comm:*`) 수신 시 즉시 갱신, 부품 목록 아래 참고 |
-| Active Alarms | 우상단 | `alarm:*` Keyspace Notification(SET/DEL) 수신 → 즉시 갱신, 없으면 "No active alarms" (스크롤 가능) |
-| Control | 우하단 | Pump/Fan PWM duty 설정 + Apply, Leak 상태 — 상세 아래 참고 |
+| Top bar | 상단 전체 | 탭 네비 (`Monitoring` / `History`), **알람 배지** (`🔔 N` — 알람 없을 때 숨김, 탭 시 floating overlay), `IP: x.x.x.x`, `System: Normal/Warning/Critical/-`, `Link: ok/timeout/disconnected`, 현재 시각 `HH:MM:SS` |
+| Cooling Health | 전체 (top bar 제외) | CDU 냉각수 흐름 SVG 다이어그램 **전체 폭 (1280px)** — Pub/Sub(`sensor:*`, `comm:*`) 수신 시 즉시 갱신, Pump·Fan 노드는 탭으로 직접 제어 가능, 부품 목록 아래 참고 |
 
-**Control 패널 상세**
+**Top bar 항목 상세**
 
-| 항목 | 표시 |
+| 항목 | 형식 | 비고 |
+|---|---|---|
+| 탭 네비 | `[Monitoring]` `[History]` 버튼 | 활성 탭 강조 |
+| 알람 배지 | `🔔 N` | 알람 없을 때 숨김, Warning=주황 / Critical=빨강, 탭 시 알람 overlay |
+| IP | `IP: 192.168.x.x` | 유선 우선, 없으면 `IP: --` |
+| System | `System: Normal` / `Warning` / `Critical` / `-` | 값 색상 코딩, Link 오류 시 `-` |
+| Link | `Link: ok` / `timeout` / `disconnected` | `comm:status` 값 그대로, 색상 코딩 |
+| 시각 | `HH:MM:SS` | 1초 갱신 |
+
+**알람 배지 상세**
+
+| 상태 | 표시 |
 |---|---|
-| Pump1 (Loop1) | 현재 PWM duty `XX%` — 터치 시 숫자 키패드 팝업 |
-| Pump2 (Loop2) | 〃 |
-| Fan1 (Loop1) | 〃 |
-| Fan2 (Loop2) | 〃 |
-| Leak | 상태 표시 (`None` / `Detected`) |
-| **Apply** | 변경된 값을 MCG로 일괄 전송 |
+| 알람 없음 | 배지 숨김 |
+| Warning 1개 이상 | `🔔 N` (주황) |
+| Critical 1개 이상 | `🔔 N` (빨강) |
+| 배지 탭 | top-right floating overlay로 알람 목록 펼침 (스크롤 가능, ✕ 또는 영역 밖 탭으로 닫기) |
+| 알람 전부 해소 | overlay auto-close + 배지 숨김 |
 
-> **조작 흐름**: 값 터치 → 숫자 키패드 팝업 (0–100, Range validation) → 입력 + Enter → 팝업 닫힘 → 필요 시 다른 장비도 변경 → **Apply** 터치 시 MCG로 전송.
-> PySide6 구현: `QDialog` + `QGridLayout` 버튼 키패드.
+**Pump·Fan 인라인 제어**
+
+| 항목 | SVG 내 표시 | 동작 |
+|---|---|---|
+| Pump Loop1 | PWM duty `XX% ✎` | 탭 → 숫자 키패드 팝업 → **Apply** → 즉시 MCG 전송 |
+| Pump Loop2 | 〃 | 〃 |
+| Fan Loop1 | 〃 | 〃 |
+| Fan Loop2 | 〃 | 〃 |
+
+> **조작 흐름**: 다이어그램 내 Pump/Fan 노드 탭 (✎ 표시로 편집 가능 인지) → 숫자 키패드 팝업 (0–100, Range validation) → 입력 후 **Apply** → 즉시 MCG 전송 + SVG 값 갱신.
+> PySide6 구현: `QSvgWidget` 위에 투명 `QPushButton` 오버레이 (절대 위치), 팝업은 `QDialog` + `QGridLayout` 키패드.
 
 **Cooling Health 구성 요소**
 
 > **렌더링 방식**: SVG 템플릿 (`cooling_health.svg`) + `QSvgWidget`. 센서값 수신 시 플레이스홀더를 치환하여 리로드.
 > **참고 이미지**: `assets/UI example/dg5r dashboard.png` (Cooling Health 패널), `assets/UI example/l2a cdu structure 1~3.png` (CDU 실물 구조)
 
-> **냉각수 흐름**: Reservoir → Pump → (Flow Sensor) → Coolant Inlet Manifold → Server 1 / Server 2 → Coolant Outlet Manifold → Fan → Radiator → Reservoir (순환)
+> **냉각수 흐름** (루프별 독립): Reservoir → Pump → Flow Sensor → Inlet Manifold → Server → Outlet Manifold → Fan → Radiator → Reservoir (순환)
+> Loop 1 → Server 1, Loop 2 → Server 2 각 1:1 독립 연결. Reservoir·Radiator는 CDU 내부 공유.
 
-**다이어그램 배치 (위→아래)**
+**다이어그램 배치 (좌→우, 2-lane)**
 
-| 다이어그램 위치 | 구성 요소 | 표시 데이터 | Redis key |
+```
+좌 ← CDU 내부 →←── 외부 서버 ──→← CDU 내부 → 우
+
+[Reservoir] ─ [P1·P2] ─ [Flow1] ─ [Inlet1] ─── [Server 1] ─── [Outlet1] ─ [Fan1+Radiator]
+     │
+     └────── [P3·P4] ─ [Flow2] ─ [Inlet2] ─── [Server 2] ─── [Outlet2] ─ [Fan2+Radiator]
+
+     ΔT1: __°C   ΔT2: __°C   Leak: None   Ambient: __°C / __%   Pressure: __
+```
+
+| 레인 | 구성 요소 | 표시 데이터 | Redis key |
 |---|---|---|---|
-| 최상단 | Reservoir (Water Tank) | Coolant Level, pH, 전도도 | `sensor:water_level_high`, `sensor:water_level_low`, `sensor:ph`, `sensor:conductivity` |
-| ↓ | Pump Loop1 (P1·P2 직렬) / Pump Loop2 (P3·P4 직렬) | PWM duty (0–100 %) | `sensor:pump_pwm_duty_1`, `sensor:pump_pwm_duty_2` |
-| ↓ (배관 중간) | Flow Loop1 / Flow Loop2 | 유량 | `sensor:flow_rate_1`, `sensor:flow_rate_2` |
-| ↓ | Coolant Inlet Manifold | 입수 온도 루프1·2 | `sensor:coolant_temp_inlet_1`, `sensor:coolant_temp_inlet_2` |
-| ↓ (좌·우 분기) | Server 1 / Server 2 | (열원 표시, 센서 없음) | — |
-| ↓ (합류) | Coolant Outlet Manifold | 출수 온도 루프1·2 | `sensor:coolant_temp_outlet_1`, `sensor:coolant_temp_outlet_2` |
-| ↓ | Fan Loop1 / Fan Loop2 | PWM duty (0–100 %) | `sensor:fan_pwm_duty_1`, `sensor:fan_pwm_duty_2` |
-| 최하단 | Radiator | (표시만) | — |
-| 다이어그램 하단 텍스트 | Coolant ΔT1 / ΔT2 | outlet − inlet 계산값 | (계산) |
-| 다이어그램 하단 텍스트 | Leak Detection | 누수 감지 | `sensor:leak` |
-| 다이어그램 하단 텍스트 | Ambient Temp / Humidity | 외기 온·습도 — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
-| 다이어그램 하단 텍스트 | Pressure | 유압 (부착 여부 미확정) | `sensor:pressure` |
+| 공유 (좌단) | Reservoir (Water Tank) | Coolant Level, pH, 전도도 | `sensor:water_level_high`, `sensor:water_level_low`, `sensor:ph`, `sensor:conductivity` |
+| Loop 1 → | Pump Loop1 (P1·P2 직렬) | PWM duty (0–100 %) ✎ | `sensor:pump_pwm_duty_1` |
+| Loop 1 → | Flow Loop1 | 유량 | `sensor:flow_rate_1` |
+| Loop 1 → | Coolant Inlet Manifold L1 | 입수 온도 | `sensor:coolant_temp_inlet_1` |
+| Loop 1 → | Server 1 | (열원 표시, 센서 없음) | — |
+| Loop 1 → | Coolant Outlet Manifold L1 | 출수 온도 | `sensor:coolant_temp_outlet_1` |
+| Loop 1 → | Fan1 + Radiator | PWM duty (0–100 %) ✎ | `sensor:fan_pwm_duty_1` |
+| Loop 2 → | Pump Loop2 (P3·P4 직렬) | PWM duty (0–100 %) ✎ | `sensor:pump_pwm_duty_2` |
+| Loop 2 → | Flow Loop2 | 유량 | `sensor:flow_rate_2` |
+| Loop 2 → | Coolant Inlet Manifold L2 | 입수 온도 | `sensor:coolant_temp_inlet_2` |
+| Loop 2 → | Server 2 | (열원 표시, 센서 없음) | — |
+| Loop 2 → | Coolant Outlet Manifold L2 | 출수 온도 | `sensor:coolant_temp_outlet_2` |
+| Loop 2 → | Fan2 + Radiator | PWM duty (0–100 %) ✎ | `sensor:fan_pwm_duty_2` |
+| 하단 strip | Coolant ΔT1 / ΔT2 | outlet − inlet 계산값 | (계산) |
+| 하단 strip | Leak Detection | 누수 감지 | `sensor:leak` |
+| 하단 strip | Ambient Temp / Humidity | 외기 온·습도 — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
+| 하단 strip | Pressure | 유압 (부착 여부 미확정) | `sensor:pressure` |
 
 **페이지 전환**: Top bar 탭 (`Monitoring` / `History`) 선택
 

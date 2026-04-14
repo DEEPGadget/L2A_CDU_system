@@ -13,7 +13,10 @@
       "Bash(pip3 index:*)",
       "Bash(pip3 install:*)",
       "Bash(python3 -m venv /home/gadgetini/venv)",
-      "Bash(/home/gadgetini/venv/bin/pip install:*)"
+      "Bash(/home/gadgetini/venv/bin/pip install:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(python3 -c \"import PySide6; print\\(PySide6.__version__\\)\")"
     ]
   }
 }
