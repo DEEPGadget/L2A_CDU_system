@@ -127,21 +127,21 @@
   <!-- ── Pump L1 (cx=285, box y=115-265, pipe_y=190) ── -->
   <text x="285" y="160" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Pump</text>
-  <text x="252" y="220" text-anchor="middle"
+  <text x="285" y="220" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="#000000">{PUMP_DUTY_1}</text>
-  <text x="252" y="246" text-anchor="middle"
+  <text x="285" y="246" text-anchor="middle"
     font-family="sans-serif" font-size="18" fill="#000000">%</text>
-  <text x="296" y="228" text-anchor="start"
+  <text x="285" y="278" text-anchor="middle"
     font-family="sans-serif" font-size="38" fill="#2980b9">⚙</text>
 
   <!-- ── Pump L2 (box y=295-445) ── -->
   <text x="285" y="340" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Pump</text>
-  <text x="252" y="400" text-anchor="middle"
+  <text x="285" y="400" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="#000000">{PUMP_DUTY_2}</text>
-  <text x="252" y="426" text-anchor="middle"
+  <text x="285" y="426" text-anchor="middle"
     font-family="sans-serif" font-size="18" fill="#000000">%</text>
-  <text x="296" y="408" text-anchor="start"
+  <text x="285" y="458" text-anchor="middle"
     font-family="sans-serif" font-size="38" fill="#2980b9">⚙</text>
 
   <!-- ── Flow L1 (cx=445, 테두리 없는 센서) ── -->
@@ -209,23 +209,23 @@
     font-family="sans-serif" font-size="18" fill="#000000">°C</text>
 
   <!-- ── Fan+Radiator L1 (cx=1175, box y=115-265) ── -->
-  <text x="1175" y="160" text-anchor="middle"
+  <text x="1175" y="180" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Fan + Radiator</text>
-  <text x="1136" y="220" text-anchor="middle"
+  <text x="1175" y="228" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="#000000">{FAN_DUTY_1}</text>
-  <text x="1136" y="246" text-anchor="middle"
+  <text x="1175" y="254" text-anchor="middle"
     font-family="sans-serif" font-size="18" fill="#000000">%</text>
-  <text x="1184" y="228" text-anchor="start"
+  <text x="1175" y="274" text-anchor="middle"
     font-family="sans-serif" font-size="38" fill="#2980b9">⚙</text>
 
   <!-- ── Fan+Radiator L2 (box y=295-445) ── -->
-  <text x="1175" y="340" text-anchor="middle"
+  <text x="1175" y="360" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Fan + Radiator</text>
-  <text x="1136" y="400" text-anchor="middle"
+  <text x="1175" y="408" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="#000000">{FAN_DUTY_2}</text>
-  <text x="1136" y="426" text-anchor="middle"
+  <text x="1175" y="434" text-anchor="middle"
     font-family="sans-serif" font-size="18" fill="#000000">%</text>
-  <text x="1184" y="408" text-anchor="start"
+  <text x="1175" y="454" text-anchor="middle"
     font-family="sans-serif" font-size="38" fill="#2980b9">⚙</text>
 
 </svg>
