@@ -48,17 +48,17 @@ REDIS_DB    = 0
 _C_NORMAL   = "#27ae60"
 _C_WARNING  = "#e67e22"
 _C_CRITICAL = "#e74c3c"
-_C_NO_DATA  = "#9e9e9e"
+_C_NO_DATA  = "#000000"  # 원칙 2: 회색 금지 — no-data는 검정으로, 값 "--"로 구분
 
 # ── Overlay button relative positions (x, y, w, h) as fractions of widget size ─
 # Calibrated to cooling_health.svg layout (SVG canvas: 1280×608).
-# Pump:    x=155-285, y=113-213  →  rx=155/1280, ry=113/608, rw=130/1280, rh=100/608
-# Fan+Rad: x=910-1090, y=113-213 →  rx=910/1280, ry=113/608, rw=180/1280, rh=100/608
+# Pump:    x=155-285, y=120-215  →  rx=155/1280, ry=120/608, rw=130/1280, rh=95/608
+# Fan+Rad: x=910-1090, y=120-215 →  rx=910/1280, ry=120/608, rw=180/1280, rh=95/608
 _OVERLAY_POSITIONS: dict[str, tuple[float, float, float, float]] = {
-    "pump1": (0.121, 0.186, 0.102, 0.164),  # Pump Loop1 (x=155,y=113,w=130,h=100)
-    "pump2": (0.121, 0.646, 0.102, 0.164),  # Pump Loop2 (x=155,y=393,w=130,h=100)
-    "fan1":  (0.711, 0.186, 0.141, 0.164),  # Fan+Rad Loop1 (x=910,y=113,w=180,h=100)
-    "fan2":  (0.711, 0.646, 0.141, 0.164),  # Fan+Rad Loop2 (x=910,y=393,w=180,h=100)
+    "pump1": (0.121, 0.197, 0.102, 0.156),  # Pump Loop1 (x=155,y=120,w=130,h=95)
+    "pump2": (0.121, 0.641, 0.102, 0.156),  # Pump Loop2 (x=155,y=390,w=130,h=95)
+    "fan1":  (0.711, 0.197, 0.141, 0.156),  # Fan+Rad Loop1 (x=910,y=120,w=180,h=95)
+    "fan2":  (0.711, 0.641, 0.141, 0.156),  # Fan+Rad Loop2 (x=910,y=390,w=180,h=95)
 }
 
 _DUTY_KEYS: dict[str, str] = {
