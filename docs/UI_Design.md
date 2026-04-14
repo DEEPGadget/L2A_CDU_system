@@ -21,7 +21,8 @@
 | 5 | **배관 중앙 관통 원칙** — 냉각수 루프(배관 라인)는 각 컴포넌트 박스의 중앙을 관통하도록 렌더링. 컴포넌트는 배관이 지나가는 역(station)처럼 표현. 박스 좌측 엣지로 유입 → 박스 중앙에 값·레이블 표시 → 박스 우측 엣지로 유출. 컴포넌트 간 배관 세그먼트로 연결. (`assets/UI example/cooling health.svg.png` 참고) |
 | 6 | **유로(배관) 색상** — 냉각수 온도 상태에 따라 구간별 색상 구분: 공급측(Reservoir→Pump→Flow→Inlet Manifold) 파랑 계열, 환수측(Outlet Manifold→Fan+Radiator) 빨강 계열. Server 박스에서 파랑→빨강 전환. 복귀 배관(Fan+Radiator 우단→Reservoir 좌단, 다이어그램 상/하단 테두리 경유)도 빨강→파랑 전환으로 표현. |
 | 7 | **컴포넌트 경계선 색상** — 열적 역할에 따라 고정: Reservoir·Inlet Manifold = 파란 실선 border / Outlet Manifold = 빨간 실선 border / Pump·Fan+Radiator = 회색 실선 border (중립 기계 요소) / Server 1·2 = 회색 **점선** border (`stroke-dasharray`) — 중립색 + 점선으로 CDU 외부 장치임을 구분 |
-| 8 | **컴포넌트 이름 헤더 규칙** — 레인 내 컴포넌트(Pump·Flow·Inlet Manifold·Outlet Manifold·Fan+Radiator)는 상단 공통 헤더에 이름 표시, 박스 내부는 값만 렌더링. 레인 좌측에 "Loop 1" / "Loop 2" 행 레이블로 구분. Reservoir는 좌단 공유 컴포넌트로 박스 내부에 이름 표시. Server 1·2는 레인 외부(위·아래)에 위치하므로 박스 내부에 이름 표시. |
+| 8 | **컴포넌트 이름 배치** — 모든 컴포넌트 이름은 박스 내부 상단에 표시 (bold). 박스 내부 구성: 이름(상단) → 값(중앙) → 단위(하단). 레인 좌측에 "L1" / "L2" 행 레이블로 루프 구분. |
+| 12 | **최소 글자 크기** — 다이어그램 내 모든 텍스트는 최소 14px. 값(센서·PWM)은 22px, 이름·단위·레이블은 14px. 그 이하 크기 사용 금지. |
 | 9 | **Server 외부 분기 표현** — Inlet Manifold에서 차가운 냉각수가 서버로 나갔다가 뜨거워져 Outlet Manifold로 돌아오는 흐름을 수직 분기로 표현. Loop 1의 서버는 레인 위쪽으로, Loop 2의 서버는 레인 아래쪽으로 분기. Inlet→Server→Outlet 은 하나의 연결된 유로. |
 | 10 | **Reservoir 구조** — Reservoir 박스는 두 레인(Loop 1·2) 높이 전체를 커버하는 단일 박스. 박스 상단→Loop 1 배관, 박스 하단→Loop 2 배관으로 분기. 내부에 이름·레벨 바·상태 텍스트 표시. |
 | 11 | **Status strip** — ΔT1·ΔT2·Leak·Ambient·Pressure는 SVG 아래 별도 QWidget으로 배치. SVG는 다이어그램만 담당, status strip은 Python에서 직접 갱신. |
