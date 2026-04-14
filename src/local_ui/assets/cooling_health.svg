@@ -173,11 +173,11 @@
     font-family="sans-serif" font-size="32" fill="{INLET_2_C}">{INLET_2}<tspan dx="8" font-size="18">°C</tspan></text>
 
   <!-- ── Server 1 (cx=790, box y=30-85) ── -->
-  <text x="790" y="68" text-anchor="middle"
+  <text x="790" y="82" text-anchor="middle"
     font-family="sans-serif" font-size="16" font-weight="bold" fill="#000000">Server 1</text>
 
   <!-- ── Server 2 (box y=475-530) ── -->
-  <text x="790" y="513" text-anchor="middle"
+  <text x="790" y="528" text-anchor="middle"
     font-family="sans-serif" font-size="16" font-weight="bold" fill="#000000">Server 2</text>
 
   <!-- ── Outlet Manifold L1 (cx=970) ── -->
