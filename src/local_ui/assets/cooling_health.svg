@@ -125,60 +125,52 @@
     font-family="sans-serif" font-size="16" font-weight="bold" fill="#000000">L2</text>
 
   <!-- ── Pump L1 (cx=285, box y=115-265, pipe_y=190) ── -->
-  <text x="285" y="160" text-anchor="middle"
+  <text x="285" y="170" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Pump</text>
-  <text x="285" y="220" text-anchor="middle"
-    font-family="sans-serif" font-size="32" fill="#000000">{PUMP_DUTY_1}</text>
-  <text x="285" y="246" text-anchor="middle"
-    font-family="sans-serif" font-size="18" fill="#000000">%</text>
-  <text x="285" y="278" text-anchor="middle"
+  <text x="285" y="210" text-anchor="middle"
+    font-family="sans-serif" font-size="32" fill="#000000">{PUMP_DUTY_1}<tspan dx="8" font-size="18">%</tspan></text>
+  <text x="285" y="242" text-anchor="middle"
     font-family="sans-serif" font-size="38" fill="#2980b9">⚙</text>
 
   <!-- ── Pump L2 (box y=295-445) ── -->
-  <text x="285" y="340" text-anchor="middle"
+  <text x="285" y="350" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Pump</text>
-  <text x="285" y="400" text-anchor="middle"
-    font-family="sans-serif" font-size="32" fill="#000000">{PUMP_DUTY_2}</text>
-  <text x="285" y="426" text-anchor="middle"
-    font-family="sans-serif" font-size="18" fill="#000000">%</text>
-  <text x="285" y="458" text-anchor="middle"
+  <text x="285" y="390" text-anchor="middle"
+    font-family="sans-serif" font-size="32" fill="#000000">{PUMP_DUTY_2}<tspan dx="8" font-size="18">%</tspan></text>
+  <text x="285" y="422" text-anchor="middle"
     font-family="sans-serif" font-size="38" fill="#2980b9">⚙</text>
 
   <!-- ── Flow L1 (cx=445, 테두리 없는 센서) ── -->
-  <text x="445" y="160" text-anchor="middle"
+  <text x="445" y="163" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Flow</text>
-  <text x="445" y="218" text-anchor="middle"
+  <text x="445" y="221" text-anchor="middle"
     font-family="sans-serif" font-size="30" fill="#000000">{FLOW_1}</text>
-  <text x="445" y="244" text-anchor="middle"
+  <text x="445" y="247" text-anchor="middle"
     font-family="sans-serif" font-size="18" fill="#000000">L/min</text>
 
   <!-- ── Flow L2 ── -->
-  <text x="445" y="340" text-anchor="middle"
+  <text x="445" y="343" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Flow</text>
-  <text x="445" y="398" text-anchor="middle"
+  <text x="445" y="401" text-anchor="middle"
     font-family="sans-serif" font-size="30" fill="#000000">{FLOW_2}</text>
-  <text x="445" y="424" text-anchor="middle"
+  <text x="445" y="427" text-anchor="middle"
     font-family="sans-serif" font-size="18" fill="#000000">L/min</text>
 
   <!-- ── Inlet Manifold L1 (cx=610) ── -->
-  <text x="610" y="158" text-anchor="middle"
+  <text x="610" y="167" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Inlet</text>
-  <text x="610" y="180" text-anchor="middle"
+  <text x="610" y="189" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Manifold</text>
-  <text x="610" y="220" text-anchor="middle"
-    font-family="sans-serif" font-size="32" fill="{INLET_1_C}">{INLET_1}</text>
-  <text x="610" y="246" text-anchor="middle"
-    font-family="sans-serif" font-size="18" fill="#000000">°C</text>
+  <text x="610" y="229" text-anchor="middle"
+    font-family="sans-serif" font-size="32" fill="{INLET_1_C}">{INLET_1}<tspan dx="8" font-size="18">°C</tspan></text>
 
   <!-- ── Inlet Manifold L2 ── -->
-  <text x="610" y="338" text-anchor="middle"
+  <text x="610" y="347" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Inlet</text>
-  <text x="610" y="360" text-anchor="middle"
+  <text x="610" y="369" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Manifold</text>
-  <text x="610" y="400" text-anchor="middle"
-    font-family="sans-serif" font-size="32" fill="{INLET_2_C}">{INLET_2}</text>
-  <text x="610" y="426" text-anchor="middle"
-    font-family="sans-serif" font-size="18" fill="#000000">°C</text>
+  <text x="610" y="409" text-anchor="middle"
+    font-family="sans-serif" font-size="32" fill="{INLET_2_C}">{INLET_2}<tspan dx="8" font-size="18">°C</tspan></text>
 
   <!-- ── Server 1 (cx=790, box y=30-85) ── -->
   <text x="790" y="68" text-anchor="middle"
@@ -189,43 +181,35 @@
     font-family="sans-serif" font-size="16" font-weight="bold" fill="#000000">Server 2</text>
 
   <!-- ── Outlet Manifold L1 (cx=970) ── -->
-  <text x="970" y="158" text-anchor="middle"
+  <text x="970" y="167" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Outlet</text>
-  <text x="970" y="180" text-anchor="middle"
+  <text x="970" y="189" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Manifold</text>
-  <text x="970" y="220" text-anchor="middle"
-    font-family="sans-serif" font-size="32" fill="{OUTLET_1_C}">{OUTLET_1}</text>
-  <text x="970" y="246" text-anchor="middle"
-    font-family="sans-serif" font-size="18" fill="#000000">°C</text>
+  <text x="970" y="229" text-anchor="middle"
+    font-family="sans-serif" font-size="32" fill="{OUTLET_1_C}">{OUTLET_1}<tspan dx="8" font-size="18">°C</tspan></text>
 
   <!-- ── Outlet Manifold L2 ── -->
-  <text x="970" y="338" text-anchor="middle"
+  <text x="970" y="347" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Outlet</text>
-  <text x="970" y="360" text-anchor="middle"
+  <text x="970" y="369" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Manifold</text>
-  <text x="970" y="400" text-anchor="middle"
-    font-family="sans-serif" font-size="32" fill="{OUTLET_2_C}">{OUTLET_2}</text>
-  <text x="970" y="426" text-anchor="middle"
-    font-family="sans-serif" font-size="18" fill="#000000">°C</text>
+  <text x="970" y="409" text-anchor="middle"
+    font-family="sans-serif" font-size="32" fill="{OUTLET_2_C}">{OUTLET_2}<tspan dx="8" font-size="18">°C</tspan></text>
 
   <!-- ── Fan+Radiator L1 (cx=1175, box y=115-265) ── -->
-  <text x="1175" y="180" text-anchor="middle"
+  <text x="1175" y="176" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Fan + Radiator</text>
-  <text x="1175" y="228" text-anchor="middle"
-    font-family="sans-serif" font-size="32" fill="#000000">{FAN_DUTY_1}</text>
-  <text x="1175" y="254" text-anchor="middle"
-    font-family="sans-serif" font-size="18" fill="#000000">%</text>
-  <text x="1175" y="274" text-anchor="middle"
+  <text x="1175" y="214" text-anchor="middle"
+    font-family="sans-serif" font-size="32" fill="#000000">{FAN_DUTY_1}<tspan dx="8" font-size="18">%</tspan></text>
+  <text x="1175" y="246" text-anchor="middle"
     font-family="sans-serif" font-size="38" fill="#2980b9">⚙</text>
 
   <!-- ── Fan+Radiator L2 (box y=295-445) ── -->
-  <text x="1175" y="360" text-anchor="middle"
+  <text x="1175" y="356" text-anchor="middle"
     font-family="sans-serif" font-size="18" font-weight="bold" fill="#000000">Fan + Radiator</text>
-  <text x="1175" y="408" text-anchor="middle"
-    font-family="sans-serif" font-size="32" fill="#000000">{FAN_DUTY_2}</text>
-  <text x="1175" y="434" text-anchor="middle"
-    font-family="sans-serif" font-size="18" fill="#000000">%</text>
-  <text x="1175" y="454" text-anchor="middle"
+  <text x="1175" y="394" text-anchor="middle"
+    font-family="sans-serif" font-size="32" fill="#000000">{FAN_DUTY_2}<tspan dx="8" font-size="18">%</tspan></text>
+  <text x="1175" y="426" text-anchor="middle"
     font-family="sans-serif" font-size="38" fill="#2980b9">⚙</text>
 
 </svg>
