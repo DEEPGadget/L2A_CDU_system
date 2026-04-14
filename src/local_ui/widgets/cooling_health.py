@@ -23,7 +23,7 @@ import logging
 import redis
 from pathlib import Path
 
-from PySide6.QtCore import QByteArray
+from PySide6.QtCore import QByteArray, Qt
 from PySide6.QtGui import QFont
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
