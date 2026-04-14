@@ -55,10 +55,10 @@ _C_NO_DATA  = "#000000"  # 원칙 2: 회색 금지 — no-data는 검정으로, 
 # Pump:    x=222-342, y=120-215  →  rx=222/1280, ry=120/608, rw=120/1280, rh=95/608
 # Fan+Rad: x=1095-1265, y=120-215 → rx=1095/1280, ry=120/608, rw=170/1280, rh=95/608
 _OVERLAY_POSITIONS: dict[str, tuple[float, float, float, float]] = {
-    "pump1": (0.176, 0.270, 0.094, 0.181),  # Pump Loop1 (x=225,y=164,w=120,h=110)
-    "pump2": (0.176, 0.549, 0.094, 0.181),  # Pump Loop2 (x=225,y=334,w=120,h=110)
-    "fan1":  (0.855, 0.270, 0.125, 0.181),  # Fan+Rad Loop1 (x=1095,y=164,w=160,h=110)
-    "fan2":  (0.855, 0.549, 0.125, 0.181),  # Fan+Rad Loop2 (x=1095,y=334,w=160,h=110)
+    "pump1": (0.176, 0.189, 0.094, 0.247),  # Pump Loop1 (x=225,y=115,w=120,h=150)
+    "pump2": (0.176, 0.485, 0.094, 0.247),  # Pump Loop2 (x=225,y=295,w=120,h=150)
+    "fan1":  (0.855, 0.189, 0.125, 0.247),  # Fan+Rad Loop1 (x=1095,y=115,w=160,h=150)
+    "fan2":  (0.855, 0.485, 0.125, 0.247),  # Fan+Rad Loop2 (x=1095,y=295,w=160,h=150)
 }
 # Note: Server box positions for reference (not overlay buttons)
 # Server1: x=771-871, y=20-75  / Server2: x=771-871, y=523-578
@@ -286,6 +286,12 @@ class CoolingHealthWidget(QWidget):
         # Transform leak display value
         if key == "sensor:leak":
             self._values["LEAK"] = "None" if value == "NORMAL" else "Detected"
+        # Pump/Fan duty: integer only (no decimal)
+        elif key in _DUTY_KEYS.values():
+            try:
+                self._values[placeholder] = str(int(float(value)))
+            except ValueError:
+                self._values[placeholder] = value
         else:
             try:
                 self._values[placeholder] = f"{float(value):.1f}"
