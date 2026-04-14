@@ -89,7 +89,7 @@ class MainWindow(QMainWindow):
     def _connect_signals(self) -> None:
         sub = self._subscriber
 
-        # Sensor updates → monitoring page + top bar
+        # Sensor updates → monitoring page
         sub.sensor_updated.connect(self._monitoring_page.on_sensor_updated)
 
         # Comm updates → top bar
@@ -100,6 +100,9 @@ class MainWindow(QMainWindow):
         sub.alarm_set.connect(self._monitoring_page.on_alarm_set)
         sub.alarm_deleted.connect(self._top_bar.on_alarm_deleted)
         sub.alarm_deleted.connect(self._monitoring_page.on_alarm_deleted)
+
+        # Bell badge tap → toggle alarm overlay
+        self._top_bar.bell_tapped.connect(self._monitoring_page.toggle_alarm_overlay)
 
     def closeEvent(self, event) -> None:
         self._subscriber.stop()
@@ -122,7 +125,6 @@ def main() -> None:
     window = MainWindow(subscriber)
 
     if _IS_RPI:
-        from PySide6.QtCore import Qt
         screen_geo = app.primaryScreen().geometry()
         window.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         window.setGeometry(screen_geo)
