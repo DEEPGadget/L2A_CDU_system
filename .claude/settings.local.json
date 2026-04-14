@@ -16,7 +16,17 @@
       "Bash(/home/gadgetini/venv/bin/pip install:*)",
       "Bash(git add:*)",
       "Bash(git commit -m ':*)",
-      "Bash(python3 -c \"import PySide6; print\\(PySide6.__version__\\)\")"
+      "Bash(python3 -c \"import PySide6; print\\(PySide6.__version__\\)\")",
+      "Read(//usr/share/wayland-sessions/**)",
+      "Read(//usr/share/xsessions/**)",
+      "Bash(systemctl status:*)",
+      "Read(//dev/dri/**)",
+      "Read(//dev/**)",
+      "Read(//sys/firmware/devicetree/base/**)",
+      "Bash(vcgencmd get_config gpu_mem)"
+    ],
+    "additionalDirectories": [
+      "/etc/systemd/system"
     ]
   }
 }
