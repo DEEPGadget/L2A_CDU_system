@@ -6,14 +6,15 @@ Used by CoolingHealthWidget overlay buttons (inline Pump/Fan control).
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialog,
-    QDialogButtonBox,
     QGridLayout,
+    QHBoxLayout,
     QLabel,
     QPushButton,
+    QStyle,
     QVBoxLayout,
 )
 
@@ -30,24 +31,28 @@ class NumpadDialog(QDialog):
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
+        layout.setSpacing(12)
+        layout.setContentsMargins(16, 16, 16, 16)
 
+        # ── Display ───────────────────────────────────────────────────────────
         display_font = QFont()
-        display_font.setPointSize(24)
+        display_font.setPointSize(28)
         display_font.setBold(True)
 
         self._display = QLabel(self._value_str)
         self._display.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self._display.setFont(display_font)
-        self._display.setMinimumHeight(50)
+        self._display.setMinimumHeight(64)
         self._display.setStyleSheet(
-            "border:2px solid #bdc3c7; border-radius:6px; padding:4px 8px;"
+            "border:2px solid #bdc3c7; border-radius:6px; padding:6px 12px;"
         )
         layout.addWidget(self._display)
 
+        # ── Numpad grid ───────────────────────────────────────────────────────
         grid = QGridLayout()
-        grid.setSpacing(6)
+        grid.setSpacing(8)
         btn_font = QFont()
-        btn_font.setPointSize(18)
+        btn_font.setPointSize(20)
 
         buttons = [
             ("7", 0, 0), ("8", 0, 1), ("9", 0, 2),
@@ -58,19 +63,47 @@ class NumpadDialog(QDialog):
         for label, row, col in buttons:
             btn = QPushButton(label)
             btn.setFont(btn_font)
-            btn.setMinimumSize(70, 60)
+            btn.setMinimumSize(88, 72)
             btn.clicked.connect(lambda _, l=label: self._on_key(l))
             grid.addWidget(btn, row, col)
 
         layout.addLayout(grid)
 
-        btn_box = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        # ── Apply / Cancel ────────────────────────────────────────────────────
+        action_font = QFont()
+        action_font.setPointSize(16)
+
+        style = self.style()
+
+        apply_btn = QPushButton("Apply")
+        apply_btn.setFont(action_font)
+        apply_btn.setMinimumHeight(72)
+        apply_btn.setIcon(style.standardIcon(QStyle.SP_DialogOkButton))
+        apply_btn.setIconSize(QSize(28, 28))
+        apply_btn.setLayoutDirection(Qt.RightToLeft)
+        apply_btn.setStyleSheet(
+            "QPushButton { background:#ffffff; color:#000000; border:2px solid #000000; border-radius:6px; }"
+            "QPushButton:pressed { background:#e0e0e0; }"
         )
-        btn_box.button(QDialogButtonBox.Ok).setText("Apply")
-        btn_box.accepted.connect(self._on_accept)
-        btn_box.rejected.connect(self.reject)
-        layout.addWidget(btn_box)
+        apply_btn.clicked.connect(self._on_accept)
+
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setFont(action_font)
+        cancel_btn.setMinimumHeight(72)
+        cancel_btn.setIcon(style.standardIcon(QStyle.SP_DialogCancelButton))
+        cancel_btn.setIconSize(QSize(28, 28))
+        cancel_btn.setLayoutDirection(Qt.RightToLeft)
+        cancel_btn.setStyleSheet(
+            "QPushButton { background:#ffffff; color:#000000; border:2px solid #000000; border-radius:6px; }"
+            "QPushButton:pressed { background:#e0e0e0; }"
+        )
+        cancel_btn.clicked.connect(self.reject)
+
+        action_row = QHBoxLayout()
+        action_row.setSpacing(8)
+        action_row.addWidget(cancel_btn)
+        action_row.addWidget(apply_btn)
+        layout.addLayout(action_row)
 
     def _on_key(self, label: str) -> None:
         if label == "⌫":
