@@ -51,16 +51,16 @@ _LINK_COLORS: dict[str, str] = {
 # ── Alarm badge colors ─────────────────────────────────────────────────────────
 _BADGE_NORMAL_STYLE = (
     "QPushButton { background:#ffffff; color:#000000; border-radius:14px;"
-    " padding:4px 14px; font-size:18px; font-weight:bold;"
+    " padding:4px 14px; font-size:24px; font-weight:bold;"
     " border:2px solid #000000; }"
 )
 _BADGE_WARNING_STYLE  = (
     "QPushButton { background:#e67e22; color:white; border-radius:14px;"
-    " padding:4px 14px; font-size:18px; font-weight:bold; border:none; }"
+    " padding:4px 14px; font-size:24px; font-weight:bold; border:none; }"
 )
 _BADGE_CRITICAL_STYLE = (
     "QPushButton { background:#e74c3c; color:white; border-radius:14px;"
-    " padding:4px 14px; font-size:18px; font-weight:bold; border:none; }"
+    " padding:4px 14px; font-size:24px; font-weight:bold; border:none; }"
 )
 
 # ── Tab button styles ──────────────────────────────────────────────────────────
@@ -137,16 +137,24 @@ class TopBarWidget(QWidget):
         center.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         center_layout = QHBoxLayout(center)
         center_layout.setContentsMargins(0, 0, 0, 0)
-        center_layout.setSpacing(20)
+        center_layout.setSpacing(0)
         center_layout.setAlignment(Qt.AlignCenter)
 
-        # Alarm badge (hidden when no alarms)
+        def _sep() -> QLabel:
+            s = QLabel("|")
+            s.setStyleSheet("color:#9e9e9e; font-size:20px; padding:0 10px;")
+            s.setAlignment(Qt.AlignVCenter)
+            return s
+
+        # Alarm badge
         self._alarm_badge = QPushButton("🔔 -")
-        self._alarm_badge.setMinimumSize(90, 44)
+        self._alarm_badge.setMinimumSize(110, 52)
         self._alarm_badge.setCursor(Qt.PointingHandCursor)
         self._alarm_badge.setStyleSheet(_BADGE_NORMAL_STYLE)
         self._alarm_badge.clicked.connect(self.bell_tapped)
         center_layout.addWidget(self._alarm_badge)
+
+        center_layout.addWidget(_sep())
 
         # IP
         ip_font = QFont()
@@ -156,9 +164,13 @@ class TopBarWidget(QWidget):
         self._ip_label.setStyleSheet("color:#000000;")
         center_layout.addWidget(self._ip_label)
 
+        center_layout.addWidget(_sep())
+
         # System status
         self._system_label = self._make_status_label("System:", "Normal", _SYSTEM_COLORS["Normal"])
         center_layout.addWidget(self._system_label)
+
+        center_layout.addWidget(_sep())
 
         # Link status
         self._link_label = self._make_status_label("Link:", "ok", _LINK_COLORS["ok"])
@@ -172,7 +184,7 @@ class TopBarWidget(QWidget):
         self._clock_label = QLabel()
         self._clock_label.setFont(clock_font)
         self._clock_label.setAlignment(Qt.AlignVCenter | Qt.AlignRight)
-        self._clock_label.setStyleSheet("color:#000000;")
+        self._clock_label.setStyleSheet("color:#000000; padding:0 16px;")
         layout.addWidget(self._clock_label)
 
         self._switch_tab(0)

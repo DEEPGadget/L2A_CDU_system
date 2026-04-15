@@ -40,12 +40,24 @@ class StatusStripWidget(QWidget):
         layout.setSpacing(0)
 
         lbl_font = QFont()
-        lbl_font.setPointSize(15)
+        lbl_font.setPointSize(17)
 
         val_font = QFont()
-        val_font.setPointSize(15)
+        val_font.setPointSize(17)
 
-        def add_item(label: str) -> QLabel:
+        def _sep() -> QLabel:
+            s = QLabel("|")
+            s.setFont(lbl_font)
+            s.setStyleSheet("color:#9e9e9e; padding:0 12px;")
+            s.setAlignment(Qt.AlignVCenter)
+            return s
+
+        items = [("ΔT1:", "_dt1_val"), ("ΔT2:", "_dt2_val"), ("Leak:", "_leak_val"),
+                 ("Ambient:", "_amb_val"), ("Pressure:", "_pres_val")]
+
+        layout.addStretch(1)
+
+        for i, (label, attr) in enumerate(items):
             lbl = QLabel(label)
             lbl.setFont(lbl_font)
             lbl.setStyleSheet(f"color:{_C_BLACK}; padding-right:6px;")
@@ -53,20 +65,17 @@ class StatusStripWidget(QWidget):
 
             val = QLabel("--")
             val.setFont(val_font)
-            val.setStyleSheet(f"color:{_C_BLACK}; padding-right:36px;")
+            val.setStyleSheet(f"color:{_C_BLACK};")
             val.setAlignment(Qt.AlignVCenter)
 
             layout.addWidget(lbl)
             layout.addWidget(val)
-            return val
+            setattr(self, attr, val)
 
-        self._dt1_val  = add_item("ΔT1:")
-        self._dt2_val  = add_item("ΔT2:")
-        self._leak_val = add_item("Leak:")
-        self._amb_val  = add_item("Ambient:")
-        self._pres_val = add_item("Pressure:")
+            if i < len(items) - 1:
+                layout.addWidget(_sep())
 
-        layout.addStretch()
+        layout.addStretch(1)
 
     # ------------------------------------------------------------------
     # Signal handler
@@ -87,10 +96,10 @@ class StatusStripWidget(QWidget):
         elif key == "sensor:leak":
             if value == "NORMAL":
                 self._leak_val.setText("None")
-                self._leak_val.setStyleSheet(f"color:{_C_NORMAL}; padding-right:36px;")
+                self._leak_val.setStyleSheet(f"color:{_C_NORMAL};")
             else:
                 self._leak_val.setText("Detected")
-                self._leak_val.setStyleSheet(f"color:{_C_CRITICAL}; padding-right:36px;")
+                self._leak_val.setStyleSheet(f"color:{_C_CRITICAL};")
         elif key == "sensor:ambient_temp":
             try:
                 self._amb_temp = f"{float(value):.1f}°C"
@@ -119,10 +128,10 @@ class StatusStripWidget(QWidget):
         try:
             delta = float(outlet) - float(inlet)
             label.setText(f"{delta:.1f}°C")
-            label.setStyleSheet(f"color:{_C_BLACK}; padding-right:36px;")
+            label.setStyleSheet(f"color:{_C_BLACK};")
         except (ValueError, TypeError):
             label.setText("--")
-            label.setStyleSheet(f"color:{_C_BLACK}; padding-right:36px;")
+            label.setStyleSheet(f"color:{_C_BLACK};")
 
     def _refresh_ambient(self) -> None:
         self._amb_val.setText(f"{self._amb_temp} / {self._amb_hum}")
