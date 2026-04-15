@@ -65,12 +65,12 @@ _BADGE_CRITICAL_STYLE = (
 
 # ── Tab button styles ──────────────────────────────────────────────────────────
 _TAB_ACTIVE_STYLE = (
-    "QPushButton { background:#2c3e50; color:white; border:none;"
+    "QPushButton { background:#2c3e50; color:white; border:2px solid transparent;"
     " padding:10px 28px; font-size:20px; font-weight:bold; border-radius:4px; }"
 )
 _TAB_INACTIVE_STYLE = (
-    "QPushButton { background:#ffffff; color:#2c3e50; border:none;"
-    " padding:10px 28px; font-size:20px; border-radius:4px; }"
+    "QPushButton { background:#ffffff; color:#2c3e50; border:2px solid transparent;"
+    " padding:10px 28px; font-size:20px; font-weight:bold; border-radius:4px; }"
     "QPushButton:hover { background:#f0f0f0; }"
 )
 
