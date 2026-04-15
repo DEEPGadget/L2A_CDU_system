@@ -49,7 +49,7 @@ REDIS_DB    = 0
 _C_NORMAL   = "#27ae60"
 _C_WARNING  = "#e67e22"
 _C_CRITICAL = "#e74c3c"
-_C_NO_DATA  = "#000000"  # 원칙 2: 회색 금지 — no-data는 검정으로, 값 "--"로 구분
+_C_NO_DATA  = "#000000"  # no-data renders as black; value shown as "--" to distinguish from a real reading
 
 # ── Overlay button relative positions (x, y, w, h) as fractions of widget size ─
 # Calibrated to cooling_health.svg layout (SVG canvas: 1280×608).
@@ -202,6 +202,62 @@ class CoolingHealthWidget(QWidget):
 
         self._build_ui()
         self._build_overlays()
+        self._load_initial_values()
+
+    def _load_initial_values(self) -> None:
+        """Read current sensor values from Redis on startup.
+
+        Pub/Sub is fire-and-forget: if the simulator's initial publish fires
+        before the subscriber connects, the message is lost. Duty keys are
+        never re-published after init, so a direct GET is used as a fallback.
+        """
+        try:
+            level_keys = ["sensor:water_level_high", "sensor:water_level_low"]
+            sensor_keys = list(_KEY_TO_PLACEHOLDER.keys())
+            all_keys = sensor_keys + level_keys
+
+            pipe = self._redis.pipeline()
+            for key in all_keys:
+                pipe.get(key)
+            results = pipe.execute()
+
+            for key, raw in zip(all_keys, results):
+                if raw is None:
+                    continue
+                value = raw.decode() if isinstance(raw, bytes) else str(raw)
+
+                if key == "sensor:water_level_high":
+                    self._values["_water_high"] = value
+                elif key == "sensor:water_level_low":
+                    self._values["_water_low"] = value
+                else:
+                    placeholder = _KEY_TO_PLACEHOLDER.get(key)
+                    if placeholder is None:
+                        continue
+                    if key in _DUTY_KEYS.values():
+                        for slot, rkey in _DUTY_KEYS.items():
+                            if key == rkey:
+                                try:
+                                    self._current_duty[slot] = int(float(value))
+                                except ValueError:
+                                    pass
+                        try:
+                            self._values[placeholder] = str(int(float(value)))
+                        except ValueError:
+                            self._values[placeholder] = value
+                    elif key == "sensor:leak":
+                        self._values["LEAK"] = "None" if value == "NORMAL" else "Detected"
+                    else:
+                        try:
+                            self._values[placeholder] = f"{float(value):.1f}"
+                        except ValueError:
+                            self._values[placeholder] = value
+
+        except Exception as exc:
+            log.warning("Failed to load initial Redis values: %s", exc)
+
+        self._update_water_level()
+        self._update_colors()
         self._reload_svg()
 
     def _build_ui(self) -> None:

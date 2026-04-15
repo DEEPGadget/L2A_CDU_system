@@ -22,7 +22,7 @@ INLET_TEMP_CRIT_HI:   float = 45.0   # above → critical
 OUTLET_TEMP_NORMAL_HI: float = 60.0
 OUTLET_TEMP_WARN_HI:   float = 65.0   # 60–65 → warning
 OUTLET_TEMP_CRIT_HI:   float = 65.0   # > 65  → critical  (ALARM-REQ-04)
-OUTLET_TEMP_CRIT_LO:   float = 18.0   # < 18  → critical  (결로 방지)
+OUTLET_TEMP_CRIT_LO:   float = 18.0   # < 18  → critical  (condensation risk below dew point)
 OUTLET_TEMP_WARN_LO:   float = 22.0   # < 22  → warning
 
 # ── Delta Temperature (computed: outlet − inlet) ──────────────────────────────
