@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.local_ui.widgets.control_panel import NumpadDialog
+from src import thresholds as T
 
 log = logging.getLogger(__name__)
 
@@ -78,9 +79,9 @@ def _color_inlet_temp(s: str) -> str:
         v = float(s)
     except (ValueError, TypeError):
         return _C_NO_DATA
-    if v > 45 or v < 18:
+    if v > T.INLET_TEMP_CRIT_HI or v < T.INLET_TEMP_CRIT_LO:
         return _C_CRITICAL
-    if v > 40 or v < 22:
+    if v > T.INLET_TEMP_NORMAL_HI or v < T.INLET_TEMP_NORMAL_LO:
         return _C_WARNING
     return _C_NORMAL
 
@@ -90,9 +91,9 @@ def _color_outlet_temp(s: str) -> str:
         v = float(s)
     except (ValueError, TypeError):
         return _C_NO_DATA
-    if v > 65 or v < 18:
+    if v > T.OUTLET_TEMP_CRIT_HI or v < T.OUTLET_TEMP_CRIT_LO:
         return _C_CRITICAL
-    if v > 60 or v < 22:
+    if v > T.OUTLET_TEMP_NORMAL_HI or v < T.OUTLET_TEMP_WARN_LO:
         return _C_WARNING
     return _C_NORMAL
 
@@ -121,9 +122,9 @@ def _color_ambient_temp(s: str) -> str:
         v = float(s)
     except (ValueError, TypeError):
         return _C_NO_DATA
-    if v > 50:
+    if v > T.AMBIENT_TEMP_CRIT_HI:
         return _C_CRITICAL
-    if v > 40:
+    if v > T.AMBIENT_TEMP_WARN_HI:
         return _C_WARNING
     return _C_NORMAL
 
@@ -133,9 +134,9 @@ def _color_ambient_hum(s: str) -> str:
         v = float(s)
     except (ValueError, TypeError):
         return _C_NO_DATA
-    if v > 80 or v < 10:
+    if v > T.AMBIENT_HUM_CRIT_HI or v < T.AMBIENT_HUM_CRIT_LO:
         return _C_CRITICAL
-    if v > 60:
+    if v > T.AMBIENT_HUM_WARN_HI:
         return _C_WARNING
     return _C_NORMAL
 

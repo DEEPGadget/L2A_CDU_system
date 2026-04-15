@@ -21,15 +21,17 @@ from __future__ import annotations
 
 from typing import Union
 
+from src import thresholds as T
+
 # Type alias: float drift tuple or fixed string
 _Value = Union[tuple[float, float, float], str]
 
 # Base sensor values used as the foundation for all scenarios.
 _NORMAL_BASE: dict[str, _Value] = {
-    "sensor:coolant_temp_inlet_1":  (30.0, 22.0, 40.0),
-    "sensor:coolant_temp_inlet_2":  (29.5, 22.0, 40.0),
-    "sensor:coolant_temp_outlet_1": (44.0, 22.0, 60.0),
-    "sensor:coolant_temp_outlet_2": (43.5, 22.0, 60.0),
+    "sensor:coolant_temp_inlet_1":  (30.0, T.INLET_TEMP_NORMAL_LO,  T.INLET_TEMP_NORMAL_HI),
+    "sensor:coolant_temp_inlet_2":  (29.5, T.INLET_TEMP_NORMAL_LO,  T.INLET_TEMP_NORMAL_HI),
+    "sensor:coolant_temp_outlet_1": (44.0, T.OUTLET_TEMP_WARN_LO,   T.OUTLET_TEMP_NORMAL_HI),
+    "sensor:coolant_temp_outlet_2": (43.5, T.OUTLET_TEMP_WARN_LO,   T.OUTLET_TEMP_NORMAL_HI),
     "sensor:flow_rate_1":           (5.2,  4.5,  6.0),
     "sensor:flow_rate_2":           (5.0,  4.5,  6.0),
     "sensor:water_level_high":      "1",
@@ -37,8 +39,8 @@ _NORMAL_BASE: dict[str, _Value] = {
     "sensor:ph":                    (7.2,  6.8,  7.6),
     "sensor:conductivity":          (150.0, 100.0, 200.0),
     "sensor:leak":                  "NORMAL",
-    "sensor:ambient_temp":          (25.0, 18.0, 40.0),
-    "sensor:ambient_humidity":      (45.0, 10.0, 60.0),
+    "sensor:ambient_temp":          (25.0, 18.0,                    T.AMBIENT_TEMP_WARN_HI),
+    "sensor:ambient_humidity":      (45.0, T.AMBIENT_HUM_NORMAL_LO,  T.AMBIENT_HUM_WARN_HI),
     "sensor:pressure":              (1.2,  0.8,  1.8),
     # Duty: initialised once by simulator, never overwritten afterwards
     "sensor:pump_pwm_duty_1":       "60",
@@ -52,11 +54,11 @@ _NORMAL_BASE: dict[str, _Value] = {
 _NORMAL_ALARMS: list[str] = []
 
 _WARNING_OVERRIDES: dict[str, _Value] = {
-    "sensor:coolant_temp_inlet_1":  (43.0, 41.0, 45.0),
-    "sensor:coolant_temp_outlet_1": (62.0, 60.0, 65.0),
+    "sensor:coolant_temp_inlet_1":  (43.0, T.INLET_TEMP_NORMAL_HI + 1, T.INLET_TEMP_CRIT_HI),
+    "sensor:coolant_temp_outlet_1": (62.0, T.OUTLET_TEMP_NORMAL_HI,    T.OUTLET_TEMP_CRIT_HI),
     "sensor:water_level_high":      "0",   # MIDDLE level
     "sensor:water_level_low":       "1",
-    "sensor:ambient_humidity":      (72.0, 60.0, 80.0),
+    "sensor:ambient_humidity":      (72.0, T.AMBIENT_HUM_WARN_HI, T.AMBIENT_HUM_CRIT_HI),
     "comm:status":                  "ok",
     "comm:consecutive_failures":    "0",
 }
@@ -68,10 +70,10 @@ _WARNING_ALARMS: list[str] = [
 ]
 
 _CRITICAL_OVERRIDES: dict[str, _Value] = {
-    "sensor:coolant_temp_inlet_1":  (48.0, 45.0, 52.0),
-    "sensor:coolant_temp_outlet_1": (67.0, 65.0, 72.0),
+    "sensor:coolant_temp_inlet_1":  (48.0, T.INLET_TEMP_CRIT_HI,   T.INLET_TEMP_CRIT_HI  + 7.0),
+    "sensor:coolant_temp_outlet_1": (67.0, T.OUTLET_TEMP_CRIT_HI,  T.OUTLET_TEMP_CRIT_HI + 7.0),
     "sensor:leak":                  "LEAKED",
-    "sensor:ambient_temp":          (55.0, 50.0, 60.0),
+    "sensor:ambient_temp":          (47.0, T.AMBIENT_TEMP_CRIT_HI, T.AMBIENT_TEMP_CRIT_HI + 10.0),
     "comm:status":                  "timeout",
     "comm:consecutive_failures":    "3",
 }
