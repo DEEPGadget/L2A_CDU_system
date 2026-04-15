@@ -142,43 +142,210 @@
 | 영역 | 위치 | 내용 |
 |---|---|---|
 | Top bar | 상단 | Monitoring 페이지와 동일 — 탭 네비, 알람 배지, System/Link 상태 텍스트, 현재 시각 |
-| Sidebar | 좌측 (좁은 폭) | Time Range 드롭다운 + Graph Form 라디오 버튼 + Metric 체크박스 |
-| View area | 우측 메인 | 선택된 Graph Form에 따라 Line Graph or Table 렌더링 |
+| Sidebar | 좌측 고정 폭 (320px) | Time Range 드롭다운 + Graph Form 라디오 버튼 + Metric 그룹 (접이식) |
+| View area | 우측 메인 | 선택된 Metric에 따라 Line Chart / State Timeline / Table 렌더링 |
 
 > **Sidebar 드롭다운 동작**: 클릭 시 사이드바 위에 overlay(popup)로 표시. 레이아웃을 밀지 않음. PySide6 `QComboBox` 기본 popup 방식 사용.
 
-**Graph Form 옵션**
+---
 
-| 선택 | 렌더링 |
-|---|---|
-| Line Graph | 선택된 Metric을 시계열 꺾은선 그래프로 표시 |
-| Table | 선택된 Metric을 timestamp 기준 테이블로 표시 |
+**시간 범위 (Time Range)**
 
-**Metric 선택 항목**
+`step = max(range_seconds / 60, 1)` — 포인트 수 ~60 고정
 
-| Metric | 데이터 소스 |
-|---|---|
-| `coolant_temp_inlet` | Prometheus |
-| `coolant_temp_outlet` | Prometheus |
-| `pressure` | Prometheus |
-| `flow_rate` | Prometheus |
-| `pump_pwm_duty` | Prometheus |
-| `fan_pwm_duty` | Prometheus |
-| `control_cmd` (pump / fan) | Prometheus |
-| `comm_event` | Prometheus |
-
-**시간 범위별 Prometheus 쿼리 step 기준** _(구현 시 확정)_
-
-> 포인트 수를 고정(~60)하고 step을 범위에 맞게 조정 — 차트 밀도 일정 유지
-
-| 범위 | step | 예상 포인트 수 |
+| 범위 | step | 예상 포인트 |
 |---|---|---|
-| 5m | 5s | ~60 |
+| 5m  | 5s  | ~60 |
 | 10m | 10s | ~60 |
 | 30m | 30s | ~60 |
-| 1H | 60s | ~60 |
-| 6H | 6m | ~60 |
+| 1H  | 60s | ~60 |
+| 6H  | 6m  | ~60 |
 | 24H | 24m | ~60 |
+
+---
+
+**Graph Form 라디오**
+
+| 선택 | 연속형 수치 metric | 이진/이산 metric (Leak·Comm Events) | 이벤트 로그 metric (Alarm History·Control Cmd) |
+|---|---|---|---|
+| Line Graph | Line Chart 렌더링 | **State Timeline** 고정 (라디오 무관) | **Table** 고정 (라디오 무관) |
+| Table | Table 렌더링 | Table 렌더링 | Table 렌더링 |
+
+---
+
+**Metric 그룹 (Sidebar — 접이식)**
+
+그룹 헤더 탭 → 펼침/접힘 토글. 기본 접힘. 각 항목은 개별 체크박스.
+
+```
+▶ Coolant Temp
+    ☐ Inlet  L1    ☐ Inlet  L2
+    ☐ Outlet L1    ☐ Outlet L2
+▶ Coolant Quality
+    ☐ pH
+    ☐ Conductivity
+    ☐ Water Level
+▶ Flow & Pressure
+    ☐ Flow Rate L1    ☐ Flow Rate L2
+    ☐ Pressure
+▶ PWM Duty
+    ☐ Pump Duty L1    ☐ Pump Duty L2
+    ☐ Fan Duty L1     ☐ Fan Duty L2
+▶ Environment
+    ☐ Ambient Temp
+    ☐ Ambient Humidity
+▶ Events
+    ☐ Leak              (State Timeline / Table)
+    ☐ Comm Events       (State Timeline / Table)
+    ☐ Alarm History     (Table only — 발생/해제 이벤트 기록)
+    ☐ Control Cmd – Pump  (Table only)
+    ☐ Control Cmd – Fan   (Table only)
+    ☐ Comm Failures     (Line / Table)
+```
+
+**체크박스 ↔ Prometheus 메트릭 매핑**
+
+| 체크박스 | Prometheus 쿼리 | 단위 | 렌더링 |
+|---|---|---|---|
+| Inlet L1 | `sensor_coolant_temp_inlet{loop="1"}` | °C | Line / Table |
+| Inlet L2 | `sensor_coolant_temp_inlet{loop="2"}` | °C | Line / Table |
+| Outlet L1 | `sensor_coolant_temp_outlet{loop="1"}` | °C | Line / Table |
+| Outlet L2 | `sensor_coolant_temp_outlet{loop="2"}` | °C | Line / Table |
+| Flow Rate L1 | `sensor_flow_rate{loop="1"}` | L/min | Line / Table |
+| Flow Rate L2 | `sensor_flow_rate{loop="2"}` | L/min | Line / Table |
+| Pressure | `sensor_pressure` | bar | Line / Table |
+| Pump Duty L1 | `sensor_pump_pwm_duty{loop="1"}` | % | Line / Table |
+| Pump Duty L2 | `sensor_pump_pwm_duty{loop="2"}` | % | Line / Table |
+| Fan Duty L1 | `sensor_fan_pwm_duty{loop="1"}` | % | Line / Table |
+| Fan Duty L2 | `sensor_fan_pwm_duty{loop="2"}` | % | Line / Table |
+| pH | `sensor_ph` | — | Line / Table |
+| Conductivity | `sensor_conductivity` | µS/cm | Line / Table |
+| Water Level | `sensor_water_level` | — | **State Timeline** / Table |
+| Ambient Temp | `sensor_ambient_temp` | °C | Line / Table |
+| Ambient Humidity | `sensor_ambient_humidity` | % RH | Line / Table |
+| Leak | `sensor_leak` | — | **State Timeline** / Table |
+| Comm Events | `comm_event` | — | **State Timeline** / Table |
+| Alarm History | `alarm_state{alarm=~".+"}` | — | **Table only** |
+| Control Cmd – Pump | `control_cmd_pump` | — | **Table only** |
+| Control Cmd – Fan | `control_cmd_fan` | — | **Table only** |
+| Comm Failures | `comm_consecutive_failures` | count | Line / Table |
+
+---
+
+**차트 배치 규칙 (Grafana 스타일)**
+
+같은 그룹에서 여러 항목을 선택하면 **단위가 같은 항목은 하나의 차트에 다중 시리즈로 합침**. 단위가 다른 항목은 별도 차트로 분리. 차트는 View area에 수직으로 쌓임.
+
+| 그룹 | 차트 구성 예 |
+|---|---|
+| Coolant Temp | Inlet·Outlet 모두 선택 → 차트 1개 (전부 °C) — ΔT 시각적 확인 |
+| Hydraulics | Flow Rate → 차트①, Pressure → 차트② (단위 다름) |
+| PWM Duty | Pump·Fan 모두 선택 → 차트 1개 (전부 %) |
+| Coolant Quality | pH → 차트①, Conductivity → 차트②, Water Level → 차트③ |
+| Environment | Ambient Temp → 차트①, Ambient Humidity → 차트② |
+| Events | Table / State Timeline — 차트 없음 |
+
+**차트 제목**: `{그룹명} — {선택 항목 나열}` (예: `Coolant Temp — Inlet L1, Outlet L1`)
+
+**Multi-series 색상·범례**
+
+| 규칙 | 값 |
+|---|---|
+| L1 계열 색상 | `#2980b9` (파랑) |
+| L2 계열 색상 | `#e67e22` (주황) |
+| 같은 루프 내 항목 구분 | Inlet = 실선, Outlet = 점선 |
+
+범례 레이블: 체크박스 레이블과 동일 (`Inlet L1`, `Outlet L2` 등)
+
+---
+
+**State Timeline 위젯**
+
+> 구현 파일: `src/local_ui/widgets/state_timeline.py` — `StateTimelineWidget(QWidget)` (step 2에서 신규 작성)
+> pyqtgraph 미설치 환경 — PySide6 `QPainter` 로만 구현
+
+- X축 = 시간 (선택된 Time Range), Y축 = 각 metric 행(row)
+- 각 시간 구간을 상태 색상 블록으로 채움
+- 상태 색상: Normal `#27ae60` · Warning `#e67e22` · Critical `#e74c3c` · Unknown `#bdc3c7`
+- 행 좌측에 metric 레이블, X축 하단에 시간 눈금
+
+**이진/이산 상태 매핑**
+
+| metric | 값 | 상태 레이블 | 색상 |
+|---|---|---|---|
+| `sensor_water_level` | 2 | HIGH | `#27ae60` |
+| | 1 | MIDDLE | `#e67e22` |
+| | 0 | LOW | `#e74c3c` |
+| `sensor_leak` | 0 | NORMAL | `#27ae60` |
+| | 1 | LEAKED | `#e74c3c` |
+| `comm_event` | ok | ok | `#27ae60` |
+| | timeout | timeout | `#e67e22` |
+| | disconnected | disconnected | `#e74c3c` |
+
+---
+
+**Table 컬럼 상세**
+
+| metric 종류 | 컬럼 구성 |
+|---|---|
+| 연속형·카운터 (단일) | Timestamp \| Value |
+| 연속형·카운터 (L1+L2) | Timestamp \| L1 Value \| L2 Value |
+| State Timeline (Table 모드: Leak·Comm Events) | Timestamp \| Status |
+| Alarm History | Timestamp \| Alarm \| Level (`warning`/`critical`) \| Event (`active`/`resolved`) |
+| Control Cmd Pump/Fan | Timestamp \| Value (%) \| Result (`success`/`fail`) |
+
+---
+
+**Prometheus 메트릭 네이밍 (Exporter 설계 기준)**
+
+Exporter가 Redis `sensor:*` + `alarm:*` 를 읽어 아래 이름으로 expose:
+
+```
+# 센서값 (sensor:* → Exporter Pull)
+sensor_coolant_temp_inlet{loop="1"}    ← sensor:coolant_temp_inlet_1
+sensor_coolant_temp_inlet{loop="2"}    ← sensor:coolant_temp_inlet_2
+sensor_coolant_temp_outlet{loop="1"}   ← sensor:coolant_temp_outlet_1
+sensor_coolant_temp_outlet{loop="2"}   ← sensor:coolant_temp_outlet_2
+sensor_flow_rate{loop="1"}             ← sensor:flow_rate_1
+sensor_flow_rate{loop="2"}             ← sensor:flow_rate_2
+sensor_pressure                        ← sensor:pressure
+sensor_pump_pwm_duty{loop="1"}         ← sensor:pump_pwm_duty_1
+sensor_pump_pwm_duty{loop="2"}         ← sensor:pump_pwm_duty_2
+sensor_fan_pwm_duty{loop="1"}          ← sensor:fan_pwm_duty_1
+sensor_fan_pwm_duty{loop="2"}          ← sensor:fan_pwm_duty_2
+sensor_ph                              ← sensor:ph
+sensor_conductivity                    ← sensor:conductivity
+sensor_water_level                     ← 파생: high:1 low:1→2 / high:0 low:1→1 / low:0→0
+sensor_leak                            ← sensor:leak  (NORMAL→0, LEAKED→1)
+sensor_ambient_temp                    ← sensor:ambient_temp
+sensor_ambient_humidity                ← sensor:ambient_humidity
+
+# 알람 상태 이력 (alarm:* → Exporter Pull)
+alarm_state{alarm="coolant_temp_l1_warning"}    ← alarm:coolant_temp_l1_warning  (키 있음=1, 없음=0)
+alarm_state{alarm="coolant_temp_l1_critical"}   ← alarm:coolant_temp_l1_critical (키 있음=2, 없음=0)
+alarm_state{alarm="coolant_temp_l2_warning"}
+alarm_state{alarm="coolant_temp_l2_critical"}
+alarm_state{alarm="leak_detected"}              ← (있음=2, 없음=0)
+alarm_state{alarm="water_level_warning"}        ← (있음=1, 없음=0)
+alarm_state{alarm="water_level_critical"}       ← (있음=2, 없음=0)
+alarm_state{alarm="ph_warning"}
+alarm_state{alarm="conductivity_warning"}
+alarm_state{alarm="flow_rate_warning"}
+alarm_state{alarm="pressure_warning"}
+alarm_state{alarm="ambient_temp_warning"}
+alarm_state{alarm="ambient_temp_critical"}
+alarm_state{alarm="ambient_humidity_warning"}
+alarm_state{alarm="ambient_humidity_critical"}
+alarm_state{alarm="comm_timeout"}               ← (있음=1, 없음=0)
+alarm_state{alarm="comm_disconnected"}          ← (있음=2, 없음=0)
+# 값 규칙: 키 이름 suffix _warning → 1, _critical 또는 _detected/_disconnected → 2
+
+# 이벤트/명령 이력 (Pushgateway — MCG Push)
+control_cmd_pump{result="success|fail"}
+control_cmd_fan{result="success|fail"}
+comm_event{status="timeout|disconnected|ok"}
+comm_consecutive_failures
+```
 
 ---
 
