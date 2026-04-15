@@ -35,6 +35,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from src.config import get_config
 from src.fake_data.scenarios import DUTY_KEYS, SCENARIOS
+from src import thresholds as T
 
 logging.basicConfig(
     level=logging.INFO,
@@ -64,6 +65,8 @@ class FakeDataSimulator:
         self._current: dict[str, float] = {}
         # Drift direction per key: +1 or -1
         self._direction: dict[str, float] = {}
+        # Current string sensor values (water level, leak, comm, etc.)
+        self._str_current: dict[str, str] = {}
 
         self._init_drift_state()
 
@@ -77,6 +80,8 @@ class FakeDataSimulator:
                 base, low, high = value
                 self._current[key] = base
                 self._direction[key] = 1.0
+            else:
+                self._str_current[key] = str(value)
 
     # ------------------------------------------------------------------
     # Public
@@ -126,6 +131,7 @@ class FakeDataSimulator:
                 str_val = f"{new_val:.2f}"
             else:
                 str_val = spec
+                self._str_current[key] = str_val
 
             pipe.set(key, str_val)
             pipe.publish(key, str_val)
@@ -150,22 +156,106 @@ class FakeDataSimulator:
         return new_val
 
     # ------------------------------------------------------------------
-    # Alarm update
+    # Alarm evaluation — mirrors AEM threshold logic in real mode
+
+    def _evaluate_thresholds(self) -> set[str]:
+        """Derive active alarm keys from current sensor values."""
+        active: set[str] = set()
+
+        def fval(key: str) -> float | None:
+            return self._current.get(key)
+
+        def sval(key: str) -> str:
+            return self._str_current.get(key, "")
+
+        # Coolant temperature — inlet
+        for key in ("sensor:coolant_temp_inlet_1", "sensor:coolant_temp_inlet_2"):
+            v = fval(key)
+            if v is not None:
+                if v > T.INLET_TEMP_CRIT_HI or v < T.INLET_TEMP_CRIT_LO:
+                    active.add("alarm:coolant_temp_critical")
+                elif v > T.INLET_TEMP_NORMAL_HI or v < T.INLET_TEMP_NORMAL_LO:
+                    active.add("alarm:coolant_temp_warning")
+
+        # Coolant temperature — outlet
+        for key in ("sensor:coolant_temp_outlet_1", "sensor:coolant_temp_outlet_2"):
+            v = fval(key)
+            if v is not None:
+                if v > T.OUTLET_TEMP_CRIT_HI or v < T.OUTLET_TEMP_CRIT_LO:
+                    active.add("alarm:coolant_temp_critical")
+                elif v > T.OUTLET_TEMP_NORMAL_HI or v < T.OUTLET_TEMP_WARN_LO:
+                    active.add("alarm:coolant_temp_warning")
+
+        # Delta temperature (outlet − inlet)
+        for i in (1, 2):
+            inlet  = fval(f"sensor:coolant_temp_inlet_{i}")
+            outlet = fval(f"sensor:coolant_temp_outlet_{i}")
+            if inlet is not None and outlet is not None:
+                delta = outlet - inlet
+                if delta > T.DELTA_TEMP_CRIT_HI:
+                    active.add("alarm:coolant_delta_critical")
+                elif delta > T.DELTA_TEMP_WARN_HI:
+                    active.add("alarm:coolant_delta_warning")
+
+        # Water level
+        high = sval("sensor:water_level_high")
+        low  = sval("sensor:water_level_low")
+        if high == "0" and low == "0":
+            active.add("alarm:water_level_critical")
+        elif high == "0" and low == "1":
+            active.add("alarm:water_level_warning")
+
+        # Leak
+        if sval("sensor:leak") == "LEAKED":
+            active.add("alarm:leak_detected")
+
+        # Ambient temperature
+        v = fval("sensor:ambient_temp")
+        if v is not None:
+            if v > T.AMBIENT_TEMP_CRIT_HI:
+                active.add("alarm:ambient_temp_critical")
+            elif v > T.AMBIENT_TEMP_WARN_HI:
+                active.add("alarm:ambient_temp_warning")
+
+        # Ambient humidity
+        v = fval("sensor:ambient_humidity")
+        if v is not None:
+            if v > T.AMBIENT_HUM_CRIT_HI or v < T.AMBIENT_HUM_CRIT_LO:
+                active.add("alarm:ambient_humidity_critical")
+            elif v > T.AMBIENT_HUM_WARN_HI:
+                active.add("alarm:ambient_humidity_warning")
+
+        # pH
+        v = fval("sensor:ph")
+        if v is not None and v < T.PH_WARN_LO:
+            active.add("alarm:ph_warning")
+
+        # Conductivity
+        v = fval("sensor:conductivity")
+        if v is not None and v < T.CONDUCTIVITY_WARN_LO:
+            active.add("alarm:conductivity_warning")
+
+        # Communication
+        comm = sval("comm:status")
+        if comm == "timeout":
+            active.add("alarm:comm_timeout")
+        elif comm == "disconnected":
+            active.add("alarm:comm_disconnected")
+
+        return active
 
     def _update_alarms(self) -> None:
-        active_alarms: list[str] = SCENARIOS[self._scenario]["alarms"]
-        active_set = set(active_alarms)
+        active_set = self._evaluate_thresholds()
 
-        # Collect all known alarm keys (active + any previously set)
         existing_keys: list[bytes] = self._redis.keys("alarm:*")
-        all_alarm_keys = active_set | {k.decode() for k in existing_keys}
+        all_keys = active_set | {k.decode() for k in existing_keys}
 
         pipe = self._redis.pipeline()
-        for alarm_key in all_alarm_keys:
-            if alarm_key in active_set:
-                pipe.set(alarm_key, "1")
+        for key in all_keys:
+            if key in active_set:
+                pipe.set(key, "1")
             else:
-                pipe.delete(alarm_key)
+                pipe.delete(key)
         pipe.execute()
 
 

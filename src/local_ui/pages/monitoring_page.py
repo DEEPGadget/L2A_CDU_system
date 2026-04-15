@@ -3,7 +3,7 @@
 Layout (top → bottom):
   QVBoxLayout
   ├── CoolingHealthWidget   (stretch=1, full-width SVG diagram)
-  └── StatusStripWidget     (fixed 60px, ΔT / Leak / Ambient / Pressure)
+  └── StatusStripWidget     (fixed 76px, ΔT / Leak / Ambient / Pressure)
 
 AlarmOverlayWidget is a floating child (not in layout).
 Toggled by TopBarWidget.bell_tapped signal via toggle_alarm_overlay().

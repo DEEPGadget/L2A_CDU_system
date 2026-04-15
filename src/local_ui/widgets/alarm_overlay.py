@@ -21,16 +21,29 @@ from PySide6.QtWidgets import (
 )
 
 _ALARM_LABELS: dict[str, str] = {
+    # Coolant temperature
     "alarm:coolant_temp_warning":      "Coolant Temp — Warning",
     "alarm:coolant_temp_critical":     "Coolant Temp — Critical",
+    # Delta temperature
     "alarm:coolant_delta_warning":     "Coolant ΔT — Warning",
     "alarm:coolant_delta_critical":    "Coolant ΔT — Critical",
-    "alarm:water_level_warning":       "Coolant Level — Warning (Middle)",
+    # Water level
+    "alarm:water_level_warning":       "Coolant Level — Warning",
+    "alarm:water_level_critical":      "Coolant Level — Critical",
+    # Leak
     "alarm:leak_detected":             "Leak — Detected",
+    # Flow & pressure
+    "alarm:flow_rate_warning":         "Flow Rate — Warning",
+    "alarm:pressure_warning":          "Pressure — Warning",
+    # Chemistry
+    "alarm:ph_warning":                "pH — Warning",
+    "alarm:conductivity_warning":      "Conductivity — Warning",
+    # Ambient
     "alarm:ambient_temp_warning":      "Ambient Temp — Warning",
     "alarm:ambient_temp_critical":     "Ambient Temp — Critical",
     "alarm:ambient_humidity_warning":  "Ambient Humidity — Warning",
     "alarm:ambient_humidity_critical": "Ambient Humidity — Critical",
+    # Communication
     "alarm:comm_timeout":              "Link — Timeout",
     "alarm:comm_disconnected":         "Link — Disconnected",
 }
@@ -57,27 +70,27 @@ class AlarmOverlayWidget(QFrame):
         self.setStyleSheet(
             "QFrame { background:#ffffff; border:1px solid #bdc3c7; border-radius:8px; }"
         )
-        self.setFixedWidth(320)
+        self.setFixedWidth(420)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 8, 10, 10)
-        layout.setSpacing(6)
+        layout.setContentsMargins(14, 10, 14, 14)
+        layout.setSpacing(10)
 
         # Header row
         header = QHBoxLayout()
         title = QLabel("Active Alarms")
         title_font = QFont()
-        title_font.setPointSize(13)
+        title_font.setPointSize(16)
         title_font.setBold(True)
         title.setFont(title_font)
         header.addWidget(title)
         header.addStretch()
 
         close_btn = QPushButton("✕")
-        close_btn.setFixedSize(28, 28)
+        close_btn.setFixedSize(36, 36)
         close_btn.setCursor(Qt.PointingHandCursor)
         close_btn.setStyleSheet(
-            "QPushButton { background:transparent; border:none; font-size:14px; color:#2c3e50; }"
+            "QPushButton { background:transparent; border:none; font-size:20px; color:#2c3e50; }"
             "QPushButton:hover { color:#e74c3c; }"
         )
         close_btn.clicked.connect(self.hide)
@@ -87,13 +100,18 @@ class AlarmOverlayWidget(QFrame):
         # Alarm list
         self._list = QListWidget()
         self._list.setFocusPolicy(Qt.NoFocus)
-        self._list.setSpacing(3)
+        self._list.setSpacing(5)
         self._list.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self._list.setMaximumHeight(240)
-        self._list.setStyleSheet("QListWidget { border:none; }")
+        self._list.setMaximumHeight(500)
+        self._list.setStyleSheet(
+            "QListWidget { border:none; }"
+            "QScrollBar:vertical { width:18px; background:#f0f0f0; border-radius:9px; }"
+            "QScrollBar::handle:vertical { background:#bdc3c7; border-radius:9px; min-height:40px; }"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height:0px; }"
+        )
 
         item_font = QFont()
-        item_font.setPointSize(12)
+        item_font.setPointSize(15)
         self._item_font = item_font
 
         layout.addWidget(self._list)
