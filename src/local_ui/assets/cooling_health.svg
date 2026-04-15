@@ -169,11 +169,11 @@
   <text x="95" y="286" text-anchor="middle"
     font-family="sans-serif" font-size="20" fill="#000000">pH</text>
   <text x="95" y="316" text-anchor="middle"
-    font-family="sans-serif" font-size="24" fill="#000000">{PH}</text>
+    font-family="sans-serif" font-size="24" fill="{PH_C}">{PH}</text>
   <text x="95" y="364" text-anchor="middle"
     font-family="sans-serif" font-size="20" fill="#000000">Conductivity</text>
   <text x="95" y="394" text-anchor="middle"
-    font-family="sans-serif" font-size="24" fill="#000000">{CONDUCTIVITY}</text>
+    font-family="sans-serif" font-size="24" fill="{CONDUCTIVITY_C}">{CONDUCTIVITY}</text>
   <text x="95" y="420" text-anchor="middle"
     font-family="sans-serif" font-size="20" fill="#000000">µS/cm</text>
 

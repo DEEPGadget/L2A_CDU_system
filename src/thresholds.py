@@ -41,6 +41,8 @@ AMBIENT_HUM_CRIT_HI:   float = 80.0   # > 80  → critical
 AMBIENT_HUM_CRIT_LO:   float = 8.0    # < 8   → critical
 
 # ── Chemistry (Warning only) ──────────────────────────────────────────────────
-# docs/threshold.md § Chemistry  — ALARM-REQ-17/18
-PH_WARN_LO:           float = 7.8     # < 7.8 → warning
-CONDUCTIVITY_WARN_LO: float = 4600.0  # < 4600 µs → warning
+# docs/threshold.md § Chemistry  — GEN-REQ-08 / ALARM-REQ-17/18
+PH_NORMAL_LO:         float = 8.0     # GEN-REQ-08 normal range lower bound
+PH_NORMAL_HI:         float = 10.5    # GEN-REQ-08 normal range upper bound
+PH_WARN_LO:           float = 7.8     # < 7.8 → alarm:ph_warning (ALARM-REQ-17)
+CONDUCTIVITY_WARN_LO: float = 4600.0  # < 4600 µS/cm → alarm:conductivity_warning (ALARM-REQ-18)

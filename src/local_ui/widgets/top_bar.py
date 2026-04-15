@@ -252,7 +252,7 @@ class TopBarWidget(QWidget):
     def _refresh_system_text(self) -> None:
         if self._link_status == "disconnected":
             state, color = "-", _SYSTEM_COLORS["-"]
-        elif any("critical" in k or "leak" in k or "disconnected" in k
+        elif any("critical" in k or k == "alarm:leak_detected" or "disconnected" in k
                  for k in self._active_alarms):
             state, color = "Critical", _SYSTEM_COLORS["Critical"]
         elif self._active_alarms:
@@ -272,7 +272,7 @@ class TopBarWidget(QWidget):
             self._alarm_badge.setStyleSheet(_BADGE_NORMAL_STYLE)
             return
         has_critical = any(
-            "critical" in k or "leak" in k or "disconnected" in k
+            "critical" in k or k == "alarm:leak_detected" or "disconnected" in k
             for k in self._active_alarms
         )
         self._alarm_badge.setText(f"🔔 {count}")

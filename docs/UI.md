@@ -134,8 +134,10 @@ sudo systemctl restart cdu-fake-simulator.service cdu-local-ui.service
 | `sensor:pump_pwm_duty_2` | 펌프 PWM duty (루프 2 — P3·P4 직렬, 0–100 %) | — | Modbus Data Parser |
 | `sensor:fan_pwm_duty_1` | 팬 1 PWM duty (루프 1, 0–100 %) | — | Modbus Data Parser |
 | `sensor:fan_pwm_duty_2` | 팬 2 PWM duty (루프 2, 0–100 %) | — | Modbus Data Parser |
-| `alarm:coolant_temp_warning` | 수온 경고 (warning) | — | Alarm / Event Manager |
-| `alarm:coolant_temp_critical` | 수온 위험 (critical) | — | Alarm / Event Manager |
+| `alarm:coolant_temp_l1_warning` | 수온 경고 — Loop 1 (warning) | — | Alarm / Event Manager |
+| `alarm:coolant_temp_l1_critical` | 수온 위험 — Loop 1 (critical) | — | Alarm / Event Manager |
+| `alarm:coolant_temp_l2_warning` | 수온 경고 — Loop 2 (warning) | — | Alarm / Event Manager |
+| `alarm:coolant_temp_l2_critical` | 수온 위험 — Loop 2 (critical) | — | Alarm / Event Manager |
 | `alarm:leak_detected` | 누수 감지 | — | Alarm / Event Manager |
 | `alarm:water_level_warning` | 수위 부족 경고 (warning) — `water_level_high`=0 AND `water_level_low`=1 | — | Alarm / Event Manager |
 | `alarm:water_level_critical` | 수위 위험 (critical) — `water_level_low`=0 | — | Alarm / Event Manager |

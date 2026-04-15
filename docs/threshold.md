@@ -32,7 +32,7 @@ Used as the source of truth for `src/fake_data/scenarios.py` and alarm manager l
 | `sensor:coolant_temp_inlet_2` − `sensor:coolant_temp_outlet_2` | ≤ 15 °C | 15–20 °C | > 20 °C |
 
 > Delta is calculated in the UI (not stored in Redis).
-> Alarm: `alarm:coolant_delta_warning` / `alarm:coolant_delta_critical`
+> Alarm: `alarm:coolant_delta_l1_warning` / `alarm:coolant_delta_l1_critical` / `alarm:coolant_delta_l2_warning` / `alarm:coolant_delta_l2_critical`
 
 ## Coolant Level
 
@@ -58,12 +58,14 @@ Used as the source of truth for `src/fake_data/scenarios.py` and alarm manager l
 
 ## Chemistry (Warning only)
 
-| Redis Key | Warning | Alarm Key |
-|---|---|---|
-| `sensor:ph` | < 7.8 | `alarm:ph_warning` |
-| `sensor:conductivity` | < 4600 µs | `alarm:conductivity_warning` |
+| Redis Key | Normal | Warning | Alarm Key |
+|---|---|---|---|
+| `sensor:ph` | 8.0–10.5 | < 8.0 (alarm at < 7.8) | `alarm:ph_warning` |
+| `sensor:conductivity` | ≥ 4600 µS/cm | < 4600 µS/cm | `alarm:conductivity_warning` |
 
-> Critical 없음. NVIDIA ALARM-REQ-17/18 기준 (preferred, not required).
+> Normal pH range: GEN-REQ-08 (PG25 fluid spec 8.0–10.5).
+> Alarm threshold: ALARM-REQ-17 (pH < 7.8), ALARM-REQ-18 (conductivity < 4600 µS/cm).
+> Critical 없음 (preferred, not required).
 
 ## Undetermined (TBD)
 

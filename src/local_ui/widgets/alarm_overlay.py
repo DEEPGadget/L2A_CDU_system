@@ -21,12 +21,18 @@ from PySide6.QtWidgets import (
 )
 
 _ALARM_LABELS: dict[str, str] = {
-    # Coolant temperature
-    "alarm:coolant_temp_warning":      "Coolant Temp — Warning",
-    "alarm:coolant_temp_critical":     "Coolant Temp — Critical",
-    # Delta temperature
-    "alarm:coolant_delta_warning":     "Coolant ΔT — Warning",
-    "alarm:coolant_delta_critical":    "Coolant ΔT — Critical",
+    # Coolant temperature — Loop 1
+    "alarm:coolant_temp_l1_warning":   "Coolant Temp L1 — Warning",
+    "alarm:coolant_temp_l1_critical":  "Coolant Temp L1 — Critical",
+    # Coolant temperature — Loop 2
+    "alarm:coolant_temp_l2_warning":   "Coolant Temp L2 — Warning",
+    "alarm:coolant_temp_l2_critical":  "Coolant Temp L2 — Critical",
+    # Delta temperature — Loop 1
+    "alarm:coolant_delta_l1_warning":  "Coolant ΔT L1 — Warning",
+    "alarm:coolant_delta_l1_critical": "Coolant ΔT L1 — Critical",
+    # Delta temperature — Loop 2
+    "alarm:coolant_delta_l2_warning":  "Coolant ΔT L2 — Warning",
+    "alarm:coolant_delta_l2_critical": "Coolant ΔT L2 — Critical",
     # Water level
     "alarm:water_level_warning":       "Coolant Level — Warning",
     "alarm:water_level_critical":      "Coolant Level — Critical",
@@ -53,7 +59,7 @@ _WARNING_COLOR  = QColor("#e67e22")
 
 
 def _is_critical(key: str) -> bool:
-    return "critical" in key or "leak" in key or "disconnected" in key
+    return "critical" in key or key == "alarm:leak_detected" or "disconnected" in key
 
 
 class AlarmOverlayWidget(QFrame):

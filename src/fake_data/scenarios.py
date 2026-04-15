@@ -36,8 +36,8 @@ _NORMAL_BASE: dict[str, _Value] = {
     "sensor:flow_rate_2":           (5.0,  4.5,  6.0),
     "sensor:water_level_high":      "1",
     "sensor:water_level_low":       "1",
-    "sensor:ph":                    (7.2,  6.8,  7.6),
-    "sensor:conductivity":          (150.0, 100.0, 200.0),
+    "sensor:ph":                    (9.0,   T.PH_NORMAL_LO,  T.PH_NORMAL_HI),
+    "sensor:conductivity":          (5500.0, T.CONDUCTIVITY_WARN_LO, 6500.0),
     "sensor:leak":                  "NORMAL",
     "sensor:ambient_temp":          (25.0, 18.0,                    T.AMBIENT_TEMP_WARN_HI),
     "sensor:ambient_humidity":      (45.0, T.AMBIENT_HUM_NORMAL_LO,  T.AMBIENT_HUM_WARN_HI),
@@ -57,6 +57,8 @@ _WARNING_OVERRIDES: dict[str, _Value] = {
     "sensor:water_level_high":      "0",   # MIDDLE level
     "sensor:water_level_low":       "1",
     "sensor:ambient_humidity":      (72.0, T.AMBIENT_HUM_WARN_HI, T.AMBIENT_HUM_CRIT_HI),
+    "sensor:ph":                    (7.7,  7.5,  T.PH_WARN_LO + 0.1),
+    "sensor:conductivity":          (4200.0, 3800.0, T.CONDUCTIVITY_WARN_LO - 100.0),
     "comm:status":                  "ok",
     "comm:consecutive_failures":    "0",
 }

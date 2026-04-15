@@ -142,6 +142,28 @@ def _color_ambient_hum(s: str) -> str:
     return _C_NORMAL
 
 
+def _color_ph(s: str) -> str:
+    try:
+        v = float(s)
+    except (ValueError, TypeError):
+        return _C_NO_DATA
+    if v < T.PH_WARN_LO or v > T.PH_NORMAL_HI:
+        return _C_WARNING
+    if v < T.PH_NORMAL_LO:
+        return _C_WARNING
+    return _C_NORMAL
+
+
+def _color_conductivity(s: str) -> str:
+    try:
+        v = float(s)
+    except (ValueError, TypeError):
+        return _C_NO_DATA
+    if v < T.CONDUCTIVITY_WARN_LO:
+        return _C_WARNING
+    return _C_NORMAL
+
+
 # ── Default values & colors ────────────────────────────────────────────────────
 
 _DEFAULT_VALUES: dict[str, str] = {
@@ -153,6 +175,8 @@ _DEFAULT_VALUES: dict[str, str] = {
     "WATER_LEVEL": "--",
     "PH": "--", "CONDUCTIVITY": "--",
     "LEAK": "--",
+    "PH_C":            _C_NO_DATA,
+    "CONDUCTIVITY_C":  _C_NO_DATA,
     "AMBIENT_TEMP": "--", "AMBIENT_HUM": "--",
     "PRESSURE": "--",
     # Color placeholders
@@ -395,6 +419,8 @@ class CoolingHealthWidget(QWidget):
         v["LEAK_C"]         = _color_leak(v["LEAK"])
         v["AMBIENT_TEMP_C"] = _color_ambient_temp(v["AMBIENT_TEMP"])
         v["AMBIENT_HUM_C"]  = _color_ambient_hum(v["AMBIENT_HUM"])
+        v["PH_C"]           = _color_ph(v["PH"])
+        v["CONDUCTIVITY_C"] = _color_conductivity(v["CONDUCTIVITY"])
 
     # ------------------------------------------------------------------
     # SVG reload
