@@ -49,6 +49,11 @@ _LINK_COLORS: dict[str, str] = {
 }
 
 # ── Alarm badge colors ─────────────────────────────────────────────────────────
+_BADGE_NORMAL_STYLE = (
+    "QPushButton { background:#ffffff; color:#000000; border-radius:14px;"
+    " padding:4px 14px; font-size:18px; font-weight:bold;"
+    " border:2px solid #000000; }"
+)
 _BADGE_WARNING_STYLE  = (
     "QPushButton { background:#e67e22; color:white; border-radius:14px;"
     " padding:4px 14px; font-size:18px; font-weight:bold; border:none; }"
@@ -64,9 +69,9 @@ _TAB_ACTIVE_STYLE = (
     " padding:10px 28px; font-size:20px; font-weight:bold; border-radius:4px; }"
 )
 _TAB_INACTIVE_STYLE = (
-    "QPushButton { background:#ecf0f1; color:#2c3e50; border:none;"
+    "QPushButton { background:#ffffff; color:#2c3e50; border:none;"
     " padding:10px 28px; font-size:20px; border-radius:4px; }"
-    "QPushButton:hover { background:#d5dbdb; }"
+    "QPushButton:hover { background:#f0f0f0; }"
 )
 
 
@@ -136,10 +141,10 @@ class TopBarWidget(QWidget):
         center_layout.setAlignment(Qt.AlignCenter)
 
         # Alarm badge (hidden when no alarms)
-        self._alarm_badge = QPushButton("🔔 0")
+        self._alarm_badge = QPushButton("🔔 -")
         self._alarm_badge.setMinimumSize(90, 44)
         self._alarm_badge.setCursor(Qt.PointingHandCursor)
-        self._alarm_badge.setVisible(False)
+        self._alarm_badge.setStyleSheet(_BADGE_NORMAL_STYLE)
         self._alarm_badge.clicked.connect(self.bell_tapped)
         center_layout.addWidget(self._alarm_badge)
 
@@ -263,7 +268,8 @@ class TopBarWidget(QWidget):
     def _refresh_alarm_badge(self) -> None:
         count = len(self._active_alarms)
         if count == 0:
-            self._alarm_badge.setVisible(False)
+            self._alarm_badge.setText("🔔 -")
+            self._alarm_badge.setStyleSheet(_BADGE_NORMAL_STYLE)
             return
         has_critical = any(
             "critical" in k or "leak" in k or "disconnected" in k
@@ -273,4 +279,3 @@ class TopBarWidget(QWidget):
         self._alarm_badge.setStyleSheet(
             _BADGE_CRITICAL_STYLE if has_critical else _BADGE_WARNING_STYLE
         )
-        self._alarm_badge.setVisible(True)
