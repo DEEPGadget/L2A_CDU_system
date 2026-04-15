@@ -14,7 +14,7 @@ Initial duty values reference:
   NVIDIA DGX A100 locks pump at 40 % PWM (steady-state minimum).
   We apply a +20 % safety margin for startup flow assurance.
   - pump: 60 %
-  - fan:  50 % (moderate cooling before thermal control stabilises)
+  - fan:  15 % (low initial speed; PID takes over after thermal stabilisation)
 """
 
 from __future__ import annotations
@@ -45,8 +45,8 @@ _NORMAL_BASE: dict[str, _Value] = {
     # Duty: initialised once by simulator, never overwritten afterwards
     "sensor:pump_pwm_duty_1":       "60",
     "sensor:pump_pwm_duty_2":       "60",
-    "sensor:fan_pwm_duty_1":        "50",
-    "sensor:fan_pwm_duty_2":        "50",
+    "sensor:fan_pwm_duty_1":        "15",
+    "sensor:fan_pwm_duty_2":        "15",
     "comm:status":                  "ok",
     "comm:consecutive_failures":    "0",
 }
