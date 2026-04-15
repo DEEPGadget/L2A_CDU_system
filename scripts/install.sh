@@ -51,7 +51,8 @@ do_install() {
     apt-get install -y --no-install-recommends \
         libxcb-cursor0 \
         unclutter \
-        2>/dev/null || warn "apt-get failed — install libxcb-cursor0 and unclutter manually if needed"
+        fonts-noto-color-emoji \
+        2>/dev/null || warn "apt-get failed — install packages manually if needed"
 
     MODE=$(read_mode)
     log "Config mode: $MODE"

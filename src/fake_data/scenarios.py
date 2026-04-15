@@ -51,8 +51,6 @@ _NORMAL_BASE: dict[str, _Value] = {
     "comm:consecutive_failures":    "0",
 }
 
-_NORMAL_ALARMS: list[str] = []
-
 _WARNING_OVERRIDES: dict[str, _Value] = {
     "sensor:coolant_temp_inlet_1":  (43.0, T.INLET_TEMP_NORMAL_HI + 1, T.INLET_TEMP_CRIT_HI),
     "sensor:coolant_temp_outlet_1": (62.0, T.OUTLET_TEMP_NORMAL_HI,    T.OUTLET_TEMP_CRIT_HI),
@@ -63,12 +61,6 @@ _WARNING_OVERRIDES: dict[str, _Value] = {
     "comm:consecutive_failures":    "0",
 }
 
-_WARNING_ALARMS: list[str] = [
-    "alarm:coolant_temp_warning",
-    "alarm:water_level_warning",
-    "alarm:ambient_humidity_warning",
-]
-
 _CRITICAL_OVERRIDES: dict[str, _Value] = {
     "sensor:coolant_temp_inlet_1":  (48.0, T.INLET_TEMP_CRIT_HI,   T.INLET_TEMP_CRIT_HI  + 7.0),
     "sensor:coolant_temp_outlet_1": (67.0, T.OUTLET_TEMP_CRIT_HI,  T.OUTLET_TEMP_CRIT_HI + 7.0),
@@ -78,23 +70,11 @@ _CRITICAL_OVERRIDES: dict[str, _Value] = {
     "comm:consecutive_failures":    "3",
 }
 
-_CRITICAL_ALARMS: list[str] = [
-    "alarm:coolant_temp_critical",
-    "alarm:leak_detected",
-    "alarm:ambient_temp_critical",
-    "alarm:comm_timeout",
-]
-
 _NO_LINK_OVERRIDES: dict[str, _Value] = {
     # Sensor values keep normal base (stale but present)
     "comm:status":               "disconnected",
     "comm:consecutive_failures": "10",
 }
-
-_NO_LINK_ALARMS: list[str] = [
-    "alarm:comm_disconnected",
-]
-
 
 def _merge(base: dict[str, _Value], overrides: dict[str, _Value]) -> dict[str, _Value]:
     merged = dict(base)
@@ -105,22 +85,10 @@ def _merge(base: dict[str, _Value], overrides: dict[str, _Value]) -> dict[str, _
 # Public scenario registry
 # Each entry: {"sensors": {key: value}, "alarms": [alarm_key, ...]}
 SCENARIOS: dict[str, dict] = {
-    "normal": {
-        "sensors": dict(_NORMAL_BASE),
-        "alarms":  list(_NORMAL_ALARMS),
-    },
-    "warning": {
-        "sensors": _merge(_NORMAL_BASE, _WARNING_OVERRIDES),
-        "alarms":  list(_WARNING_ALARMS),
-    },
-    "critical": {
-        "sensors": _merge(_NORMAL_BASE, _CRITICAL_OVERRIDES),
-        "alarms":  list(_CRITICAL_ALARMS),
-    },
-    "no_link": {
-        "sensors": _merge(_NORMAL_BASE, _NO_LINK_OVERRIDES),
-        "alarms":  list(_NO_LINK_ALARMS),
-    },
+    "normal":   {"sensors": dict(_NORMAL_BASE)},
+    "warning":  {"sensors": _merge(_NORMAL_BASE, _WARNING_OVERRIDES)},
+    "critical": {"sensors": _merge(_NORMAL_BASE, _CRITICAL_OVERRIDES)},
+    "no_link":  {"sensors": _merge(_NORMAL_BASE, _NO_LINK_OVERRIDES)},
 }
 
 DUTY_KEYS: frozenset[str] = frozenset({
