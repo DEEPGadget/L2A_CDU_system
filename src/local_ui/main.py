@@ -81,7 +81,7 @@ class MainWindow(QMainWindow):
         self._stack.addWidget(self._history_page)      # index 1
 
         self._top_bar = TopBarWidget(self._stack)
-        self._top_bar.setFixedHeight(52)
+        self._top_bar.setFixedHeight(64)
 
         layout.addWidget(self._top_bar)
         layout.addWidget(self._stack)
