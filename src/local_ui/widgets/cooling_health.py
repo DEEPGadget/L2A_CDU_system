@@ -53,13 +53,14 @@ _C_NO_DATA  = "#000000"  # no-data renders as black; value shown as "--" to dist
 
 # ── Overlay button relative positions (x, y, w, h) as fractions of widget size ─
 # Calibrated to cooling_health.svg layout (SVG canvas: 1280×608).
-# Pump:    x=222-342, y=120-215  →  rx=222/1280, ry=120/608, rw=120/1280, rh=95/608
-# Fan+Rad: x=1095-1265, y=120-215 → rx=1095/1280, ry=120/608, rw=170/1280, rh=95/608
+# Pump:    rect x=225, y=135, w=120, h=150  → rx=225/1280, ry=135/608, rw=120/1280, rh=150/608
+# Fan+Rad: rect x=1095, y=135, w=160, h=150 → rx=1095/1280, ry=135/608, rw=160/1280, rh=150/608
+# Loop2 y offset: y=315 → ry=315/608
 _OVERLAY_POSITIONS: dict[str, tuple[float, float, float, float]] = {
-    "pump1": (0.176, 0.189, 0.094, 0.247),  # Pump Loop1 (x=225,y=115,w=120,h=150)
-    "pump2": (0.176, 0.485, 0.094, 0.247),  # Pump Loop2 (x=225,y=295,w=120,h=150)
-    "fan1":  (0.855, 0.189, 0.125, 0.247),  # Fan+Rad Loop1 (x=1095,y=115,w=160,h=150)
-    "fan2":  (0.855, 0.485, 0.125, 0.247),  # Fan+Rad Loop2 (x=1095,y=295,w=160,h=150)
+    "pump1": (0.176, 0.222, 0.094, 0.247),  # Pump Loop1    (x=225, y=135, w=120, h=150)
+    "pump2": (0.176, 0.518, 0.094, 0.247),  # Pump Loop2    (x=225, y=315, w=120, h=150)
+    "fan1":  (0.855, 0.222, 0.125, 0.247),  # Fan+Rad Loop1 (x=1095,y=135, w=160, h=150)
+    "fan2":  (0.855, 0.518, 0.125, 0.247),  # Fan+Rad Loop2 (x=1095,y=315, w=160, h=150)
 }
 # Note: Server box positions for reference (not overlay buttons)
 # Server1: x=771-871, y=20-75  / Server2: x=771-871, y=523-578
