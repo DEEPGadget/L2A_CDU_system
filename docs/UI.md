@@ -32,6 +32,8 @@
 
 ## Local UI (PySide6)
 
+> Module structure and file-level descriptions: [`src/local_ui/STRUCTURE.md`](../src/local_ui/STRUCTURE.md)
+
 **FE (PySide6)**
 - 모니터링 페이지: 실시간 센서·제어·통신 상태 조회 및 표시, 펌프·팬 제어 요청
 - 기록 확인 페이지: Prometheus에서 센서 이력 및 제어 명령 이력 조회 및 표시
@@ -62,6 +64,48 @@
   - `GET /api/sensor/comm` — `comm:*` 현재값
   - `GET /api/sensor/alarms` — `alarm:*` 활성 알람
 - Prometheus DB 조회 (`GET /api/history/{metric}` — 이력 데이터 소스)
+
+## Fake Data (Development / fake mode)
+
+`config/config.yaml` 의 `mode: fake` 설정 시 활성화. MCG·PCB 없이 Redis에 가상 센서값을 주입하여 UI를 단독으로 구동할 수 있다.
+
+**관련 파일**
+
+| 파일 | 설명 |
+|---|---|
+| `src/fake_data/scenarios.py` | 시나리오 정의 — `normal` / `warning` / `critical` / `no_link`. 각 시나리오는 Redis key → `(base, min, max)` drift tuple 또는 고정 string으로 구성. 임계값 범위는 `src/thresholds.py` 상수를 참조. |
+| `src/fake_data/simulator.py` | 시뮬레이터 루프 — 2초 주기로 센서값을 drift 시켜 Redis SET + Pub/Sub publish. Duty 키(`sensor:pump_pwm_duty_*`, `sensor:fan_pwm_duty_*`)는 기동 시 1회만 초기화하고 이후 덮어쓰지 않음(UI가 직접 제어). |
+
+**서비스 구성**
+
+| 서비스 | 역할 |
+|---|---|
+| `cdu-fake-simulator.service` | 시뮬레이터 프로세스 (`src/fake_data/simulator.py`) |
+| `cdu-local-ui.service` | UI 프로세스 (`src/local_ui/main.py`) |
+
+두 서비스는 **독립 프로세스**로 분리되어 있다. 시나리오 초기값(`scenarios.py`)을 변경하면 반드시 **두 서비스를 모두 재시작**해야 Redis 값이 갱신된다.
+
+```bash
+sudo systemctl restart cdu-fake-simulator.service cdu-local-ui.service
+```
+
+**초기 Duty 값**
+
+| 키 | 초기값 | 비고 |
+|---|---|---|
+| `sensor:pump_pwm_duty_1` / `_2` | 60 % | NVIDIA DGX A100 최소 운용 40 % + 기동 여유 +20 % |
+| `sensor:fan_pwm_duty_1` / `_2` | 15 % | 저속 기동 후 PID 수렴 대기 |
+
+**시나리오 목록**
+
+| 시나리오 | 내용 |
+|---|---|
+| `normal` | 모든 센서 정상 범위 drift |
+| `warning` | 냉각수 온도 경고 구간, 수위 MIDDLE, 습도 경고 구간 |
+| `critical` | 냉각수 온도 위험 구간, 누수 감지, 주변 온도 위험, 통신 timeout |
+| `no_link` | 센서값 유지, `comm:status = disconnected` |
+
+---
 
 ## DB
 
