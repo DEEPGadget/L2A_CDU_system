@@ -22,10 +22,10 @@
 | 6 | **유로(배관) 색상** — 냉각수 온도 상태에 따라 구간별 색상 구분: 공급측(Reservoir→Pump→Flow→Inlet Manifold) 파랑 계열, 환수측(Outlet Manifold→Fan+Radiator) 빨강 계열. Server 박스에서 파랑→빨강 전환. 복귀 배관(Fan+Radiator 우단→Reservoir 좌단, 다이어그램 상/하단 테두리 경유)도 빨강→파랑 전환으로 표현. |
 | 7 | **컴포넌트 경계선 색상** — 열적 역할에 따라 고정: Reservoir·Inlet Manifold = 파란 실선 border / Outlet Manifold = 빨간 실선 border / Pump·Fan+Radiator = 회색 실선 border (중립 기계 요소) / Server 1·2 = 회색 **점선** border (`stroke-dasharray`) — 중립색 + 점선으로 CDU 외부 장치임을 구분 |
 | 8 | **컴포넌트 이름 배치** — 모든 컴포넌트 이름은 박스 내부 상단에 표시 (bold). 박스 내부 구성: 이름(상단) → 값(중앙) → 단위(하단). 레인 좌측에 "L1" / "L2" 행 레이블로 루프 구분. |
-| 12 | **최소 글자 크기** — 모든 텍스트(다이어그램·팝업·버튼 포함)는 최소 20px. 값(센서·PWM)은 24px 이상. 그 이하 크기 사용 금지. (HMI 터치 환경 기준) |
 | 9 | **Server 외부 분기 표현** — Inlet Manifold에서 차가운 냉각수가 서버로 나갔다가 뜨거워져 Outlet Manifold로 돌아오는 흐름을 수직 분기로 표현. Loop 1의 서버는 레인 위쪽으로, Loop 2의 서버는 레인 아래쪽으로 분기. Inlet→Server→Outlet 은 하나의 연결된 유로. |
 | 10 | **Reservoir 구조** — Reservoir 박스는 두 레인(Loop 1·2) 높이 전체를 커버하는 단일 박스. 박스 상단→Loop 1 배관, 박스 하단→Loop 2 배관으로 분기. 내부에 이름·레벨 바·상태 텍스트 표시. |
 | 11 | **Status strip** — ΔT1·ΔT2·Leak·Ambient·Pressure는 SVG 아래 별도 QWidget으로 배치. SVG는 다이어그램만 담당, status strip은 Python에서 직접 갱신. |
+| 12 | **최소 글자 크기** — 모든 텍스트(다이어그램·팝업·버튼 포함)는 최소 20px. 값(센서·PWM)은 24px 이상. 그 이하 크기 사용 금지. (HMI 터치 환경 기준) |
 
 ---
 
@@ -141,11 +141,11 @@
 
 | 영역 | 위치 | 내용 |
 |---|---|---|
-| Top bar | 상단 | Monitoring 페이지와 동일 — 탭 네비, 알람 배지, System/Link 상태 텍스트, 현재 시각 |
-| Sidebar | 좌측 고정 폭 (320px) | Time Range 드롭다운 + Graph Form 라디오 버튼 + Metric 그룹 (접이식) |
-| View area | 우측 메인 | 선택된 Metric에 따라 Line Chart / State Timeline / Table 렌더링 |
+| Top bar | 상단 | Monitoring 페이지와 동일 |
+| Sidebar | 좌측 고정 폭 (220px) | Time Range 드롭다운 + 그룹 토글 버튼 목록 |
+| View area | 우측 메인 | 활성화된 그룹별 패널이 수직으로 쌓임 |
 
-> **Sidebar 드롭다운 동작**: 클릭 시 사이드바 위에 overlay(popup)로 표시. 레이아웃을 밀지 않음. PySide6 `QComboBox` 기본 popup 방식 사용.
+> **Sidebar 드롭다운 동작**: 클릭 시 사이드바 위에 overlay(popup)로 표시. PySide6 `QComboBox` 기본 popup 방식.
 
 ---
 
@@ -164,88 +164,86 @@
 
 ---
 
-**Graph Form 라디오**
+**Sidebar — 그룹 토글 버튼**
 
-| 선택 | 연속형 수치 metric | 이진/이산 metric (Leak·Comm Events) | 이벤트 로그 metric (Alarm History·Control Cmd) |
-|---|---|---|---|
-| Line Graph | Line Chart 렌더링 | **State Timeline** 고정 (라디오 무관) | **Table** 고정 (라디오 무관) |
-| Table | Table 렌더링 | Table 렌더링 | Table 렌더링 |
+```
+┌──────────────────┐
+│ Time Range [5m▼] │
+├──────────────────┤
+│ [Coolant Temp  ] │  ← 토글 버튼 (활성=강조, 비활성=일반)
+│ [Flow & Pressure]│
+│ [PWM Duty      ] │
+│ [Coolant Quality]│
+│ [Environment   ] │
+│ [Events        ] │
+└──────────────────┘
+```
+
+- 버튼 탭 → View area에 해당 그룹 패널 추가/제거 (토글)
+- 여러 그룹 동시 활성 가능 — 패널은 버튼 순서대로 수직 쌓임
+- 개별 시리즈 선택은 패널 내부에서 처리 (사이드바에 체크박스 없음)
 
 ---
 
-**Metric 그룹 (Sidebar — 접이식)**
+**View area — 그룹 패널 구조**
 
-그룹 헤더 탭 → 펼침/접힘 토글. 기본 접힘. 각 항목은 개별 체크박스.
+각 활성 그룹은 독립 패널로 렌더링된다.
 
 ```
-▶ Coolant Temp
-    ☐ Inlet  L1    ☐ Inlet  L2
-    ☐ Outlet L1    ☐ Outlet L2
-▶ Coolant Quality
-    ☐ pH
-    ☐ Conductivity
-    ☐ Water Level
-▶ Flow & Pressure
-    ☐ Flow Rate L1    ☐ Flow Rate L2
-    ☐ Pressure
-▶ PWM Duty
-    ☐ Pump Duty L1    ☐ Pump Duty L2
-    ☐ Fan Duty L1     ☐ Fan Duty L2
-▶ Environment
-    ☐ Ambient Temp
-    ☐ Ambient Humidity
-▶ Events
-    ☐ Leak              (State Timeline / Table)
-    ☐ Comm Events       (State Timeline / Table)
-    ☐ Alarm History     (Table only — 발생/해제 이벤트 기록)
-    ☐ Control Cmd – Pump  (Table only)
-    ☐ Control Cmd – Fan   (Table only)
-    ☐ Comm Failures     (Line / Table)
+┌─────────────────────────────────────────────────────────────┐
+│ {그룹명}          [Line] [Table]     ○ All  ○ L1  ○ L2      │  ← 패널 헤더
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  [차트 / State Timeline / Table 영역]                       │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**체크박스 ↔ Prometheus 메트릭 매핑**
+**패널 렌더링 원칙**
 
-| 체크박스 | Prometheus 쿼리 | 단위 | 렌더링 |
-|---|---|---|---|
-| Inlet L1 | `sensor_coolant_temp_inlet{loop="1"}` | °C | Line / Table |
-| Inlet L2 | `sensor_coolant_temp_inlet{loop="2"}` | °C | Line / Table |
-| Outlet L1 | `sensor_coolant_temp_outlet{loop="1"}` | °C | Line / Table |
-| Outlet L2 | `sensor_coolant_temp_outlet{loop="2"}` | °C | Line / Table |
-| Flow Rate L1 | `sensor_flow_rate{loop="1"}` | L/min | Line / Table |
-| Flow Rate L2 | `sensor_flow_rate{loop="2"}` | L/min | Line / Table |
-| Pressure | `sensor_pressure` | bar | Line / Table |
-| Pump Duty L1 | `sensor_pump_pwm_duty{loop="1"}` | % | Line / Table |
-| Pump Duty L2 | `sensor_pump_pwm_duty{loop="2"}` | % | Line / Table |
-| Fan Duty L1 | `sensor_fan_pwm_duty{loop="1"}` | % | Line / Table |
-| Fan Duty L2 | `sensor_fan_pwm_duty{loop="2"}` | % | Line / Table |
-| pH | `sensor_ph` | — | Line / Table |
-| Conductivity | `sensor_conductivity` | µS/cm | Line / Table |
-| Water Level | `sensor_water_level` | — | **State Timeline** / Table |
-| Ambient Temp | `sensor_ambient_temp` | °C | Line / Table |
-| Ambient Humidity | `sensor_ambient_humidity` | % RH | Line / Table |
-| Leak | `sensor_leak` | — | **State Timeline** / Table |
-| Comm Events | `comm_event` | — | **State Timeline** / Table |
-| Alarm History | `alarm_state{alarm=~".+"}` | — | **Table only** |
-| Control Cmd – Pump | `control_cmd_pump` | — | **Table only** |
-| Control Cmd – Fan | `control_cmd_fan` | — | **Table only** |
-| Comm Failures | `comm_consecutive_failures` | count | Line / Table |
+1. **단위 다른 시리즈는 별도 차트** — 같은 그룹 안에서도 단위가 다른 항목이 동시에 선택되면 각각 독립 차트로 렌더링. 하나의 패널 안에 차트가 수직으로 쌓임.
+2. **패널 높이** — View area 높이의 1/2 고정. 패널이 3개 이상이면 View area 전체를 수직 스크롤 가능한 영역으로 처리.
 
----
+**패널 헤더 구성 요소**
 
-**차트 배치 규칙 (Grafana 스타일)**
-
-같은 그룹에서 여러 항목을 선택하면 **단위가 같은 항목은 하나의 차트에 다중 시리즈로 합침**. 단위가 다른 항목은 별도 차트로 분리. 차트는 View area에 수직으로 쌓임.
-
-| 그룹 | 차트 구성 예 |
+| 요소 | 설명 |
 |---|---|
-| Coolant Temp | Inlet·Outlet 모두 선택 → 차트 1개 (전부 °C) — ΔT 시각적 확인 |
-| Hydraulics | Flow Rate → 차트①, Pressure → 차트② (단위 다름) |
-| PWM Duty | Pump·Fan 모두 선택 → 차트 1개 (전부 %) |
-| Coolant Quality | pH → 차트①, Conductivity → 차트②, Water Level → 차트③ |
-| Environment | Ambient Temp → 차트①, Ambient Humidity → 차트② |
-| Events | Table / State Timeline — 차트 없음 |
+| 그룹명 (좌측 bold) | 패널 제목 |
+| Graph Form 토글 (중앙) | `[Line]` `[Table]` 버튼 — 현재 그룹에만 적용. 해당 그룹 렌더링 타입에 따라 표시 여부 결정 (아래 참고) |
+| 시리즈 선택 (우측) | 그룹 내 시리즈를 라디오 버튼으로 선택. 그룹에 따라 `All / L1 / L2` 또는 개별 항목 |
 
-**차트 제목**: `{그룹명} — {선택 항목 나열}` (예: `Coolant Temp — Inlet L1, Outlet L1`)
+---
+
+**그룹별 패널 상세**
+
+| 그룹 | 기본 시리즈 선택 | Graph Form 토글 | 시리즈 선택 라디오 |
+|---|---|---|---|
+| **Coolant Temp** | All | `[Line]` `[Table]` | `○ All  ○ L1  ○ L2` |
+| **Flow & Pressure** | Flow Rate | `[Line]` `[Table]` | `○ Flow Rate  ○ Pressure` |
+| **PWM Duty** | All | `[Line]` `[Table]` | `○ All  ○ Pump  ○ Fan` |
+| **Coolant Quality** | pH | `[Line]` `[Table]` / `[Timeline]` `[Table]` ※ | `○ pH  ○ Conductivity  ○ Water Level` |
+| **Environment** | Temp | `[Line]` `[Table]` | `○ Temp  ○ Humidity` |
+| **Events** | Alarm History | 없음 (Table 고정) | `○ Alarm History  ○ Control Cmd – Pump  ○ Control Cmd – Fan` |
+
+> **※ Coolant Quality**: Water Level 선택 시 Graph Form이 `[Timeline]` `[Table]`로 자동 전환. pH·Conductivity 선택 시 `[Line]` `[Table]`.
+
+**Coolant Temp — 시리즈 선택 동작**
+
+| 라디오 선택 | 표시 시리즈 |
+|---|---|
+| All | Inlet L1 · Inlet L2 · Outlet L1 · Outlet L2 (4선, 한 차트) |
+| L1  | Inlet L1 · Outlet L1 (2선) |
+| L2  | Inlet L2 · Outlet L2 (2선) |
+
+**PWM Duty — 시리즈 선택 동작**
+
+| 라디오 선택 | 표시 시리즈 |
+|---|---|
+| All | Pump L1 · Pump L2 · Fan L1 · Fan L2 (4선, 한 차트) |
+| Pump | Pump L1 · Pump L2 (2선) |
+| Fan  | Fan L1 · Fan L2 (2선) |
+
+---
 
 **Multi-series 색상·범례**
 
@@ -253,34 +251,52 @@
 |---|---|
 | L1 계열 색상 | `#2980b9` (파랑) |
 | L2 계열 색상 | `#e67e22` (주황) |
-| 같은 루프 내 항목 구분 | Inlet = 실선, Outlet = 점선 |
+| 같은 루프 내 항목 구분 | Inlet / Pump = 실선, Outlet / Fan = 점선 |
 
-범례 레이블: 체크박스 레이블과 동일 (`Inlet L1`, `Outlet L2` 등)
+범례: 패널 차트 영역 상단에 인라인 표시 (`━ Inlet L1  ╌ Outlet L1  ━ Inlet L2  ╌ Outlet L2`)
 
 ---
 
-**State Timeline 위젯**
+**Prometheus 쿼리 매핑**
+
+| 시리즈 | Prometheus 쿼리 | 단위 |
+|---|---|---|
+| Inlet L1 | `sensor_coolant_temp_inlet{loop="1"}` | °C |
+| Inlet L2 | `sensor_coolant_temp_inlet{loop="2"}` | °C |
+| Outlet L1 | `sensor_coolant_temp_outlet{loop="1"}` | °C |
+| Outlet L2 | `sensor_coolant_temp_outlet{loop="2"}` | °C |
+| Flow Rate L1 | `sensor_flow_rate{loop="1"}` | L/min |
+| Flow Rate L2 | `sensor_flow_rate{loop="2"}` | L/min |
+| Pressure | `sensor_pressure` | bar |
+| Pump L1 | `sensor_pump_pwm_duty{loop="1"}` | % |
+| Pump L2 | `sensor_pump_pwm_duty{loop="2"}` | % |
+| Fan L1 | `sensor_fan_pwm_duty{loop="1"}` | % |
+| Fan L2 | `sensor_fan_pwm_duty{loop="2"}` | % |
+| pH | `sensor_ph` | — |
+| Conductivity | `sensor_conductivity` | µS/cm |
+| Water Level | `sensor_water_level` | — |
+| Ambient Temp | `sensor_ambient_temp` | °C |
+| Ambient Humidity | `sensor_ambient_humidity` | % RH |
+| Alarm History | `alarm_state{alarm=~".+"}` | — |
+| Control Cmd – Pump | `control_cmd_pump` | — |
+| Control Cmd – Fan | `control_cmd_fan` | — |
+
+---
+
+**State Timeline 위젯 (Water Level 전용)**
 
 > 구현 파일: `src/local_ui/widgets/state_timeline.py` — `StateTimelineWidget(QWidget)` (step 2에서 신규 작성)
 > pyqtgraph 미설치 환경 — PySide6 `QPainter` 로만 구현
 
-- X축 = 시간 (선택된 Time Range), Y축 = 각 metric 행(row)
-- 각 시간 구간을 상태 색상 블록으로 채움
+- X축 = 시간 (선택된 Time Range), 가로 띠 = 각 상태 구간을 색상 블록으로 표현
 - 상태 색상: Normal `#27ae60` · Warning `#e67e22` · Critical `#e74c3c` · Unknown `#bdc3c7`
-- 행 좌측에 metric 레이블, X축 하단에 시간 눈금
-
-**이진/이산 상태 매핑**
+- X축 하단에 시간 눈금
 
 | metric | 값 | 상태 레이블 | 색상 |
 |---|---|---|---|
 | `sensor_water_level` | 2 | HIGH | `#27ae60` |
 | | 1 | MIDDLE | `#e67e22` |
 | | 0 | LOW | `#e74c3c` |
-| `sensor_leak` | 0 | NORMAL | `#27ae60` |
-| | 1 | LEAKED | `#e74c3c` |
-| `comm_event` | ok | ok | `#27ae60` |
-| | timeout | timeout | `#e67e22` |
-| | disconnected | disconnected | `#e74c3c` |
 
 ---
 
@@ -288,9 +304,8 @@
 
 | metric 종류 | 컬럼 구성 |
 |---|---|
-| 연속형·카운터 (단일) | Timestamp \| Value |
-| 연속형·카운터 (L1+L2) | Timestamp \| L1 Value \| L2 Value |
-| State Timeline (Table 모드: Leak·Comm Events) | Timestamp \| Status |
+| 연속형 (단일 시리즈) | Timestamp \| Value |
+| 연속형 (L1+L2) | Timestamp \| L1 Value \| L2 Value |
 | Alarm History | Timestamp \| Alarm \| Level (`warning`/`critical`) \| Event (`active`/`resolved`) |
 | Control Cmd Pump/Fan | Timestamp \| Value (%) \| Result (`success`/`fail`) |
 
@@ -316,7 +331,7 @@ sensor_fan_pwm_duty{loop="2"}          ← sensor:fan_pwm_duty_2
 sensor_ph                              ← sensor:ph
 sensor_conductivity                    ← sensor:conductivity
 sensor_water_level                     ← 파생: high:1 low:1→2 / high:0 low:1→1 / low:0→0
-sensor_leak                            ← sensor:leak  (NORMAL→0, LEAKED→1)
+sensor_leak                            ← sensor:leak  (NORMAL→0, LEAKED→1)  ※ Monitoring status strip 전용 (History 미표시)
 sensor_ambient_temp                    ← sensor:ambient_temp
 sensor_ambient_humidity                ← sensor:ambient_humidity
 
@@ -340,11 +355,9 @@ alarm_state{alarm="comm_timeout"}               ← (있음=1, 없음=0)
 alarm_state{alarm="comm_disconnected"}          ← (있음=2, 없음=0)
 # 값 규칙: 키 이름 suffix _warning → 1, _critical 또는 _detected/_disconnected → 2
 
-# 이벤트/명령 이력 (Pushgateway — MCG Push)
+# 제어 명령 이력 (Pushgateway — MCG Push)
 control_cmd_pump{result="success|fail"}
 control_cmd_fan{result="success|fail"}
-comm_event{status="timeout|disconnected|ok"}
-comm_consecutive_failures
 ```
 
 ---
