@@ -19,13 +19,6 @@ _C_BLACK    = "#000000"
 _STRIP_HEIGHT = 76
 
 
-def _delta_color(val: float) -> str:
-    if val > 20:
-        return _C_CRITICAL
-    if val > 15:
-        return _C_WARNING
-    return _C_NORMAL
-
 
 class StatusStripWidget(QWidget):
     def __init__(self, parent=None) -> None:
@@ -126,9 +119,7 @@ class StatusStripWidget(QWidget):
         try:
             delta = float(outlet) - float(inlet)
             label.setText(f"{delta:.1f}°C")
-            label.setStyleSheet(
-                f"color:{_delta_color(delta)}; padding-right:36px;"
-            )
+            label.setStyleSheet(f"color:{_C_BLACK}; padding-right:36px;")
         except (ValueError, TypeError):
             label.setText("--")
             label.setStyleSheet(f"color:{_C_BLACK}; padding-right:36px;")

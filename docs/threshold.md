@@ -26,13 +26,14 @@ Used as the source of truth for `src/fake_data/scenarios.py` and alarm manager l
 
 ## Delta Temperature (computed: outlet − inlet)
 
-| Computed Key | Normal | Warning | Critical |
-|---|---|---|---|
-| `sensor:coolant_temp_inlet_1` − `sensor:coolant_temp_outlet_1` | ≤ 15 °C | 15–20 °C | > 20 °C |
-| `sensor:coolant_temp_inlet_2` − `sensor:coolant_temp_outlet_2` | ≤ 15 °C | 15–20 °C | > 20 °C |
+> Status strip 표시용 정보값. 알람 없음.
+> 높은 ΔT는 서버 발열 증가를 의미하며 CDU 정상 동작 범위 내 현상임.
+> 이상 감지는 outlet 절대 온도(`alarm:coolant_temp_l1/l2_critical`) 및 유량(`alarm:flow_rate_warning`)으로 판단.
 
-> Delta is calculated in the UI (not stored in Redis).
-> Alarm: `alarm:coolant_delta_l1_warning` / `alarm:coolant_delta_l1_critical` / `alarm:coolant_delta_l2_warning` / `alarm:coolant_delta_l2_critical`
+| Computed Key | 표시 |
+|---|---|
+| `sensor:coolant_temp_outlet_1` − `sensor:coolant_temp_inlet_1` | ΔT1 (°C) — 색상 없음 |
+| `sensor:coolant_temp_outlet_2` − `sensor:coolant_temp_inlet_2` | ΔT2 (°C) — 색상 없음 |
 
 ## Coolant Level
 

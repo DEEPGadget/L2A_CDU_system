@@ -27,12 +27,6 @@ _ALARM_LABELS: dict[str, str] = {
     # Coolant temperature — Loop 2
     "alarm:coolant_temp_l2_warning":   "Coolant Temp L2 — Warning",
     "alarm:coolant_temp_l2_critical":  "Coolant Temp L2 — Critical",
-    # Delta temperature — Loop 1
-    "alarm:coolant_delta_l1_warning":  "Coolant ΔT L1 — Warning",
-    "alarm:coolant_delta_l1_critical": "Coolant ΔT L1 — Critical",
-    # Delta temperature — Loop 2
-    "alarm:coolant_delta_l2_warning":  "Coolant ΔT L2 — Warning",
-    "alarm:coolant_delta_l2_critical": "Coolant ΔT L2 — Critical",
     # Water level
     "alarm:water_level_warning":       "Coolant Level — Warning",
     "alarm:water_level_critical":      "Coolant Level — Critical",

@@ -185,16 +185,6 @@ class FakeDataSimulator:
                 elif outlet > T.OUTLET_TEMP_NORMAL_HI or outlet < T.OUTLET_TEMP_WARN_LO:
                     active.add(f"alarm:coolant_temp_l{i}_warning")
 
-        # Delta temperature (outlet − inlet) — per loop
-        for i in (1, 2):
-            inlet  = fval(f"sensor:coolant_temp_inlet_{i}")
-            outlet = fval(f"sensor:coolant_temp_outlet_{i}")
-            if inlet is not None and outlet is not None:
-                delta = outlet - inlet
-                if delta > T.DELTA_TEMP_CRIT_HI:
-                    active.add(f"alarm:coolant_delta_l{i}_critical")
-                elif delta > T.DELTA_TEMP_WARN_HI:
-                    active.add(f"alarm:coolant_delta_l{i}_warning")
 
         # Water level
         high = sval("sensor:water_level_high")
