@@ -28,7 +28,7 @@ Used as the source of truth for `src/fake_data/scenarios.py` and alarm manager l
 |---|---|---|---|
 | `sensor:water_level_high`=1, `sensor:water_level_low`=1 | HIGH | Normal | — |
 | `sensor:water_level_high`=0, `sensor:water_level_low`=1 | MIDDLE | Warning | `alarm:water_level_warning` |
-| `sensor:water_level_high`=0, `sensor:water_level_low`=0 | LOW | — | (undefined / future) |
+| `sensor:water_level_high`=0, `sensor:water_level_low`=0 | LOW | Critical | `alarm:water_level_critical` |
 
 ## Coolant Leakage
 
@@ -41,15 +41,22 @@ Used as the source of truth for `src/fake_data/scenarios.py` and alarm manager l
 
 | Redis Key | Normal | Warning | Critical |
 |---|---|---|---|
-| `sensor:ambient_temp` | ≤ 40 °C | 40–50 °C | > 50 °C |
-| `sensor:ambient_humidity` | 10–60 % | 60–80 % | < 10 % or > 80 % |
+| `sensor:ambient_temp` | ≤ 40 °C | 40–45 °C | > 45 °C |
+| `sensor:ambient_humidity` | 8–60 % | 60–80 % | < 8 % or > 80 % |
+
+## Chemistry (Warning only)
+
+| Redis Key | Warning | Alarm Key |
+|---|---|---|
+| `sensor:ph` | < 7.8 | `alarm:ph_warning` |
+| `sensor:conductivity` | < 4600 µs | `alarm:conductivity_warning` |
+
+> Critical 없음. NVIDIA ALARM-REQ-17/18 기준 (preferred, not required).
 
 ## Undetermined (TBD)
 
 | Redis Key | Status |
 |---|---|
-| `sensor:ph` | Threshold not yet defined |
-| `sensor:conductivity` | Threshold not yet defined |
 | `sensor:flow_rate_1` / `_2` | Threshold not yet defined |
 | `sensor:pressure` | Threshold not yet defined |
 
