@@ -168,34 +168,33 @@ class FakeDataSimulator:
         def sval(key: str) -> str:
             return self._str_current.get(key, "")
 
-        # Coolant temperature — inlet
-        for key in ("sensor:coolant_temp_inlet_1", "sensor:coolant_temp_inlet_2"):
-            v = fval(key)
-            if v is not None:
-                if v > T.INLET_TEMP_CRIT_HI or v < T.INLET_TEMP_CRIT_LO:
-                    active.add("alarm:coolant_temp_critical")
-                elif v > T.INLET_TEMP_NORMAL_HI or v < T.INLET_TEMP_NORMAL_LO:
-                    active.add("alarm:coolant_temp_warning")
+        # Coolant temperature — per loop (inlet + outlet combined into one loop alarm)
+        for i in (1, 2):
+            inlet  = fval(f"sensor:coolant_temp_inlet_{i}")
+            outlet = fval(f"sensor:coolant_temp_outlet_{i}")
 
-        # Coolant temperature — outlet
-        for key in ("sensor:coolant_temp_outlet_1", "sensor:coolant_temp_outlet_2"):
-            v = fval(key)
-            if v is not None:
-                if v > T.OUTLET_TEMP_CRIT_HI or v < T.OUTLET_TEMP_CRIT_LO:
-                    active.add("alarm:coolant_temp_critical")
-                elif v > T.OUTLET_TEMP_NORMAL_HI or v < T.OUTLET_TEMP_WARN_LO:
-                    active.add("alarm:coolant_temp_warning")
+            if inlet is not None:
+                if inlet > T.INLET_TEMP_CRIT_HI or inlet < T.INLET_TEMP_CRIT_LO:
+                    active.add(f"alarm:coolant_temp_l{i}_critical")
+                elif inlet > T.INLET_TEMP_NORMAL_HI or inlet < T.INLET_TEMP_NORMAL_LO:
+                    active.add(f"alarm:coolant_temp_l{i}_warning")
 
-        # Delta temperature (outlet − inlet)
+            if outlet is not None:
+                if outlet > T.OUTLET_TEMP_CRIT_HI or outlet < T.OUTLET_TEMP_CRIT_LO:
+                    active.add(f"alarm:coolant_temp_l{i}_critical")
+                elif outlet > T.OUTLET_TEMP_NORMAL_HI or outlet < T.OUTLET_TEMP_WARN_LO:
+                    active.add(f"alarm:coolant_temp_l{i}_warning")
+
+        # Delta temperature (outlet − inlet) — per loop
         for i in (1, 2):
             inlet  = fval(f"sensor:coolant_temp_inlet_{i}")
             outlet = fval(f"sensor:coolant_temp_outlet_{i}")
             if inlet is not None and outlet is not None:
                 delta = outlet - inlet
                 if delta > T.DELTA_TEMP_CRIT_HI:
-                    active.add("alarm:coolant_delta_critical")
+                    active.add(f"alarm:coolant_delta_l{i}_critical")
                 elif delta > T.DELTA_TEMP_WARN_HI:
-                    active.add("alarm:coolant_delta_warning")
+                    active.add(f"alarm:coolant_delta_l{i}_warning")
 
         # Water level
         high = sval("sensor:water_level_high")
