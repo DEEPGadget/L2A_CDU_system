@@ -3,6 +3,18 @@
 Alarm boundary values referenced by Redis key names.
 Used as the source of truth for `src/fake_data/scenarios.py` and alarm manager logic.
 
+## 업데이트 파이프라인
+
+이 문서의 임계값을 수정할 경우 **반드시** 아래 파일도 함께 수정해야 합니다.
+
+| 코드 파일 | 역할 |
+|---|---|
+| [`src/thresholds.py`](../src/thresholds.py) | **임계값 상수 유일 정의 위치** — 이 파일만 수정하면 됨 |
+| [`src/local_ui/widgets/cooling_health.py`](../src/local_ui/widgets/cooling_health.py) | UI 색상 판정 (`src/thresholds.py` import) |
+| [`src/fake_data/scenarios.py`](../src/fake_data/scenarios.py) | 시뮬레이터 drift 범위 (`src/thresholds.py` import) |
+
+> threshold.md 수정 → `src/thresholds.py` 상수 수정 → 두 파일 자동 반영
+
 ## Coolant Temperature
 
 | Redis Key | Normal | Warning | Critical |
