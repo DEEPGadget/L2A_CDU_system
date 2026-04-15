@@ -16,7 +16,7 @@ _C_WARNING  = "#e67e22"
 _C_CRITICAL = "#e74c3c"
 _C_BLACK    = "#000000"
 
-_STRIP_HEIGHT = 60
+_STRIP_HEIGHT = 76
 
 
 def _delta_color(val: float) -> str:
@@ -47,20 +47,20 @@ class StatusStripWidget(QWidget):
         layout.setSpacing(0)
 
         lbl_font = QFont()
-        lbl_font.setPointSize(12)
+        lbl_font.setPointSize(15)
 
         val_font = QFont()
-        val_font.setPointSize(12)
+        val_font.setPointSize(15)
 
         def add_item(label: str) -> QLabel:
             lbl = QLabel(label)
             lbl.setFont(lbl_font)
-            lbl.setStyleSheet(f"color:{_C_BLACK}; padding-right:4px;")
+            lbl.setStyleSheet(f"color:{_C_BLACK}; padding-right:6px;")
             lbl.setAlignment(Qt.AlignVCenter)
 
             val = QLabel("--")
             val.setFont(val_font)
-            val.setStyleSheet(f"color:{_C_BLACK}; padding-right:24px;")
+            val.setStyleSheet(f"color:{_C_BLACK}; padding-right:36px;")
             val.setAlignment(Qt.AlignVCenter)
 
             layout.addWidget(lbl)
@@ -94,10 +94,10 @@ class StatusStripWidget(QWidget):
         elif key == "sensor:leak":
             if value == "NORMAL":
                 self._leak_val.setText("None")
-                self._leak_val.setStyleSheet(f"color:{_C_NORMAL}; padding-right:24px;")
+                self._leak_val.setStyleSheet(f"color:{_C_NORMAL}; padding-right:36px;")
             else:
                 self._leak_val.setText("Detected")
-                self._leak_val.setStyleSheet(f"color:{_C_CRITICAL}; padding-right:24px;")
+                self._leak_val.setStyleSheet(f"color:{_C_CRITICAL}; padding-right:36px;")
         elif key == "sensor:ambient_temp":
             try:
                 self._amb_temp = f"{float(value):.1f}°C"
@@ -127,11 +127,11 @@ class StatusStripWidget(QWidget):
             delta = float(outlet) - float(inlet)
             label.setText(f"{delta:.1f}°C")
             label.setStyleSheet(
-                f"color:{_delta_color(delta)}; padding-right:24px;"
+                f"color:{_delta_color(delta)}; padding-right:36px;"
             )
         except (ValueError, TypeError):
             label.setText("--")
-            label.setStyleSheet(f"color:{_C_BLACK}; padding-right:24px;")
+            label.setStyleSheet(f"color:{_C_BLACK}; padding-right:36px;")
 
     def _refresh_ambient(self) -> None:
         self._amb_val.setText(f"{self._amb_temp} / {self._amb_hum}")
