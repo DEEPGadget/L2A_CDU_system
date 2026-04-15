@@ -18,6 +18,7 @@ from typing import Optional
 
 import requests
 from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtWidgets import QScroller
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -139,15 +140,21 @@ class HistoryPage(QWidget):
 
         # ── Sidebar ────────────────────────────────────────────────────
         sidebar = QWidget()
-        sidebar.setFixedWidth(200)
+        sidebar.setFixedWidth(320)
         sidebar_layout = QVBoxLayout(sidebar)
         sidebar_layout.setContentsMargins(4, 4, 4, 4)
         sidebar_layout.setSpacing(12)
 
+        _ui_font = QFont()
+        _ui_font.setPointSize(15)
+
         # Time range dropdown
         range_group = QGroupBox("Time Range")
+        range_group.setFont(_ui_font)
         range_layout = QVBoxLayout(range_group)
         self._range_combo = QComboBox()
+        self._range_combo.setFont(_ui_font)
+        self._range_combo.setMinimumHeight(44)
         for label, _ in TIME_RANGES:
             self._range_combo.addItem(label)
         self._range_combo.currentIndexChanged.connect(self._on_range_changed)
@@ -156,10 +163,13 @@ class HistoryPage(QWidget):
 
         # Graph form radio
         form_group = QGroupBox("Graph Form")
+        form_group.setFont(_ui_font)
         form_layout = QVBoxLayout(form_group)
         self._radio_group = QButtonGroup(self)
         self._radio_line  = QRadioButton("Line Graph")
         self._radio_table = QRadioButton("Table")
+        self._radio_line.setFont(_ui_font)
+        self._radio_table.setFont(_ui_font)
         self._radio_line.setChecked(True)
         self._radio_group.addButton(self._radio_line,  0)
         self._radio_group.addButton(self._radio_table, 1)
@@ -170,14 +180,23 @@ class HistoryPage(QWidget):
 
         # Metric checkboxes
         metric_group = QGroupBox("Metrics")
+        metric_group.setFont(_ui_font)
         metric_scroll = QScrollArea()
         metric_scroll.setWidgetResizable(True)
+        metric_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        metric_scroll.setStyleSheet(
+            "QScrollBar:vertical { width:20px; background:#f0f0f0; border-radius:10px; }"
+            "QScrollBar::handle:vertical { background:#bdc3c7; border-radius:10px; min-height:44px; }"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height:0px; }"
+        )
+        QScroller.grabGesture(metric_scroll.viewport(), QScroller.LeftMouseButtonGesture)
         metric_inner = QWidget()
         metric_layout = QVBoxLayout(metric_inner)
-        metric_layout.setSpacing(4)
+        metric_layout.setSpacing(8)
         self._checkboxes: dict[str, QCheckBox] = {}
         for display_name, metric_name in METRICS:
             cb = QCheckBox(display_name)
+            cb.setFont(_ui_font)
             cb.setChecked(False)
             cb.stateChanged.connect(lambda state, m=metric_name: self._on_metric_toggled(m, state))
             self._checkboxes[metric_name] = cb
@@ -200,10 +219,10 @@ class HistoryPage(QWidget):
         self._placeholder = QLabel("Select metrics to display")
         self._placeholder.setAlignment(Qt.AlignCenter)
         placeholder_font = QFont()
-        placeholder_font.setPointSize(13)
+        placeholder_font.setPointSize(15)
         placeholder_font.setItalic(True)
         self._placeholder.setFont(placeholder_font)
-        self._placeholder.setStyleSheet("color:#7f8c8d;")
+        self._placeholder.setStyleSheet("color:#000000;")
         self._view_layout.addWidget(self._placeholder)
 
         layout.addWidget(self._view_container)
@@ -239,6 +258,11 @@ class HistoryPage(QWidget):
         if not self._selected_metrics:
             self._placeholder = QLabel("Select metrics to display")
             self._placeholder.setAlignment(Qt.AlignCenter)
+            _f = QFont()
+            _f.setPointSize(15)
+            _f.setItalic(True)
+            self._placeholder.setFont(_f)
+            self._placeholder.setStyleSheet("color:#000000;")
             self._view_layout.addWidget(self._placeholder)
             return
 
@@ -259,6 +283,9 @@ class HistoryPage(QWidget):
     def _on_query_error(self, metric: str, message: str) -> None:
         log.warning("Prometheus query error for %s: %s", metric, message)
         error_label = QLabel(f"{metric}: query failed — {message}")
+        err_font = QFont()
+        err_font.setPointSize(15)
+        error_label.setFont(err_font)
         error_label.setStyleSheet("color:#e74c3c;")
         self._view_layout.addWidget(error_label)
 
@@ -273,20 +300,23 @@ class HistoryPage(QWidget):
             return
 
         plot_widget = pg.PlotWidget(title=metric)
-        plot_widget.setBackground("#1a1a2e")
-        plot_widget.showGrid(x=True, y=True, alpha=0.3)
+        plot_widget.setBackground("#ffffff")
+        plot_widget.showGrid(x=True, y=True, alpha=0.2)
         plot_widget.setLabel("bottom", "Time")
         plot_widget.setLabel("left", "Value")
+        plot_widget.getAxis("bottom").setTextPen("#000000")
+        plot_widget.getAxis("left").setTextPen("#000000")
 
         if timestamps and values:
             plot_widget.plot(
                 timestamps, values,
-                pen=pg.mkPen(color="#3498db", width=2),
+                pen=pg.mkPen(color="#2980b9", width=2),
                 symbol="o", symbolSize=4,
+                symbolBrush="#2980b9",
             )
         else:
             plot_widget.addItem(
-                pg.TextItem("No data", color="#7f8c8d", anchor=(0.5, 0.5))
+                pg.TextItem("No data", color="#000000", anchor=(0.5, 0.5))
             )
 
         self._view_layout.addWidget(plot_widget)
@@ -300,7 +330,7 @@ class HistoryPage(QWidget):
 
         title = QLabel(metric)
         title_font = QFont()
-        title_font.setPointSize(12)
+        title_font.setPointSize(15)
         title_font.setBold(True)
         title.setFont(title_font)
         vbox.addWidget(title)
