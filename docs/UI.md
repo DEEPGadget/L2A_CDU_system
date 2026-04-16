@@ -102,7 +102,7 @@ sudo systemctl restart cdu-fake-simulator.service cdu-local-ui.service
 |---|---|
 | `normal` | 모든 센서 정상 범위 drift |
 | `warning` | 냉각수 온도 경고 구간, 수위 MIDDLE, 습도 경고 구간 |
-| `critical` | 냉각수 온도 위험 구간, 누수 감지, 주변 온도 위험, 통신 timeout |
+| `critical` | 냉각수 온도 위험 구간, 누수 감지, 장치 내부 온도 위험, 통신 timeout |
 | `no_link` | 센서값 유지, `comm:status = disconnected` |
 
 ---
@@ -126,8 +126,8 @@ sudo systemctl restart cdu-fake-simulator.service cdu-local-ui.service
 | `sensor:ph` | pH | Water Tank | Modbus Transport Manager |
 | `sensor:conductivity` | 전도도 | Water Tank | Modbus Transport Manager |
 | `sensor:leak` | 누수 | 시스템 부착 (위치 미확정) | Modbus Transport Manager |
-| `sensor:ambient_temp` | 외기 온도 | 시스템 부착 (위치 미확정) | RPi Ambient Sensor Reader (I2C/GPIO 직접 수집 — Modbus 미경유) |
-| `sensor:ambient_humidity` | 외기 습도 | 시스템 부착 (위치 미확정) | RPi Ambient Sensor Reader (I2C/GPIO 직접 수집 — Modbus 미경유) |
+| `sensor:ambient_temp` | 장치 내부 온도 | 시스템 부착 (위치 미확정) | RPi Ambient Sensor Reader (I2C/GPIO 직접 수집 — Modbus 미경유) |
+| `sensor:ambient_humidity` | 장치 내부 습도 | 시스템 부착 (위치 미확정) | RPi Ambient Sensor Reader (I2C/GPIO 직접 수집 — Modbus 미경유) |
 | `sensor:pressure` | 유압 (부착 여부 미확정) | — | Modbus Transport Manager |
 | `sensor:pump_pwm_duty_1` | 펌프 PWM duty (루프 1 — P1·P2 직렬, 0–100 %) | — | Modbus Transport Manager |
 | `sensor:pump_pwm_duty_2` | 펌프 PWM duty (루프 2 — P3·P4 직렬, 0–100 %) | — | Modbus Transport Manager |
@@ -144,10 +144,10 @@ sudo systemctl restart cdu-fake-simulator.service cdu-local-ui.service
 | `alarm:conductivity_warning` | 전도도 이상 (warning) | — | Alarm / Event Manager |
 | `alarm:flow_rate_warning` | 유량 저하 (warning) | — | Alarm / Event Manager |
 | `alarm:pressure_warning` | 유압 이상 (warning, 부착 시) | — | Alarm / Event Manager |
-| `alarm:ambient_temp_warning` | 주변 온도 경고 (warning) | — | Alarm / Event Manager |
-| `alarm:ambient_temp_critical` | 주변 온도 한계 초과 (critical) | — | Alarm / Event Manager |
-| `alarm:ambient_humidity_warning` | 주변 습도 경고 (warning) | — | Alarm / Event Manager |
-| `alarm:ambient_humidity_critical` | 주변 습도 한계 초과 (critical) | — | Alarm / Event Manager |
+| `alarm:ambient_temp_warning` | 장치 내부 온도 경고 (warning) | — | Alarm / Event Manager |
+| `alarm:ambient_temp_critical` | 장치 내부 온도 한계 초과 (critical) | — | Alarm / Event Manager |
+| `alarm:ambient_humidity_warning` | 장치 내부 습도 경고 (warning) | — | Alarm / Event Manager |
+| `alarm:ambient_humidity_critical` | 장치 내부 습도 한계 초과 (critical) | — | Alarm / Event Manager |
 | `alarm:comm_timeout` | 통신 연속 실패 (warning) | — | Alarm / Event Manager |
 | `alarm:comm_disconnected` | 통신 두절 (critical) | — | Alarm / Event Manager |
 | `comm:status` | 현재 Modbus 통신 상태 `"ok"\|"timeout"\|"disconnected"` | Modbus Transport Manager |

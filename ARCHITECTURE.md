@@ -67,7 +67,7 @@
 - 모든 센서 데이터 조회 및 제어 요청은 MCG를 통해 처리됨
 - UI는 MCG와만 통신하며 PCB와 직접 통신하지 않음
 
-> **예외 — 온/습도 센서**: 외기 온도·습도 센서(`sensor:ambient_temp`, `sensor:ambient_humidity`)는 PCB를 경유하지 않고 Raspberry Pi에 직접 연결(I2C/GPIO)하여 수집함. 별도의 RPi Ambient Sensor Reader 프로세스가 값을 읽어 Redis에 직접 SET.
+> **예외 — 온/습도 센서**: 장치 내부 온도·습도 센서(`sensor:ambient_temp`, `sensor:ambient_humidity`)는 PCB를 경유하지 않고 Raspberry Pi에 직접 연결(I2C/GPIO)하여 수집함. 별도의 RPi Ambient Sensor Reader 프로세스가 값을 읽어 Redis에 직접 SET.
 
 ### 3.2 통신 방식
 
@@ -94,7 +94,7 @@
   - MCG: 4.2 참고
   - DB: Redis DB, Prometheus (상세 내용은 4.3 DB 참고)
 - **온/습도 센서 직접 수집 (예외)**
-  - 외기 온도·습도 센서를 I2C/GPIO로 직접 연결
+  - 장치 내부 온도·습도 센서를 I2C/GPIO로 직접 연결
   - RPi Ambient Sensor Reader 프로세스가 주기적으로 값을 읽어 Redis에 SET (`sensor:ambient_temp`, `sensor:ambient_humidity`)
   - MCG Modbus polling 대상에서 제외
 
@@ -132,7 +132,7 @@
 - 펌프, 팬 등 제어 대상 액추에이터 포함
 - PCB를 통해 MCG에 의해 간접적으로 제어됨
 
-> **예외 — 온/습도 센서**: 외기 온도·습도 센서는 PCB에 연결되지 않고 Raspberry Pi에 직접 연결(I2C/GPIO)됨. 데이터 경로: 센서 → RPi Ambient Sensor Reader → Redis (`sensor:ambient_temp`, `sensor:ambient_humidity`)
+> **예외 — 온/습도 센서**: 장치 내부 온도·습도 센서는 PCB에 연결되지 않고 Raspberry Pi에 직접 연결(I2C/GPIO)됨. 데이터 경로: 센서 → RPi Ambient Sensor Reader → Redis (`sensor:ambient_temp`, `sensor:ambient_humidity`)
 
 
 ## 5. 사용자 인터페이스 설계 (참고)

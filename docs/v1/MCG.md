@@ -48,7 +48,7 @@
 - Control Queue / Polling 두 작업 소스를 소유하고 Modbus Transport Manager에 순차 디스패치
 - **작업 소스 우선순위: Control Queue > Polling** (Modbus 단일 채널 직렬 접근 보장)
 - 주요 Polling 대상 (Modbus via PCB): 수온(inlet/outlet), 유압, 유량, 수위, 누수, 펌프 상태, 팬 상태
-- **온/습도는 Polling 대상 제외**: 외기 온/습도는 RPi Ambient Sensor Reader가 I2C/GPIO로 직접 수집하여 Redis에 SET (`sensor:ambient_temp`, `sensor:ambient_humidity`) — MCG Modbus polling 불필요
+- **온/습도는 Polling 대상 제외**: 장치 내부 온/습도는 RPi Ambient Sensor Reader가 I2C/GPIO로 직접 수집하여 Redis에 SET (`sensor:ambient_temp`, `sensor:ambient_humidity`) — MCG Modbus polling 불필요
 
 `Control Queue`
 - Command Receiver가 적재한 제어 요청을 순서대로 보관
@@ -95,7 +95,7 @@ L2A CDU의 1차 목표는 **서버의 안정적인 냉각 유지**다.
 | S2 | **냉각수 손실** | 순환 불가 | 수위 부족 |
 | S3 | **냉각수 누출** | 침수·서버 과열 복합 | 누수 감지 |
 | S4 | **제어 불능** | 대응 불가 | Modbus 통신 두절 |
-| S5 | **환경 한계 초과** | 장치 동작 불가 | 주변 온도·습도가 장치 동작 한계 범위 초과 |
+| S5 | **환경 한계 초과** | 장치 동작 불가 | 장치 내부 온도·습도가 장치 동작 한계 범위 초과 |
 
 - S1, S2는 냉각 성능 저하 계열로 서버 과열로 수렴
 - S3은 S2(냉각수 손실)를 포함하면서 침수 피해까지 유발하는 복합 시나리오로, 냉각 유지와 침수 방지가 충돌하는 가장 복잡한 케이스
@@ -125,10 +125,10 @@ L2A CDU의 1차 목표는 **서버의 안정적인 냉각 유지**다.
 | 수위 위험 (critical) | AEM | Critical | `alarm:water_level_critical` SET — `sensor:water_level`=0 | `sensor:water_level`≥1 복귀 |
 | 유압 이상 (warning) | AEM | Warning | `alarm:pressure_warning` SET | 정상 범위 복귀 |
 | 유량 저하 (warning, Pump ON 상태) | AEM | Warning | `alarm:flow_rate_warning` SET | 정상 유량 복귀 |
-| 주변 온도 경고 (warning) | AEM | Warning | `alarm:ambient_temp_warning` SET | 임계치 이하 복귀 |
-| 주변 온도 한계 초과 (critical) | AEM | Critical | `alarm:ambient_temp_critical` SET | 정상 범위 복귀 |
-| 주변 습도 경고 (warning) | AEM | Warning | `alarm:ambient_humidity_warning` SET | 임계치 이하 복귀 |
-| 주변 습도 한계 초과 (critical) | AEM | Critical | `alarm:ambient_humidity_critical` SET | 정상 범위 복귀 |
+| 장치 내부 온도 경고 (warning) | AEM | Warning | `alarm:ambient_temp_warning` SET | 임계치 이하 복귀 |
+| 장치 내부 온도 한계 초과 (critical) | AEM | Critical | `alarm:ambient_temp_critical` SET | 정상 범위 복귀 |
+| 장치 내부 습도 경고 (warning) | AEM | Warning | `alarm:ambient_humidity_warning` SET | 임계치 이하 복귀 |
+| 장치 내부 습도 한계 초과 (critical) | AEM | Critical | `alarm:ambient_humidity_critical` SET | 정상 범위 복귀 |
 
 ---
 
