@@ -128,7 +128,7 @@
 |---|---|---|
 | Coolant ΔT1 / ΔT2 | outlet − inlet 계산값 (°C), 색상 코딩 적용 — ≤15°C=green / 15–20°C=orange / >20°C=red | (계산) |
 | Leak Detection | `None` (green) / `Detected` (red) | `sensor:leak` |
-| Ambient Temp / Humidity | 외기 온·습도 (°C / % RH) — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
+| Ambient Temp / Humidity | 장치 내부 온·습도 (°C / % RH) — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
 | Pressure | 유압 (bar, 부착 여부 미확정) | `sensor:pressure` |
 
 **페이지 전환**: Top bar 탭 (`Monitoring` / `History`) 선택
@@ -172,10 +172,12 @@
 ├──────────────────┤
 │ [Coolant Temp  ] │  ← 토글 버튼 (활성=강조, 비활성=일반)
 │ [Flow & Pressure]│
-│ [PWM Duty      ] │
 │ [Coolant Quality]│
-│ [Environment   ] │
-│ [Events        ] │
+│ [Coolant Level ] │
+│ [Ambient       ] │
+│ [PWM Duty      ] │
+│ [Control History]│
+│ [Alarm History ] │
 └──────────────────┘
 ```
 
@@ -201,7 +203,7 @@
 
 **패널 렌더링 원칙**
 
-1. **단위 다른 시리즈는 별도 차트** — 같은 그룹 안에서도 단위가 다른 항목이 동시에 선택되면 각각 독립 차트로 렌더링. 하나의 패널 안에 차트가 수직으로 쌓임.
+1. **Dual Y-Axis** — 같은 그룹 내 단위가 다른 시리즈는 좌축·우축에 단위를 분리해 단일 차트로 렌더링. "All" 라디오 선택 시에만 활성화, 개별 시리즈 선택 시 단일 축.
 2. **패널 높이** — View area 높이의 1/2 고정. 패널이 3개 이상이면 View area 전체를 수직 스크롤 가능한 영역으로 처리.
 
 **패널 헤더 구성 요소**
@@ -214,34 +216,18 @@
 
 ---
 
-**그룹별 패널 상세**
+**그룹별 패널 상세 — 요약**
 
-| 그룹 | 기본 시리즈 선택 | Graph Form 토글 | 시리즈 선택 라디오 |
+| 그룹 | 기본 선택 | Graph Form 토글 | 시리즈 라디오 |
 |---|---|---|---|
 | **Coolant Temp** | All | `[Line]` `[Table]` | `○ All  ○ L1  ○ L2` |
-| **Flow & Pressure** | Flow Rate | `[Line]` `[Table]` | `○ Flow Rate  ○ Pressure` |
+| **Flow & Pressure** | All | `[Line]` `[Table]` | `○ All  ○ Flow Rate  ○ Pressure` |
+| **Coolant Quality** | All | `[Line]` `[Table]` | `○ All  ○ pH  ○ Conductivity` |
+| **Coolant Level** | (단일) | `[Timeline]` `[Table]` | (없음) |
+| **Ambient** | All | `[Line]` `[Table]` | `○ All  ○ Temp  ○ Humidity` |
 | **PWM Duty** | All | `[Line]` `[Table]` | `○ All  ○ Pump  ○ Fan` |
-| **Coolant Quality** | pH | `[Line]` `[Table]` / `[Timeline]` `[Table]` ※ | `○ pH  ○ Conductivity  ○ Water Level` |
-| **Environment** | Temp | `[Line]` `[Table]` | `○ Temp  ○ Humidity` |
-| **Events** | Alarm History | 없음 (Table 고정) | `○ Alarm History  ○ Control Cmd – Pump  ○ Control Cmd – Fan` |
-
-> **※ Coolant Quality**: Water Level 선택 시 Graph Form이 `[Timeline]` `[Table]`로 자동 전환. pH·Conductivity 선택 시 `[Line]` `[Table]`.
-
-**Coolant Temp — 시리즈 선택 동작**
-
-| 라디오 선택 | 표시 시리즈 |
-|---|---|
-| All | Inlet L1 · Inlet L2 · Outlet L1 · Outlet L2 (4선, 한 차트) |
-| L1  | Inlet L1 · Outlet L1 (2선) |
-| L2  | Inlet L2 · Outlet L2 (2선) |
-
-**PWM Duty — 시리즈 선택 동작**
-
-| 라디오 선택 | 표시 시리즈 |
-|---|---|
-| All | Pump L1 · Pump L2 · Fan L1 · Fan L2 (4선, 한 차트) |
-| Pump | Pump L1 · Pump L2 (2선) |
-| Fan  | Fan L1 · Fan L2 (2선) |
+| **Control History** | All | 없음 (Table 고정) | `○ All  ○ Pump  ○ Fan` |
+| **Alarm History** | (단일) | 없음 (Table 고정) | (없음) |
 
 ---
 
@@ -251,114 +237,279 @@
 |---|---|
 | L1 계열 색상 | `#2980b9` (파랑) |
 | L2 계열 색상 | `#e67e22` (주황) |
-| 같은 루프 내 항목 구분 | Inlet / Pump = 실선, Outlet / Fan = 점선 |
+| 같은 루프 내 항목 구분 | Inlet / Pump / Flow = 실선, Outlet / Fan = 점선 |
+| 독립 물리량 (Pressure) | `#8e44ad` (보라) — L1/L2 쌍이 아닌 별도 물리량 |
+| Ambient Temp | `#e74c3c` (빨강) |
+| Ambient Humidity | `#3498db` (하늘) |
 
-범례: 패널 차트 영역 상단에 인라인 표시 (`━ Inlet L1  ╌ Outlet L1  ━ Inlet L2  ╌ Outlet L2`)
+범례: 패널 차트 영역 상단에 인라인 표시 (예: `━ Inlet L1  ╌ Outlet L1  ━ Inlet L2  ╌ Outlet L2`)
 
 ---
 
-**Prometheus 쿼리 매핑**
+#### Coolant Temp
 
-| 시리즈 | Prometheus 쿼리 | 단위 |
+**시리즈**
+
+| 시리즈 | Prometheus 쿼리 | Redis Key | 단위 |
+|---|---|---|---|
+| Inlet L1 | `sensor_coolant_temp_inlet{loop="1"}` | `sensor:coolant_temp_inlet_1` | °C |
+| Inlet L2 | `sensor_coolant_temp_inlet{loop="2"}` | `sensor:coolant_temp_inlet_2` | °C |
+| Outlet L1 | `sensor_coolant_temp_outlet{loop="1"}` | `sensor:coolant_temp_outlet_1` | °C |
+| Outlet L2 | `sensor_coolant_temp_outlet{loop="2"}` | `sensor:coolant_temp_outlet_2` | °C |
+
+**시리즈 선택**
+
+| 라디오 | 표시 시리즈 | Y축 |
 |---|---|---|
-| Inlet L1 | `sensor_coolant_temp_inlet{loop="1"}` | °C |
-| Inlet L2 | `sensor_coolant_temp_inlet{loop="2"}` | °C |
-| Outlet L1 | `sensor_coolant_temp_outlet{loop="1"}` | °C |
-| Outlet L2 | `sensor_coolant_temp_outlet{loop="2"}` | °C |
-| Flow Rate L1 | `sensor_flow_rate{loop="1"}` | L/min |
-| Flow Rate L2 | `sensor_flow_rate{loop="2"}` | L/min |
-| Pressure | `sensor_pressure` | bar |
-| Pump L1 | `sensor_pump_pwm_duty{loop="1"}` | % |
-| Pump L2 | `sensor_pump_pwm_duty{loop="2"}` | % |
-| Fan L1 | `sensor_fan_pwm_duty{loop="1"}` | % |
-| Fan L2 | `sensor_fan_pwm_duty{loop="2"}` | % |
-| pH | `sensor_ph` | — |
-| Conductivity | `sensor_conductivity` | µS/cm |
-| Water Level | `sensor_water_level` | — |
-| Ambient Temp | `sensor_ambient_temp` | °C |
-| Ambient Humidity | `sensor_ambient_humidity` | % RH |
-| Alarm History | `alarm_state{alarm=~".+"}` | — |
-| Control Cmd – Pump | `control_cmd_pump` | — |
-| Control Cmd – Fan | `control_cmd_fan` | — |
+| All | Inlet L1 · Inlet L2 · Outlet L1 · Outlet L2 (4선) | 단일 (°C) |
+| L1 | Inlet L1 · Outlet L1 (2선) | 단일 (°C) |
+| L2 | Inlet L2 · Outlet L2 (2선) | 단일 (°C) |
+
+**Graph Form**
+
+| Form | 렌더러 | 비고 |
+|---|---|---|
+| Line | pyqtgraph `PlotWidget` | 단일 Y축, 동일 단위 |
+| Table | `QTableWidget` | All: Timestamp \| Inlet L1 \| Outlet L1 \| Inlet L2 \| Outlet L2. L1/L2: Timestamp \| Inlet \| Outlet |
+
+**라인 스타일**
+
+| 시리즈 | 색상 | 스타일 |
+|---|---|---|
+| Inlet L1 | `#2980b9` (파랑) | 실선 |
+| Outlet L1 | `#2980b9` (파랑) | 점선 |
+| Inlet L2 | `#e67e22` (주황) | 실선 |
+| Outlet L2 | `#e67e22` (주황) | 점선 |
 
 ---
 
-**State Timeline 위젯 (Water Level 전용)**
+#### Flow & Pressure
 
-> 구현 파일: `src/local_ui/widgets/state_timeline.py` — `StateTimelineWidget(QWidget)` (step 2에서 신규 작성)
-> pyqtgraph 미설치 환경 — PySide6 `QPainter` 로만 구현
+**시리즈**
+
+| 시리즈 | Prometheus 쿼리 | Redis Key | 단위 |
+|---|---|---|---|
+| Flow Rate L1 | `sensor_flow_rate{loop="1"}` | `sensor:flow_rate_1` | L/min |
+| Flow Rate L2 | `sensor_flow_rate{loop="2"}` | `sensor:flow_rate_2` | L/min |
+| Pressure | `sensor_pressure` | `sensor:pressure` | bar |
+
+**시리즈 선택**
+
+| 라디오 | 표시 시리즈 | Y축 |
+|---|---|---|
+| All | Flow Rate L1 · Flow Rate L2 · Pressure (3선) | 좌: L/min (Flow), 우: bar (Pressure) — Dual Y-Axis |
+| Flow Rate | Flow Rate L1 · Flow Rate L2 (2선) | 단일 (L/min) |
+| Pressure | Pressure (1선) | 단일 (bar) |
+
+**Graph Form**
+
+| Form | 렌더러 | 비고 |
+|---|---|---|
+| Line | pyqtgraph `PlotWidget` | "All" 선택 시 dual Y-axis (좌=L/min, 우=bar). 개별 선택 시 단일 축. |
+| Table | `QTableWidget` | All: Timestamp \| Flow L1 \| Flow L2 \| Pressure. Flow Rate: Timestamp \| L1 \| L2. Pressure: Timestamp \| Value |
+
+**라인 스타일**
+
+| 시리즈 | 색상 | 스타일 |
+|---|---|---|
+| Flow Rate L1 | `#2980b9` (파랑) | 실선 |
+| Flow Rate L2 | `#e67e22` (주황) | 실선 |
+| Pressure | `#8e44ad` (보라) | 실선 |
+
+---
+
+#### Coolant Quality
+
+**시리즈**
+
+| 시리즈 | Prometheus 쿼리 | Redis Key | 단위 |
+|---|---|---|---|
+| pH | `sensor_ph` | `sensor:ph` | — (dimensionless) |
+| Conductivity | `sensor_conductivity` | `sensor:conductivity` | µS/cm |
+
+**시리즈 선택**
+
+| 라디오 | 표시 시리즈 | Y축 |
+|---|---|---|
+| All | pH · Conductivity (2선) | 좌: pH, 우: µS/cm — Dual Y-Axis |
+| pH | pH (1선) | 단일 (pH) |
+| Conductivity | Conductivity (1선) | 단일 (µS/cm) |
+
+**Graph Form**
+
+| Form | 렌더러 | 비고 |
+|---|---|---|
+| Line | pyqtgraph `PlotWidget` | "All" 선택 시 dual Y-axis (좌=pH, 우=µS/cm). 개별 선택 시 단일 축. |
+| Table | `QTableWidget` | All: Timestamp \| pH \| Conductivity. 개별: Timestamp \| Value |
+
+**라인 스타일**
+
+| 시리즈 | 색상 | 스타일 |
+|---|---|---|
+| pH | `#2ecc71` (녹색) | 실선 |
+| Conductivity | `#f39c12` (황색) | 실선 |
+
+---
+
+#### Coolant Level
+
+**시리즈**
+
+| 시리즈 | Prometheus 쿼리 | Redis Key | 단위 |
+|---|---|---|---|
+| Coolant Level | `sensor_water_level` | `sensor:water_level` | — (discrete: 2=HIGH, 1=MIDDLE, 0=LOW) |
+
+> 서브선택 없음 — 단일 시리즈.
+
+**Graph Form**
+
+| Form | 렌더러 | 비고 |
+|---|---|---|
+| Timeline | `StateTimelineWidget` (QPainter) | 상태 색상 블록 |
+| Table | `QTableWidget` | Timestamp \| State (HIGH / MIDDLE / LOW) |
+
+**State Timeline 위젯**
+
+> 구현 파일: `src/local_ui/widgets/state_timeline.py` — `StateTimelineWidget(QWidget)` (신규 작성)
+> pyqtgraph 미사용 — PySide6 `QPainter` 로만 구현
 
 - X축 = 시간 (선택된 Time Range), 가로 띠 = 각 상태 구간을 색상 블록으로 표현
 - 상태 색상: Normal `#27ae60` · Warning `#e67e22` · Critical `#e74c3c` · Unknown `#bdc3c7`
 - X축 하단에 시간 눈금
 
-| metric | 값 | 상태 레이블 | 색상 |
+| `sensor_water_level` 값 | 상태 레이블 | 색상 |
+|---|---|---|
+| 2 | HIGH | `#27ae60` |
+| 1 | MIDDLE | `#e67e22` |
+| 0 | LOW | `#e74c3c` |
+
+---
+
+#### Ambient
+
+**시리즈**
+
+| 시리즈 | Prometheus 쿼리 | Redis Key | 단위 |
 |---|---|---|---|
-| `sensor_water_level` | 2 | HIGH | `#27ae60` |
-| | 1 | MIDDLE | `#e67e22` |
-| | 0 | LOW | `#e74c3c` |
+| Ambient Temp | `sensor_ambient_temp` | `sensor:ambient_temp` | °C |
+| Ambient Humidity | `sensor_ambient_humidity` | `sensor:ambient_humidity` | % RH |
+
+**시리즈 선택**
+
+| 라디오 | 표시 시리즈 | Y축 |
+|---|---|---|
+| All | Ambient Temp · Ambient Humidity (2선) | 좌: °C (Temp), 우: % RH (Humidity) — Dual Y-Axis |
+| Temp | Ambient Temp (1선) | 단일 (°C) |
+| Humidity | Ambient Humidity (1선) | 단일 (% RH) |
+
+**Graph Form**
+
+| Form | 렌더러 | 비고 |
+|---|---|---|
+| Line | pyqtgraph `PlotWidget` | "All" 선택 시 dual Y-axis (좌=°C, 우=%RH). 개별 선택 시 단일 축. |
+| Table | `QTableWidget` | All: Timestamp \| Temp (°C) \| Humidity (% RH). 개별: Timestamp \| Value |
+
+**라인 스타일**
+
+| 시리즈 | 색상 | 스타일 |
+|---|---|---|
+| Ambient Temp | `#e74c3c` (빨강) | 실선 |
+| Ambient Humidity | `#3498db` (하늘) | 실선 |
 
 ---
 
-**Table 컬럼 상세**
+#### PWM Duty
 
-| metric 종류 | 컬럼 구성 |
+**시리즈**
+
+| 시리즈 | Prometheus 쿼리 | Redis Key | 단위 |
+|---|---|---|---|
+| Pump L1 | `sensor_pump_pwm_duty{loop="1"}` | `sensor:pump_pwm_duty_1` | % |
+| Pump L2 | `sensor_pump_pwm_duty{loop="2"}` | `sensor:pump_pwm_duty_2` | % |
+| Fan L1 | `sensor_fan_pwm_duty{loop="1"}` | `sensor:fan_pwm_duty_1` | % |
+| Fan L2 | `sensor_fan_pwm_duty{loop="2"}` | `sensor:fan_pwm_duty_2` | % |
+
+**시리즈 선택**
+
+| 라디오 | 표시 시리즈 | Y축 |
+|---|---|---|
+| All | Pump L1 · Pump L2 · Fan L1 · Fan L2 (4선) | 단일 (%) |
+| Pump | Pump L1 · Pump L2 (2선) | 단일 (%) |
+| Fan | Fan L1 · Fan L2 (2선) | 단일 (%) |
+
+**Graph Form**
+
+| Form | 렌더러 | 비고 |
+|---|---|---|
+| Line | pyqtgraph `PlotWidget` | 단일 Y축, 0–100% |
+| Table | `QTableWidget` | All: Timestamp \| Pump L1 \| Pump L2 \| Fan L1 \| Fan L2. Pump: Timestamp \| L1 \| L2. Fan: Timestamp \| L1 \| L2 |
+
+**라인 스타일**
+
+| 시리즈 | 색상 | 스타일 |
+|---|---|---|
+| Pump L1 | `#2980b9` (파랑) | 실선 |
+| Pump L2 | `#e67e22` (주황) | 실선 |
+| Fan L1 | `#2980b9` (파랑) | 점선 |
+| Fan L2 | `#e67e22` (주황) | 점선 |
+
+---
+
+#### Control History
+
+**시리즈**
+
+| 시리즈 | Prometheus 쿼리 | 소스 |
+|---|---|---|
+| Control Cmd – Pump | `control_cmd_pump{result="success\|fail"}` | Pushgateway Push (MCG) |
+| Control Cmd – Fan | `control_cmd_fan{result="success\|fail"}` | Pushgateway Push (MCG) |
+
+**시리즈 선택**
+
+| 라디오 | 표시 시리즈 |
 |---|---|
-| 연속형 (단일 시리즈) | Timestamp \| Value |
-| 연속형 (L1+L2) | Timestamp \| L1 Value \| L2 Value |
-| Alarm History | Timestamp \| Alarm \| Level (`warning`/`critical`) \| Event (`active`/`resolved`) |
-| Control Cmd Pump/Fan | Timestamp \| Value (%) \| Result (`success`/`fail`) |
+| All | Control Cmd – Pump · Control Cmd – Fan (통합 테이블) |
+| Pump | Control Cmd – Pump |
+| Fan | Control Cmd – Fan |
+
+**Graph Form**
+
+| Form | 렌더러 | 비고 |
+|---|---|---|
+| Table | `QTableWidget` | Table 고정 (Line/Timeline 없음) |
+
+**Table 컬럼**
+
+| Timestamp | Value (%) | Result |
+|---|---|---|
+| 명령 시각 | PWM duty 명령값 (0–100) | `success` / `fail` |
 
 ---
 
-**Prometheus 메트릭 네이밍 (Exporter 설계 기준)**
+#### Alarm History
 
-Exporter가 Redis `sensor:*` + `alarm:*` 를 읽어 아래 이름으로 expose:
+**시리즈**
 
-```
-# 센서값 (sensor:* → Exporter Pull)
-sensor_coolant_temp_inlet{loop="1"}    ← sensor:coolant_temp_inlet_1
-sensor_coolant_temp_inlet{loop="2"}    ← sensor:coolant_temp_inlet_2
-sensor_coolant_temp_outlet{loop="1"}   ← sensor:coolant_temp_outlet_1
-sensor_coolant_temp_outlet{loop="2"}   ← sensor:coolant_temp_outlet_2
-sensor_flow_rate{loop="1"}             ← sensor:flow_rate_1
-sensor_flow_rate{loop="2"}             ← sensor:flow_rate_2
-sensor_pressure                        ← sensor:pressure
-sensor_pump_pwm_duty{loop="1"}         ← sensor:pump_pwm_duty_1
-sensor_pump_pwm_duty{loop="2"}         ← sensor:pump_pwm_duty_2
-sensor_fan_pwm_duty{loop="1"}          ← sensor:fan_pwm_duty_1
-sensor_fan_pwm_duty{loop="2"}          ← sensor:fan_pwm_duty_2
-sensor_ph                              ← sensor:ph
-sensor_conductivity                    ← sensor:conductivity
-sensor_water_level                     ← sensor:water_level  (2: HIGH / 1: MIDDLE / 0: LOW — MTM 판단값)
-sensor_leak                            ← sensor:leak  (NORMAL→0, LEAKED→1)  ※ Monitoring status strip 전용 (History 미표시)
-sensor_ambient_temp                    ← sensor:ambient_temp
-sensor_ambient_humidity                ← sensor:ambient_humidity
+| 시리즈 | Prometheus 쿼리 | Redis Key 패턴 | 소스 |
+|---|---|---|---|
+| Alarm History | `alarm_state{alarm=~".+"}` | `alarm:*` (Keyspace Events) | Exporter Pull |
 
-# 알람 상태 이력 (alarm:* → Exporter Pull)
-alarm_state{alarm="coolant_temp_l1_warning"}    ← alarm:coolant_temp_l1_warning  (키 있음=1, 없음=0)
-alarm_state{alarm="coolant_temp_l1_critical"}   ← alarm:coolant_temp_l1_critical (키 있음=2, 없음=0)
-alarm_state{alarm="coolant_temp_l2_warning"}
-alarm_state{alarm="coolant_temp_l2_critical"}
-alarm_state{alarm="leak_detected"}              ← (있음=2, 없음=0)
-alarm_state{alarm="water_level_warning"}        ← (있음=1, 없음=0)
-alarm_state{alarm="water_level_critical"}       ← (있음=2, 없음=0)
-alarm_state{alarm="ph_warning"}
-alarm_state{alarm="conductivity_warning"}
-alarm_state{alarm="flow_rate_warning"}
-alarm_state{alarm="pressure_warning"}
-alarm_state{alarm="ambient_temp_warning"}
-alarm_state{alarm="ambient_temp_critical"}
-alarm_state{alarm="ambient_humidity_warning"}
-alarm_state{alarm="ambient_humidity_critical"}
-alarm_state{alarm="comm_timeout"}               ← (있음=1, 없음=0)
-alarm_state{alarm="comm_disconnected"}          ← (있음=2, 없음=0)
-# 값 규칙: 키 이름 suffix _warning → 1, _critical 또는 _detected/_disconnected → 2
+> 서브선택 없음 — 전체 알람 이력을 시간 범위 내에서 표시.
 
-# 제어 명령 이력 (Pushgateway — MCG Push)
-control_cmd_pump{result="success|fail"}
-control_cmd_fan{result="success|fail"}
-```
+**Graph Form**
+
+| Form | 렌더러 | 비고 |
+|---|---|---|
+| Table | `QTableWidget` | Table 고정 (Line/Timeline 없음) |
+
+**Table 컬럼**
+
+| Timestamp | Alarm | Level | Event |
+|---|---|---|---|
+| 이벤트 시각 | 알람 이름 (e.g. `coolant_temp_l1_warning`) | `warning` / `critical` | `active` / `resolved` |
+
+> Level 판정: alarm name suffix `_warning` → warning, `_critical` / `_detected` / `_disconnected` → critical
+> Event 판정: `alarm_state` 값 0→1,2 전환 = `active`, 1,2→0 전환 = `resolved`
 
 ---
 
