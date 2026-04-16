@@ -37,12 +37,18 @@
 | Raspberry Pi | MCG, UI, DB를 탑재하는 하드웨어 플랫폼 (IP: DHCP 할당 — Local UI Top bar에서 확인). 온/습도 센서를 I2C/GPIO로 직접 연결하여 읽음 (예외적 직접 수집 — Modbus 미경유) |
 | Web UI (Svelte + FastAPI) | WEB 기반 유저 인터페이스. http 기반으로 파이썬 기반의 제어모듈(MCG - modbus control gateway)과 통신. 모니터링 및 제어 화면, 과거 기록 확인 화면 |
 | Touch Display UI (PySide6) | 로컬 기반 유저 인터페이스. IPC 기반으로 파이썬 기반의 제어모듈(MCG - modbus control gateway)과 통신. 모니터링 및 제어, 과거 기록 확인 화면 |
-| Redis DB | 현재값 전용 DB (`sensor:*`, `comm:*`, `alarm:*`) — 이력 저장 없음 |
-| Prometheus + Exporter | 센서 이력 DB. Exporter가 Redis `sensor:*` 를 주기적으로 scrape |
-| Prometheus Pushgateway | 제어 명령·통신 장애 이력 수신. MCG가 이벤트 발생 시 직접 push |
+| Redis DB | Monitoring 페이지 실시간 상태 전용 DB (`sensor:*`, `comm:*`, `alarm:*`) — 이력 저장 없음 |
+| Prometheus + Exporter | 과거 이력 DB. Exporter가 Redis `sensor:*` + `alarm:*` 를 주기적으로 pull → 시계열 적재 |
+| Prometheus Pushgateway | 이벤트성 이력 수신 (제어 명령·통신 장애). MCG가 이벤트 발생 시 직접 push |
 | Modbus Control Gateway (MCG) | 실질적 Modbus Master (읽기/쓰기). 읽기: pcb 로부터 polling → redis에 전송. 쓰기: UI 로부터 요청받음 → PCB 로 write 명령 |
 | PCB | Modbus Slave, 센서 입력 및 펌프/팬 제어 |
 | 센서 및 엑츄에이터 | 센서: 수온, 유량, 유압, 누수, 수위센서. 엑츄에이터: 펌프, 팬 |
+
+> **DB 설계 원칙**
+> - **Redis** — Monitoring 페이지에서 실시간 상태를 보기 위한 저장소. 현재값만 보관, 이력 없음.
+> - **Prometheus** — 과거 이력을 보기 위한 저장소. 두 가지 적재 경로:
+>   - **Exporter (Pull)**: Redis에 쌓인 연속형 상태값(`sensor:*`, `alarm:*`)을 주기적으로 pull → 시계열 적재
+>   - **Pushgateway (Push)**: 이벤트성 이력(제어 명령 결과, 통신 상태 변경 등)을 발생 시점에 MCG가 직접 push
 
 
 ## 2. 요구사항
