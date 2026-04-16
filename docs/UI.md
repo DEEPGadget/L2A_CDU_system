@@ -116,23 +116,23 @@ sudo systemctl restart cdu-fake-simulator.service cdu-local-ui.service
 
 | Key | 설명 | 위치 | 설정 주체 |
 |---|---|---|---|
-| `sensor:coolant_temp_inlet_1` | 냉각수 입수 온도 (루프 1) | Inlet Manifold | Modbus Data Parser |
-| `sensor:coolant_temp_inlet_2` | 냉각수 입수 온도 (루프 2) | Inlet Manifold | Modbus Data Parser |
-| `sensor:coolant_temp_outlet_1` | 냉각수 출수 온도 (루프 1) | Outlet Manifold | Modbus Data Parser |
-| `sensor:coolant_temp_outlet_2` | 냉각수 출수 온도 (루프 2) | Outlet Manifold | Modbus Data Parser |
-| `sensor:flow_rate_1` | 유량 (루프 1) | Pump ~ Manifold 구간 (루프1) | Modbus Data Parser |
-| `sensor:flow_rate_2` | 유량 (루프 2) | Pump ~ Manifold 구간 (루프2) | Modbus Data Parser |
-| `sensor:water_level` | 수위 상태 (`2`: HIGH / `1`: MIDDLE / `0`: LOW) — MTM이 상·하위 광센서 비트 조합으로 판단해 단일 값으로 SET | Water Tank | Modbus Data Parser |
-| `sensor:ph` | pH | Water Tank | Modbus Data Parser |
-| `sensor:conductivity` | 전도도 | Water Tank | Modbus Data Parser |
-| `sensor:leak` | 누수 | 시스템 부착 (위치 미확정) | Modbus Data Parser |
+| `sensor:coolant_temp_inlet_1` | 냉각수 입수 온도 (루프 1) | Inlet Manifold | Modbus Transport Manager |
+| `sensor:coolant_temp_inlet_2` | 냉각수 입수 온도 (루프 2) | Inlet Manifold | Modbus Transport Manager |
+| `sensor:coolant_temp_outlet_1` | 냉각수 출수 온도 (루프 1) | Outlet Manifold | Modbus Transport Manager |
+| `sensor:coolant_temp_outlet_2` | 냉각수 출수 온도 (루프 2) | Outlet Manifold | Modbus Transport Manager |
+| `sensor:flow_rate_1` | 유량 (루프 1) | Pump ~ Manifold 구간 (루프1) | Modbus Transport Manager |
+| `sensor:flow_rate_2` | 유량 (루프 2) | Pump ~ Manifold 구간 (루프2) | Modbus Transport Manager |
+| `sensor:water_level` | 수위 상태 (`2`: HIGH / `1`: MIDDLE / `0`: LOW) — MTM이 상·하위 광센서 비트 조합으로 판단해 단일 값으로 SET | Water Tank | Modbus Transport Manager |
+| `sensor:ph` | pH | Water Tank | Modbus Transport Manager |
+| `sensor:conductivity` | 전도도 | Water Tank | Modbus Transport Manager |
+| `sensor:leak` | 누수 | 시스템 부착 (위치 미확정) | Modbus Transport Manager |
 | `sensor:ambient_temp` | 외기 온도 | 시스템 부착 (위치 미확정) | RPi Ambient Sensor Reader (I2C/GPIO 직접 수집 — Modbus 미경유) |
 | `sensor:ambient_humidity` | 외기 습도 | 시스템 부착 (위치 미확정) | RPi Ambient Sensor Reader (I2C/GPIO 직접 수집 — Modbus 미경유) |
-| `sensor:pressure` | 유압 (부착 여부 미확정) | — | Modbus Data Parser |
-| `sensor:pump_pwm_duty_1` | 펌프 PWM duty (루프 1 — P1·P2 직렬, 0–100 %) | — | Modbus Data Parser |
-| `sensor:pump_pwm_duty_2` | 펌프 PWM duty (루프 2 — P3·P4 직렬, 0–100 %) | — | Modbus Data Parser |
-| `sensor:fan_pwm_duty_1` | 팬 1 PWM duty (루프 1, 0–100 %) | — | Modbus Data Parser |
-| `sensor:fan_pwm_duty_2` | 팬 2 PWM duty (루프 2, 0–100 %) | — | Modbus Data Parser |
+| `sensor:pressure` | 유압 (부착 여부 미확정) | — | Modbus Transport Manager |
+| `sensor:pump_pwm_duty_1` | 펌프 PWM duty (루프 1 — P1·P2 직렬, 0–100 %) | — | Modbus Transport Manager |
+| `sensor:pump_pwm_duty_2` | 펌프 PWM duty (루프 2 — P3·P4 직렬, 0–100 %) | — | Modbus Transport Manager |
+| `sensor:fan_pwm_duty_1` | 팬 1 PWM duty (루프 1, 0–100 %) | — | Modbus Transport Manager |
+| `sensor:fan_pwm_duty_2` | 팬 2 PWM duty (루프 2, 0–100 %) | — | Modbus Transport Manager |
 | `alarm:coolant_temp_l1_warning` | 수온 경고 — Loop 1 (warning) | — | Alarm / Event Manager |
 | `alarm:coolant_temp_l1_critical` | 수온 위험 — Loop 1 (critical) | — | Alarm / Event Manager |
 | `alarm:coolant_temp_l2_warning` | 수온 경고 — Loop 2 (warning) | — | Alarm / Event Manager |
@@ -156,8 +156,8 @@ sudo systemctl restart cdu-fake-simulator.service cdu-local-ui.service
 
 **Exporter**
 - 독립 프로세스로 동작 (Pull 방식)
-- 수집 대상: `sensor:*`
-- 제외 대상: `alarm:*`, `comm:*` (실시간 상태 플래그, 이력 불필요)
+- 수집 대상: `sensor:*`, `alarm:*`
+- 제외 대상: `comm:*` (통신 이력은 Pushgateway 이벤트 경로로 적재)
 
 **Pushgateway**
 - MCG가 이벤트 발생 시 직접 push (이벤트 기반 — scrape 주기와 무관하게 누락 없이 기록)
@@ -171,7 +171,7 @@ sudo systemctl restart cdu-fake-simulator.service cdu-local-ui.service
 | `comm_consecutive_failures` | — | 연속 실패 횟수 스냅샷 | 실패 발생 시 |
 
 **Prometheus DB**
-- Exporter 수집분: 센서·제어 현재값의 시계열 이력
+- Exporter 수집분: 센서 시계열 이력 (`sensor_*`) + 알람 상태 이력 (`alarm_state`)
 - Pushgateway 수집분: 제어 명령 이력, 통신 장애 이력
 - 이력 조회 쿼리 예시:
   - `sensor_coolant_temp_inlet` — 냉각수 온도 추이
