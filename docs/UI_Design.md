@@ -16,7 +16,7 @@
 |---|---|
 | 1 | **흰 배경** — 전체 배경색 white (`#ffffff`) |
 | 2 | **회색·흐릿한 글씨 금지** — 모든 텍스트는 충분한 명도 대비 확보, 비활성 표현은 색상 대신 레이아웃으로 |
-| 3 | **상태값 색상 3종 통일 (global)** — Normal/OK `#27ae60` · Warning `#e67e22` · Critical `#e74c3c`. 상태가 없는 일반 값은 `#000000` (검정) |
+| 3 | **상태값 색상 3종 통일 (global)** — Normal/OK `#27ae60` · Warning `#e67e22` · Critical `#e74c3c`. 상태가 없는 일반 값은 `#000000` (검정). **History 차트 라인 색상은 상태색과 겹치지 않는 별도 팔레트를 사용** (아래 "History 시리즈 팔레트" 참고). 예외: Coolant Level 등 **의미 자체가 상태인** State Timeline 블록은 상태색 그대로 사용 (HIGH=green, MIDDLE=orange, LOW=red). |
 | 4 | **Bold는 제목(heading) 및 상태값만** — 센서값·레이블 등은 regular weight. 예외: Top bar의 System·Link 상태값(Normal/Warning 등)은 bold + 색상으로 표현 (버튼·배지 형태 없이 텍스트만으로 상태 강조) |
 | 5 | **배관 중앙 관통 원칙** — 냉각수 루프(배관 라인)는 각 컴포넌트 박스의 중앙을 관통하도록 렌더링. 컴포넌트는 배관이 지나가는 역(station)처럼 표현. 박스 좌측 엣지로 유입 → 박스 중앙에 값·레이블 표시 → 박스 우측 엣지로 유출. 컴포넌트 간 배관 세그먼트로 연결. (`assets/UI example/cooling health.svg.png` 참고) |
 | 6 | **유로(배관) 색상** — 냉각수 온도 상태에 따라 구간별 색상 구분: 공급측(Reservoir→Pump→Flow→Inlet Manifold) 파랑 계열, 환수측(Outlet Manifold→Fan+Radiator) 빨강 계열. Server 박스에서 파랑→빨강 전환. 복귀 배관(Fan+Radiator 우단→Reservoir 좌단, 다이어그램 상/하단 테두리 경유)도 빨강→파랑 전환으로 표현. |
@@ -25,7 +25,7 @@
 | 9 | **Server 외부 분기 표현** — Inlet Manifold에서 차가운 냉각수가 서버로 나갔다가 뜨거워져 Outlet Manifold로 돌아오는 흐름을 수직 분기로 표현. Loop 1의 서버는 레인 위쪽으로, Loop 2의 서버는 레인 아래쪽으로 분기. Inlet→Server→Outlet 은 하나의 연결된 유로. |
 | 10 | **Reservoir 구조** — Reservoir 박스는 두 레인(Loop 1·2) 높이 전체를 커버하는 단일 박스. 박스 상단→Loop 1 배관, 박스 하단→Loop 2 배관으로 분기. 내부에 이름·레벨 바·상태 텍스트 표시. |
 | 11 | **Status strip** — ΔT1·ΔT2·Leak·Ambient·Pressure는 SVG 아래 별도 QWidget으로 배치. SVG는 다이어그램만 담당, status strip은 Python에서 직접 갱신. |
-| 12 | **최소 글자 크기** — 모든 텍스트(다이어그램·팝업·버튼 포함)는 최소 20px. 값(센서·PWM)은 24px 이상. 그 이하 크기 사용 금지. (HMI 터치 환경 기준) |
+| 12 | **최소 글자 크기** — 모든 텍스트(다이어그램·팝업·버튼·차트 axis/tick/legend·Table 셀 포함)는 최소 20px. 값(센서·PWM)은 24px 이상. 그 이하 크기 사용 금지. **근거**: 1) 터치 대상 영역은 손가락 조작이 편해야 함 2) 정보 표시도 1m 거리에서 읽혀야 함. pyqtgraph/QTableWidget 기본 폰트(9~11pt)는 명시적으로 재설정 필요. |
 
 ---
 
@@ -33,19 +33,7 @@
 
 **레이아웃 개요**
 
-```
-┌────────────────────────────────────────────────────────────────────────────┐
-│ [Monitoring] [History] │ 🔔N  IP:x.x.x.x  System:Warning  Link:ok │ 12:34:56│  52px
-├────────────────────────────────────────────────────────────────────────────┤
-│                                                                            │
-│                   Cooling Health (SVG, 전체 1280px 폭)                    │  ~608px
-│       센서값 색상 코딩 — 정상 green / 경고 orange / 위급 red              │
-│       Pump·Fan 노드: 탭 가능 (✎) → 숫자 키패드 팝업                      │
-│                                                                            │
-├────────────────────────────────────────────────────────────────────────────┤
-│  ΔT1:__°C  ΔT2:__°C  Leak:None  Ambient:__°C/__% RH  Pressure:__ bar     │  ~60px
-└────────────────────────────────────────────────────────────────────────────┘
-```
+상단부터 수직 3단 (위→아래): **Top bar → Cooling Health SVG (전체 1280px 폭) → Status strip**. 높이는 위젯 콘텐츠에 맞춰 자연 결정 (Top bar는 코드에서 `setFixedHeight`, Status strip은 텍스트 1행). 픽셀 치수는 구현 파일 기준.
 
 **패널 구성**
 
@@ -142,10 +130,30 @@
 | 영역 | 위치 | 내용 |
 |---|---|---|
 | Top bar | 상단 | Monitoring 페이지와 동일 |
-| Sidebar | 좌측 고정 폭 (220px) | Time Range 드롭다운 + 그룹 토글 버튼 목록 |
+| Sidebar | 좌측 고정 폭 (좁은 고정 컬럼) | Time Range 드롭다운 + 그룹 토글 버튼 목록 |
 | View area | 우측 메인 | 활성화된 그룹별 패널이 수직으로 쌓임 |
 
 > **Sidebar 드롭다운 동작**: 클릭 시 사이드바 위에 overlay(popup)로 표시. PySide6 `QComboBox` 기본 popup 방식.
+
+---
+
+**History 공통 규약**
+
+| 항목 | 규칙 |
+|---|---|
+| **시리즈 팔레트 (상태색과 분리)** | 파랑 `#1f77b4` · 보라 `#9467bd` · 갈색 `#8c564b` · 시안 `#17becf` · 올리브 `#bcbd22` · 핑크 `#e377c2` — Warning `#e67e22` / Critical `#e74c3c` / Normal `#27ae60`과 의미 분리 |
+| **루프 구분** | L1 계열 = 파랑 `#1f77b4` / L2 계열 = 보라 `#9467bd`. Inlet·Pump·Flow = 실선 / Outlet·Fan = 점선 |
+| **차트 X축 포맷** | `HH:MM:SS` — Time Range 무관 공통 |
+| **Table Timestamp 포맷** | `YYYY-MM-DD HH:MM:SS` |
+| **값 표기** | 소수 1자리 (예: `34.7 °C`, `12.3 L/min`, `85.0 %`) |
+| **Table 정렬** | 최신이 위 (descending by timestamp) |
+| **Time Range 기본값** | `5m` |
+| **페이지 초기 상태** | 그룹 미활성 — View area에 placeholder `Select metrics to display` 표시 |
+| **패널 동시 활성** | 제약 없음, 버튼 순서대로 수직 쌓임. 패널 높이 View area의 1/2 고정 → 3개부터 View area 수직 스크롤 |
+| **활성/비활성 버튼 표현** | 활성 = 배경 `#e8f0fe` + 하단 2px 보더 `#1f77b4` / 비활성 = 투명 배경 + 하단 2px 보더 투명 (Bold 금지 — 원칙 §4) |
+| **Y축 자동 스케일** | 표시 시리즈의 min/max 기반, 여유 ±5% 패딩. 축 눈금 ~7개. 눈금 레이블은 min·max를 반드시 포함 — 초기 구현 후 체감 보고 조정 |
+| **No data** | 쿼리 결과가 비었거나 센서 미부착 시 구분 없이 패널 중앙에 `No data` 라벨 (20px, `#000000`) |
+| **쿼리 실패** | 패널 중앙에 `Query failed` + 에러 메시지 (`#e74c3c`) |
 
 ---
 
@@ -233,14 +241,16 @@
 
 **Multi-series 색상·범례**
 
+> 팔레트 원칙은 위 "History 공통 규약" 참고. 상태색(Warning/Critical/Normal)과 겹치지 않는 별도 팔레트 사용.
+
 | 규칙 | 값 |
 |---|---|
-| L1 계열 색상 | `#2980b9` (파랑) |
-| L2 계열 색상 | `#e67e22` (주황) |
+| L1 계열 색상 | `#1f77b4` (파랑) |
+| L2 계열 색상 | `#9467bd` (보라) |
 | 같은 루프 내 항목 구분 | Inlet / Pump / Flow = 실선, Outlet / Fan = 점선 |
-| 독립 물리량 (Pressure) | `#8e44ad` (보라) — L1/L2 쌍이 아닌 별도 물리량 |
-| Ambient Temp | `#e74c3c` (빨강) |
-| Ambient Humidity | `#3498db` (하늘) |
+| 독립 물리량 (Pressure) | `#8c564b` (갈색) |
+| Ambient Temp | `#e377c2` (핑크) |
+| Ambient Humidity | `#17becf` (시안) |
 
 범례: 패널 차트 영역 상단에 인라인 표시 (예: `━ Inlet L1  ╌ Outlet L1  ━ Inlet L2  ╌ Outlet L2`)
 
@@ -276,10 +286,10 @@
 
 | 시리즈 | 색상 | 스타일 |
 |---|---|---|
-| Inlet L1 | `#2980b9` (파랑) | 실선 |
-| Outlet L1 | `#2980b9` (파랑) | 점선 |
-| Inlet L2 | `#e67e22` (주황) | 실선 |
-| Outlet L2 | `#e67e22` (주황) | 점선 |
+| Inlet L1 | `#1f77b4` (파랑) | 실선 |
+| Outlet L1 | `#1f77b4` (파랑) | 점선 |
+| Inlet L2 | `#9467bd` (보라) | 실선 |
+| Outlet L2 | `#9467bd` (보라) | 점선 |
 
 ---
 
@@ -312,9 +322,9 @@
 
 | 시리즈 | 색상 | 스타일 |
 |---|---|---|
-| Flow Rate L1 | `#2980b9` (파랑) | 실선 |
-| Flow Rate L2 | `#e67e22` (주황) | 실선 |
-| Pressure | `#8e44ad` (보라) | 실선 |
+| Flow Rate L1 | `#1f77b4` (파랑) | 실선 |
+| Flow Rate L2 | `#9467bd` (보라) | 실선 |
+| Pressure | `#8c564b` (갈색) | 실선 |
 
 ---
 
@@ -346,8 +356,8 @@
 
 | 시리즈 | 색상 | 스타일 |
 |---|---|---|
-| pH | `#2ecc71` (녹색) | 실선 |
-| Conductivity | `#f39c12` (황색) | 실선 |
+| pH | `#17becf` (시안) | 실선 |
+| Conductivity | `#bcbd22` (올리브) | 실선 |
 
 ---
 
@@ -413,8 +423,8 @@
 
 | 시리즈 | 색상 | 스타일 |
 |---|---|---|
-| Ambient Temp | `#e74c3c` (빨강) | 실선 |
-| Ambient Humidity | `#3498db` (하늘) | 실선 |
+| Ambient Temp | `#e377c2` (핑크) | 실선 |
+| Ambient Humidity | `#17becf` (시안) | 실선 |
 
 ---
 
@@ -448,10 +458,10 @@
 
 | 시리즈 | 색상 | 스타일 |
 |---|---|---|
-| Pump L1 | `#2980b9` (파랑) | 실선 |
-| Pump L2 | `#e67e22` (주황) | 실선 |
-| Fan L1 | `#2980b9` (파랑) | 점선 |
-| Fan L2 | `#e67e22` (주황) | 점선 |
+| Pump L1 | `#1f77b4` (파랑) | 실선 |
+| Pump L2 | `#9467bd` (보라) | 실선 |
+| Fan L1 | `#1f77b4` (파랑) | 점선 |
+| Fan L2 | `#9467bd` (보라) | 점선 |
 
 ---
 
@@ -494,7 +504,8 @@
 |---|---|---|---|
 | Alarm History | `alarm_state{alarm=~".+"}` | `alarm:*` (Keyspace Events) | Exporter Pull |
 
-> 서브선택 없음 — 전체 알람 이력을 시간 범위 내에서 표시.
+> 서브선택 없음 — 선택한 Time Range 내에서 활성이었던 알람을 표시.
+> 목적은 "어떤 알람이 warning/critical 상태였는가"를 확인하는 것이지 상태 전이(active↔resolved)를 나열하는 것이 아님.
 
 **Graph Form**
 
@@ -504,12 +515,13 @@
 
 **Table 컬럼**
 
-| Timestamp | Alarm | Level | Event |
+| Start | End | Alarm | Level |
 |---|---|---|---|
-| 이벤트 시각 | 알람 이름 (e.g. `coolant_temp_l1_warning`) | `warning` / `critical` | `active` / `resolved` |
+| 알람이 SET된 시각 | 알람이 DEL된 시각 — 아직 활성이면 `-` | 알람 이름 (e.g. `coolant_temp_l1_warning`) | `warning` / `critical` |
 
 > Level 판정: alarm name suffix `_warning` → warning, `_critical` / `_detected` / `_disconnected` → critical
-> Event 판정: `alarm_state` 값 0→1,2 전환 = `active`, 1,2→0 전환 = `resolved`
+> 활성 구간 판정: Prometheus `alarm_state` 시계열에서 값이 1로 연속된 구간을 한 행으로 집계. 클라이언트 사이드에서 원시 샘플을 받아 구간을 재구성하는 방식을 기본으로 함 (PromQL `changes()` 의존 최소화).
+> 정렬: 최신 Start가 위 (descending).
 
 ---
 
