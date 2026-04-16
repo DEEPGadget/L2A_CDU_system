@@ -1,26 +1,30 @@
 [Unit]
-Description=L2A CDU Local UI
-After=redis.service
+Description=L2A CDU Local UI (X server + PySide6 kiosk)
+After=multi-user.target redis.service systemd-user-sessions.service
 Wants=redis.service
+Conflicts=getty@tty1.service
 
 [Service]
 Type=simple
 User=gadgetini
-WorkingDirectory=/home/gadgetini/L2A_CDU_system
-
-# ── Display: Xorg(:0) 직접 실행 중 → xcb(X11) 플랫폼 사용 ──────────────────
-# eglfs/linuxfb는 Xorg가 DRM 장치를 점유 중이므로 충돌
-Environment=DISPLAY=:0
-Environment=XAUTHORITY=/home/gadgetini/.Xauthority
-Environment=QT_QPA_PLATFORM=xcb
-
-# Xorg 소켓이 준비될 때까지 대기 후 실행
-ExecStartPre=/bin/bash -c 'until [ -S /tmp/.X11-unix/X0 ]; do sleep 1; done'
-ExecStart=/home/gadgetini/venv/bin/python src/local_ui/main.py
-Restart=on-failure
-RestartSec=5
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty
 StandardOutput=journal
 StandardError=journal
+WorkingDirectory=/home/gadgetini/L2A_CDU_system
+
+Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=QT_QPA_PLATFORM=xcb
+Environment=QT_SCALE_FACTOR=1
+
+ExecStart=/usr/bin/xinit /home/gadgetini/L2A_CDU_system/scripts/cdu_session.sh -- :0 vt1 -nocursor -nolisten tcp
+Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
