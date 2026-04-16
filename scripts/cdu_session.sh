@@ -7,8 +7,12 @@
 
 set -u
 
+exec > >(systemd-cat -t cdu-session) 2>&1
+
 VENV_PYTHON="/home/gadgetini/venv/bin/python"
 APP_MAIN="/home/gadgetini/L2A_CDU_system/src/local_ui/main.py"
+
+echo "[cdu_session] X session entered at $(date +%s.%N)"
 
 xset s off
 xset -dpms
@@ -19,6 +23,7 @@ xsetroot -solid black
 unclutter -idle 0 -root &
 
 while true; do
+    echo "[cdu_session] launching python at $(date +%s.%N)"
     "$VENV_PYTHON" "$APP_MAIN"
     sleep 2
 done

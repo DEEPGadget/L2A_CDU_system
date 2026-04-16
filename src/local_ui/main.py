@@ -18,9 +18,12 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import time
+
+_T0 = time.monotonic()
 
 import redis
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -42,6 +45,13 @@ logging.basicConfig(
     format="%(asctime)s [local_ui] %(levelname)s %(message)s",
 )
 log = logging.getLogger(__name__)
+
+
+def _phase(label: str) -> None:
+    log.info("PHASE +%.3fs  %s", time.monotonic() - _T0, label)
+
+
+_phase("imports done")
 
 REDIS_HOST = "localhost"
 REDIS_PORT = 6379
@@ -110,19 +120,24 @@ class MainWindow(QMainWindow):
 
 
 def main() -> None:
+    _phase("main() entered")
     cfg = get_config()
     log.info("Starting local UI — mode=%s", cfg.mode)
 
     r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
     _enable_keyspace_notifications(r)
+    _phase("redis ready")
 
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+    _phase("QApplication ready")
 
     subscriber = RedisSubscriber()
     subscriber.start()
+    _phase("subscriber started")
 
     window = MainWindow(subscriber)
+    _phase("MainWindow built")
 
     if _IS_RPI:
         screen_geo = app.primaryScreen().geometry()
@@ -132,6 +147,9 @@ def main() -> None:
     else:
         window.resize(1280, 720)
         window.show()
+    _phase("window.show() called")
+
+    QTimer.singleShot(0, lambda: _phase("event loop first tick (≈first paint)"))
 
     sys.exit(app.exec())
 
