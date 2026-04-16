@@ -187,11 +187,10 @@ class FakeDataSimulator:
 
 
         # Water level
-        high = sval("sensor:water_level_high")
-        low  = sval("sensor:water_level_low")
-        if high == "0" and low == "0":
+        wl = sval("sensor:water_level")
+        if wl == "0":
             active.add("alarm:water_level_critical")
-        elif high == "0" and low == "1":
+        elif wl == "1":
             active.add("alarm:water_level_warning")
 
         # Leak

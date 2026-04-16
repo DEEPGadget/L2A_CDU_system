@@ -108,7 +108,7 @@
 
 | 레인 | 구성 요소 | 표시 데이터 | Redis key |
 |---|---|---|---|
-| 공유 (좌단) | Reservoir (Water Tank) | Coolant Level (레벨 바 + HIGH/MID/LOW 텍스트), pH, 전도도 (µS/cm) | `sensor:water_level_high`, `sensor:water_level_low`, `sensor:ph`, `sensor:conductivity` |
+| 공유 (좌단) | Reservoir (Water Tank) | Coolant Level (레벨 바 + HIGH/MID/LOW 텍스트), pH, 전도도 (µS/cm) | `sensor:water_level`, `sensor:ph`, `sensor:conductivity` |
 | Loop 1 → | Pump Loop1 (P1·P2 직렬) | PWM duty (0–100 %) ✎ | `sensor:pump_pwm_duty_1` |
 | Loop 1 → | Flow Loop1 | 유량 (L/min) | `sensor:flow_rate_1` |
 | Loop 1 → | Coolant Inlet Manifold L1 | 입수 온도 (°C) | `sensor:coolant_temp_inlet_1` |
@@ -330,7 +330,7 @@ sensor_fan_pwm_duty{loop="1"}          ← sensor:fan_pwm_duty_1
 sensor_fan_pwm_duty{loop="2"}          ← sensor:fan_pwm_duty_2
 sensor_ph                              ← sensor:ph
 sensor_conductivity                    ← sensor:conductivity
-sensor_water_level                     ← 파생: high:1 low:1→2 / high:0 low:1→1 / low:0→0
+sensor_water_level                     ← sensor:water_level  (2: HIGH / 1: MIDDLE / 0: LOW — MTM 판단값)
 sensor_leak                            ← sensor:leak  (NORMAL→0, LEAKED→1)  ※ Monitoring status strip 전용 (History 미표시)
 sensor_ambient_temp                    ← sensor:ambient_temp
 sensor_ambient_humidity                ← sensor:ambient_humidity

@@ -37,11 +37,14 @@ Used as the source of truth for `src/fake_data/scenarios.py` and alarm manager l
 
 ## Coolant Level
 
-| Redis Keys | State | Level | Alarm |
+| `sensor:water_level` | State | Level | Alarm |
 |---|---|---|---|
-| `sensor:water_level_high`=1, `sensor:water_level_low`=1 | HIGH | Normal | — |
-| `sensor:water_level_high`=0, `sensor:water_level_low`=1 | MIDDLE | Warning | `alarm:water_level_warning` |
-| `sensor:water_level_high`=0, `sensor:water_level_low`=0 | LOW | Critical | `alarm:water_level_critical` |
+| `2` | HIGH | Normal | — |
+| `1` | MIDDLE | Warning | `alarm:water_level_warning` |
+| `0` | LOW | Critical | `alarm:water_level_critical` |
+
+> MTM이 상위·하위 광센서 raw bit 조합으로 판단하여 `sensor:water_level` 단일 값으로 SET.
+> raw: `high`=1, `low`=1 → `2` / `high`=0, `low`=1 → `1` / `high`=0, `low`=0 → `0` (`high`=1, `low`=0은 물리적으로 불가능)
 
 ## Coolant Leakage
 
