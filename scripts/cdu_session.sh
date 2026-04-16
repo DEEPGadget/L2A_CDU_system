@@ -14,6 +14,8 @@ xset s off
 xset -dpms
 xset s noblank
 
+xsetroot -solid black
+
 unclutter -idle 0 -root &
 
 while true; do
