@@ -122,8 +122,7 @@ sudo systemctl restart cdu-fake-simulator.service cdu-local-ui.service
 | `sensor:coolant_temp_outlet_2` | 냉각수 출수 온도 (루프 2) | Outlet Manifold | Modbus Data Parser |
 | `sensor:flow_rate_1` | 유량 (루프 1) | Pump ~ Manifold 구간 (루프1) | Modbus Data Parser |
 | `sensor:flow_rate_2` | 유량 (루프 2) | Pump ~ Manifold 구간 (루프2) | Modbus Data Parser |
-| `sensor:water_level_high` | 상위 수위 광센서 (1: 수위 이상, 0: 수위 이하) | Water Tank | Modbus Data Parser |
-| `sensor:water_level_low` | 하위 수위 광센서 (1: 수위 이상, 0: 수위 이하) | Water Tank | Modbus Data Parser |
+| `sensor:water_level` | 수위 상태 (`2`: HIGH / `1`: MIDDLE / `0`: LOW) — MTM이 상·하위 광센서 비트 조합으로 판단해 단일 값으로 SET | Water Tank | Modbus Data Parser |
 | `sensor:ph` | pH | Water Tank | Modbus Data Parser |
 | `sensor:conductivity` | 전도도 | Water Tank | Modbus Data Parser |
 | `sensor:leak` | 누수 | 시스템 부착 (위치 미확정) | Modbus Data Parser |
@@ -139,8 +138,8 @@ sudo systemctl restart cdu-fake-simulator.service cdu-local-ui.service
 | `alarm:coolant_temp_l2_warning` | 수온 경고 — Loop 2 (warning) | — | Alarm / Event Manager |
 | `alarm:coolant_temp_l2_critical` | 수온 위험 — Loop 2 (critical) | — | Alarm / Event Manager |
 | `alarm:leak_detected` | 누수 감지 | — | Alarm / Event Manager |
-| `alarm:water_level_warning` | 수위 부족 경고 (warning) — `water_level_high`=0 AND `water_level_low`=1 | — | Alarm / Event Manager |
-| `alarm:water_level_critical` | 수위 위험 (critical) — `water_level_low`=0 | — | Alarm / Event Manager |
+| `alarm:water_level_warning` | 수위 부족 경고 (warning) — `sensor:water_level`=1 | — | Alarm / Event Manager |
+| `alarm:water_level_critical` | 수위 위험 (critical) — `sensor:water_level`=0 | — | Alarm / Event Manager |
 | `alarm:ph_warning` | pH 이상 (warning) | — | Alarm / Event Manager |
 | `alarm:conductivity_warning` | 전도도 이상 (warning) | — | Alarm / Event Manager |
 | `alarm:flow_rate_warning` | 유량 저하 (warning) | — | Alarm / Event Manager |

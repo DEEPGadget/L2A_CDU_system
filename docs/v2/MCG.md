@@ -65,6 +65,7 @@
 - slave 응답 이상 감지 및 통신 실패 상태 관리
 - Function code별 요청 송신 및 예외 응답 처리
 - **Read path**: raw register 값 수신 → scaling / bitfield 디코딩 → function code 이상 없음 → Redis SET `sensor:*` + Pub/Sub publish (async, non-blocking) ∥ AEM에 값 전달
+  - **수위 센서 융합**: 상·하위 광센서 2개 bit를 MTM이 조합해 `sensor:water_level` 단일 값(`2`/`1`/`0`)으로 SET — raw bit 개별 키는 저장하지 않음 (단일 진실 원천)
 - **Write path**: 0\~100% 입력값 → FC / address / register value 변환 → Modbus write 송신 → ACK 수신 확인 → Pushgateway POST (result label)
   - 예: `set_pump(70)` → `FC06 / addr=0x0012 / value=700`
   - 예: `set_fan(70)` → 70% → 8.4V → `FC06 / addr=0x0014 / value=840`
@@ -124,8 +125,8 @@ L2A CDU의 1차 목표는 **서버의 안정적인 냉각 유지**다.
 | 수온 경고 (warning) | AEM | Warning | `alarm:coolant_temp_warning` SET | 임계치 이하 복귀 |
 | 수온 위험 (critical) | AEM | Critical | `alarm:coolant_temp_critical` SET | 임계치 이하 복귀 |
 | 누수 감지 | AEM | Critical | `alarm:leak_detected` SET | 누수 비트 해제 |
-| 수위 부족 (warning) | AEM | Warning | `alarm:water_level_warning` SET — `water_level_high`=0 AND `water_level_low`=1 (상위 이하, 하위 이상) | `water_level_high` 복귀 |
-| 수위 위험 (critical) | AEM | Critical | `alarm:water_level_critical` SET — `water_level_low`=0 (하위 이하) | `water_level_low` 복귀 |
+| 수위 부족 (warning) | AEM | Warning | `alarm:water_level_warning` SET — `sensor:water_level`=1 | `sensor:water_level`≥2 복귀 |
+| 수위 위험 (critical) | AEM | Critical | `alarm:water_level_critical` SET — `sensor:water_level`=0 | `sensor:water_level`≥1 복귀 |
 | 유압 이상 (warning) | AEM | Warning | `alarm:pressure_warning` SET | 정상 범위 복귀 |
 | 유량 저하 (warning, Pump ON 상태) | AEM | Warning | `alarm:flow_rate_warning` SET | 정상 유량 복귀 |
 | 주변 온도 경고 (warning) | AEM | Warning | `alarm:ambient_temp_warning` SET | 임계치 이하 복귀 |

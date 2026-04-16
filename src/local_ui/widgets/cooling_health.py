@@ -99,6 +99,9 @@ def _color_outlet_temp(s: str) -> str:
     return _C_NORMAL
 
 
+_WATER_LEVEL_MAP: dict[str, str] = {"2": "HIGH", "1": "MIDDLE", "0": "LOW"}
+
+
 def _color_water_level(s: str) -> str:
     if s == "HIGH":
         return _C_NORMAL
@@ -202,6 +205,7 @@ _KEY_TO_PLACEHOLDER: dict[str, str] = {
     "sensor:fan_pwm_duty_2":        "FAN_DUTY_2",
     "sensor:flow_rate_1":           "FLOW_1",
     "sensor:flow_rate_2":           "FLOW_2",
+    "sensor:water_level":           "WATER_LEVEL",
     "sensor:ph":                    "PH",
     "sensor:conductivity":          "CONDUCTIVITY",
     "sensor:leak":                  "LEAK",
@@ -237,51 +241,45 @@ class CoolingHealthWidget(QWidget):
         never re-published after init, so a direct GET is used as a fallback.
         """
         try:
-            level_keys = ["sensor:water_level_high", "sensor:water_level_low"]
             sensor_keys = list(_KEY_TO_PLACEHOLDER.keys())
-            all_keys = sensor_keys + level_keys
 
             pipe = self._redis.pipeline()
-            for key in all_keys:
+            for key in sensor_keys:
                 pipe.get(key)
             results = pipe.execute()
 
-            for key, raw in zip(all_keys, results):
+            for key, raw in zip(sensor_keys, results):
                 if raw is None:
                     continue
                 value = raw.decode() if isinstance(raw, bytes) else str(raw)
 
-                if key == "sensor:water_level_high":
-                    self._values["_water_high"] = value
-                elif key == "sensor:water_level_low":
-                    self._values["_water_low"] = value
+                placeholder = _KEY_TO_PLACEHOLDER.get(key)
+                if placeholder is None:
+                    continue
+                if key in _DUTY_KEYS.values():
+                    for slot, rkey in _DUTY_KEYS.items():
+                        if key == rkey:
+                            try:
+                                self._current_duty[slot] = int(float(value))
+                            except ValueError:
+                                pass
+                    try:
+                        self._values[placeholder] = str(int(float(value)))
+                    except ValueError:
+                        self._values[placeholder] = value
+                elif key == "sensor:leak":
+                    self._values["LEAK"] = "None" if value == "NORMAL" else "Detected"
+                elif key == "sensor:water_level":
+                    self._values["WATER_LEVEL"] = _WATER_LEVEL_MAP.get(value, "LOW")
                 else:
-                    placeholder = _KEY_TO_PLACEHOLDER.get(key)
-                    if placeholder is None:
-                        continue
-                    if key in _DUTY_KEYS.values():
-                        for slot, rkey in _DUTY_KEYS.items():
-                            if key == rkey:
-                                try:
-                                    self._current_duty[slot] = int(float(value))
-                                except ValueError:
-                                    pass
-                        try:
-                            self._values[placeholder] = str(int(float(value)))
-                        except ValueError:
-                            self._values[placeholder] = value
-                    elif key == "sensor:leak":
-                        self._values["LEAK"] = "None" if value == "NORMAL" else "Detected"
-                    else:
-                        try:
-                            self._values[placeholder] = f"{float(value):.1f}"
-                        except ValueError:
-                            self._values[placeholder] = value
+                    try:
+                        self._values[placeholder] = f"{float(value):.1f}"
+                    except ValueError:
+                        self._values[placeholder] = value
 
         except Exception as exc:
             log.warning("Failed to load initial Redis values: %s", exc)
 
-        self._update_water_level()
         self._update_colors()
         self._reload_svg()
 
@@ -365,9 +363,11 @@ class CoolingHealthWidget(QWidget):
                     except ValueError:
                         pass
 
-        # Transform leak display value
+        # Transform display values
         if key == "sensor:leak":
             self._values["LEAK"] = "None" if value == "NORMAL" else "Detected"
+        elif key == "sensor:water_level":
+            self._values["WATER_LEVEL"] = _WATER_LEVEL_MAP.get(value, "LOW")
         # Pump/Fan duty: integer only (no decimal)
         elif key in _DUTY_KEYS.values():
             try:
@@ -380,34 +380,11 @@ class CoolingHealthWidget(QWidget):
             except ValueError:
                 self._values[placeholder] = value
 
-        self._update_water_level()
-        self._update_colors()
-        self._reload_svg()
-
-    def on_water_level_high(self, value: str) -> None:
-        self._values["_water_high"] = value
-        self._update_water_level()
-        self._update_colors()
-        self._reload_svg()
-
-    def on_water_level_low(self, value: str) -> None:
-        self._values["_water_low"] = value
-        self._update_water_level()
         self._update_colors()
         self._reload_svg()
 
     # ------------------------------------------------------------------
     # Computed values
-
-    def _update_water_level(self) -> None:
-        high = self._values.get("_water_high", "1")
-        low  = self._values.get("_water_low",  "1")
-        if high == "1" and low == "1":
-            self._values["WATER_LEVEL"] = "HIGH"
-        elif high == "0" and low == "1":
-            self._values["WATER_LEVEL"] = "MIDDLE"
-        else:
-            self._values["WATER_LEVEL"] = "LOW"
 
     def _update_colors(self) -> None:
         v = self._values

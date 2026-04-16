@@ -81,12 +81,7 @@ class MonitoringPage(QWidget):
     # Signal routing (called by main window)
 
     def on_sensor_updated(self, key: str, value: str) -> None:
-        if key == "sensor:water_level_high":
-            self.cooling_health.on_water_level_high(value)
-        elif key == "sensor:water_level_low":
-            self.cooling_health.on_water_level_low(value)
-        else:
-            self.cooling_health.on_sensor_updated(key, value)
+        self.cooling_health.on_sensor_updated(key, value)
         self.status_strip.on_sensor_updated(key, value)
 
     def on_alarm_set(self, key: str) -> None:
