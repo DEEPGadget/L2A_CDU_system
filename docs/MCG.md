@@ -399,12 +399,14 @@ sequenceDiagram
     participant CQ as Control Queue
     participant TS as Task Scheduler
     participant Redis as Redis DB
+    participant PGW as Prometheus Pushgateway
 
     UI->>CR: 모드 전환 요청 (manual → auto)
     CR->>CQ: 모드 전환 요청 적재
     TS->>CQ: dequeue
     TS->>TS: 내부 모드 상태를 Auto로 변경
     TS-)Redis: SET control:mode=auto + Pub/Sub publish
+    TS->>PGW: POST control_cmd_mode (value=auto, result=success)
     Redis-->>UI: Pub/Sub (control:mode 변경)
     UI-->>UI: 모드 표시 갱신 (Auto), Pump/Fan 오버레이 비활성화
 ```
@@ -448,14 +450,12 @@ sequenceDiagram
         MTM->>PCB: Modbus RTU write (HR 8~11)
         PCB-->>MTM: ACK
         MTM-)Redis: SET sensor:pump_pwm_duty_* / sensor:fan_pwm_duty_* + Pub/Sub publish
-        MTM->>PGW: POST control_cmd_pump (value, result=success, source=auto)
-        MTM->>PGW: POST control_cmd_fan (value, result=success, source=auto)
     end
 ```
 
 > Polling 완료 후 알고리즘이 PWM을 계산하여 Control Queue에 적재. 다음 cycle에서 우선 처리.
 > Manual/Auto 모두 동일한 Control Queue를 경유하므로 write 경로가 단일화됨.
-> Pushgateway POST에 `source=auto` 라벨로 수동/자동 이력 구분.
+> **Auto 제어 시 Pushgateway POST 없음** — PWM 변경 결과값은 Exporter가 `sensor:*`로 수집하므로 이력 누락 없음.
 
 ---
 
@@ -470,12 +470,14 @@ sequenceDiagram
     participant CQ as Control Queue
     participant TS as Task Scheduler
     participant Redis as Redis DB
+    participant PGW as Prometheus Pushgateway
 
     UI->>CR: 모드 전환 요청 (auto → manual)
     CR->>CQ: 모드 전환 요청 적재
     TS->>CQ: dequeue
     TS->>TS: 내부 모드 상태를 Manual로 변경
     TS-)Redis: SET control:mode=manual + Pub/Sub publish
+    TS->>PGW: POST control_cmd_mode (value=manual, result=success)
     Redis-->>UI: Pub/Sub (control:mode 변경)
     UI-->>UI: 모드 표시 갱신 (Manual), Pump/Fan 오버레이 활성화
 ```

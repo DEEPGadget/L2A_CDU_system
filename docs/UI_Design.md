@@ -507,9 +507,12 @@
 
 **Table 컬럼**
 
-| Timestamp | Value (%) | Result | Source |
+| Timestamp | Type | Value | Result |
 |---|---|---|---|
-| 명령 시각 | PWM duty 명령값 (0–100) | `success` / `fail` | `manual` / `auto` |
+| 명령 시각 | `pump` / `fan` / `mode` | PWM duty (0–100) 또는 `manual`/`auto` | `success` / `fail` |
+
+> 자동제어 명령(Auto → PWM write)은 기록하지 않음 — PWM 변경 결과값은 Prometheus Exporter가 `sensor:*`로 수집.
+> **모드 전환(Manual↔Auto)은 사람의 제어 행위**이므로 Control History에 기록.
 
 ---
 

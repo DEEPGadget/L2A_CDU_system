@@ -166,8 +166,9 @@ sudo systemctl restart cdu-fake-simulator.service cdu-local-ui.service
 
 | Metric | Label | 설명 | push 시점 |
 |---|---|---|---|
-| `control_cmd_pump` | `result="success\|fail"` | 명령한 pump 출력값 0~100% | 제어 명령 완료 시 |
-| `control_cmd_fan` | `result="success\|fail"` | 명령한 fan 출력값 0~100% | 제어 명령 완료 시 |
+| `control_cmd_pump` | `result="success\|fail"` | 수동 제어로 명령한 pump 출력값 0~100% | Manual 제어 명령 완료 시 |
+| `control_cmd_fan` | `result="success\|fail"` | 수동 제어로 명령한 fan 출력값 0~100% | Manual 제어 명령 완료 시 |
+| `control_cmd_mode` | `result="success\|fail"` | 모드 전환 값 `manual`/`auto` | 모드 전환 시 |
 | `comm_event` | `status="timeout\|disconnected\|ok"` | 통신 상태 변경 이벤트 | 상태 전환 시 |
 | `comm_consecutive_failures` | — | 연속 실패 횟수 스냅샷 | 실패 발생 시 |
 
