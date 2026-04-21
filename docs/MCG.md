@@ -50,15 +50,23 @@
 **[레이어 2] 스케줄링 & 큐**
 
 `Task Scheduler`
-- Control Queue / Auto Control Cycle / Polling 세 작업 소스를 소유하고 Modbus Transport Manager에 순차 디스패치
-- **작업 소스 우선순위: Control Queue > Auto Control Cycle > Polling** (Modbus 단일 채널 직렬 접근 보장)
-- **Auto Control Cycle**: Auto 모드일 때, polling 결과(냉각수온, 유량)를 기반으로 지정된 알고리즘에 의해 PWM 값을 계산하여 자동으로 write 요청 생성
+- **Control Queue 소비 + 모드 판단 + Auto 생성 + MTM 디스패치를 전담**
+- Control Queue / Polling 두 작업 소스 관리
+- **작업 소스 우선순위: Control Queue > Polling** (Modbus 단일 채널 직렬 접근 보장)
+- 매 cycle 동작:
+  1. Control Queue에 요청이 있으면 dequeue → MTM에 디스패치
+  2. Control Queue가 비어있으면 Polling 실행 → 센서값 수집
+  3. Polling 완료 후 현재 모드(`control:mode`) 확인 → **Auto이면 알고리즘으로 PWM 계산 → Control Queue에 적재** (다음 cycle에서 우선 처리)
 - 주요 Polling 대상 (Modbus via PCB): 수온(inlet/outlet), 유압, 유량, 수위, 누수, 펌프 상태, 팬 상태
 - **온/습도는 Polling 대상 제외**: RPi Ambient Sensor Reader가 I2C/GPIO로 직접 수집 → Redis SET
 
 `Control Queue`
-- Command Receiver가 적재한 제어 요청을 순서대로 보관
-- Task Scheduler가 Polling보다 우선 디스패치
+- 모든 write 요청의 단일 경로 — Manual/Auto/비상정지 구분 없이 동일 큐 사용
+- Task Scheduler가 Polling보다 우선 dequeue → MTM 디스패치
+- 적재 소스:
+  - **Manual**: UI → Command Receiver → Control Queue
+  - **Auto**: Task Scheduler가 Polling 후 알고리즘 계산 → Control Queue 적재
+  - **비상정지**: Command Receiver → Control Queue 최우선 적재
 - 처리 대상: Pump 출력 변경, Fan 출력 변경, 모드 전환 (manual ↔ auto), 비상정지
 
 **[레이어 3] Modbus 통신**
@@ -176,13 +184,13 @@ L2A CDU의 1차 목표는 **서버의 안정적인 냉각 유지**다.
 ```
 loop:
   Control Queue에 요청 있음 → MTM write → 다음 cycle
-  Control Queue 비어있음   → Auto 모드? → Auto PWM 계산 → MTM write
-                           → MTM read → 디코딩
+  Control Queue 비어있음   → MTM read → 디코딩
                                 ├─ Redis SET sensor:* + Pub/Sub publish
                                 │     └─ Redis → UI: Pub/Sub 수신 → 화면 갱신
-                                └─ AEM threshold 검사
-                                      정상 → 다음 cycle
-                                      이상 → Redis SET alarm:* → UI 알람 → 다음 cycle
+                                ├─ AEM threshold 검사
+                                │     정상 → pass / 이상 → Redis SET alarm:* → UI 알람
+                                └─ Auto 모드? → 알고리즘 → PWM write 요청을 Control Queue에 적재
+                                                           → 다음 cycle에서 우선 처리
 ```
 
 ---
@@ -409,6 +417,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
+    participant CQ as Control Queue
     participant TS as Task Scheduler
     participant MTM as Modbus Transport Manager
     participant PCB as PCB
@@ -428,12 +437,14 @@ sequenceDiagram
     end
 
     rect rgb(40, 55, 30)
-        Note over TS,PGW: Auto Control Cycle — PWM 자동 계산 및 적용
+        Note over TS,PGW: Auto Control — PWM 자동 계산 → Control Queue 적재 → 실행
         TS->>TS: 냉각수온 + 유량 → 지정 알고리즘 → Pump/Fan PWM duty 결정
-        TS->>MTM: Pump PWM write 요청 (계산된 값)
+        TS->>CQ: Pump/Fan PWM write 요청 적재 (source=auto)
+        TS->>CQ: dequeue (다음 cycle 우선 처리)
+        TS->>MTM: Pump PWM write 요청
         MTM->>PCB: Modbus RTU write (HR 0~7)
         PCB-->>MTM: ACK
-        TS->>MTM: Fan PWM write 요청 (계산된 값)
+        TS->>MTM: Fan PWM write 요청
         MTM->>PCB: Modbus RTU write (HR 8~11)
         PCB-->>MTM: ACK
         MTM-)Redis: SET sensor:pump_pwm_duty_* / sensor:fan_pwm_duty_* + Pub/Sub publish
@@ -442,7 +453,8 @@ sequenceDiagram
     end
 ```
 
-> Auto Control Cycle은 Polling 결과를 기반으로 동일 주기에서 실행.
+> Polling 완료 후 알고리즘이 PWM을 계산하여 Control Queue에 적재. 다음 cycle에서 우선 처리.
+> Manual/Auto 모두 동일한 Control Queue를 경유하므로 write 경로가 단일화됨.
 > Pushgateway POST에 `source=auto` 라벨로 수동/자동 이력 구분.
 
 ---
