@@ -45,8 +45,10 @@
 **[레이어 2] 스케줄링 & 큐**
 
 `Task Scheduler`
-- Control Queue / Polling / Heartbeat 세 작업 소스를 소유하고 Modbus Transport Manager에 순차 디스패치
-- **작업 소스 우선순위: Control Queue > Polling** (Modbus 단일 채널 직렬 접근 보장)
+- Control Queue / Auto Control Cycle / Polling / Heartbeat 네 작업 소스를 소유하고 Modbus Transport Manager에 순차 디스패치
+- **작업 소스 우선순위: Control Queue > Auto Control Cycle > Polling** (Modbus 단일 채널 직렬 접근 보장)
+- **Auto Control Cycle**: Auto 모드일 때, polling 결과(inlet temp)를 기반으로 MCG가 룩업 테이블에서 PWM 값을 계산하여 자동으로 write 요청 생성. Auto 모드에서도 Heartbeat 갱신은 계속함.
+- **PCB는 OP_MODE=0 (Normal) 유지**: Auto 제어는 MCG가 전담. PCB OP_MODE=3 (펌웨어 PID)는 사용하지 않음.
 - 주요 Polling 대상 (Modbus via PCB): 수온(inlet/outlet), 유압, 유량, 수위, 누수, 펌프 상태, 팬 상태
 - **온/습도는 Polling 대상 제외**: 장치 내부 온/습도는 RPi Ambient Sensor Reader가 I2C/GPIO로 직접 수집하여 Redis에 SET (`sensor:ambient_temp`, `sensor:ambient_humidity`) — MCG Modbus polling 불필요
 - **Heartbeat write**: `MASTER_HEARTBEAT` (HR addr=20)를 주기적으로 갱신 (PCB Watchdog 감시 대상)
@@ -55,7 +57,7 @@
 `Control Queue`
 - Command Receiver가 적재한 제어 요청을 순서대로 보관
 - Task Scheduler가 Polling보다 우선 디스패치
-- 처리 대상: Pump 출력 변경, Fan 출력 변경, `MB_HR_OP_MODE` 변경 (OP_MODE=0 정상복귀)
+- 처리 대상: Pump 출력 변경, Fan 출력 변경, `MB_HR_OP_MODE` 변경 (OP_MODE=0 정상복귀), 모드 전환 (manual ↔ auto)
 
 **[레이어 3] Modbus 통신**
 
@@ -114,7 +116,10 @@ L2A CDU의 1차 목표는 **서버의 안정적인 냉각 유지**다.
 | **Warning** | 주의 필요, 즉각 조치 불필요 | 알람 배너 표시 |
 | **Critical** | 즉각 사람의 판단 및 조치 필요 | 알람 배너 표시 (강조) |
 
-> 모든 제어는 사람이 판단하고 UI를 통해 직접 수행. 시스템은 감지와 알람만 담당.
+> 시스템은 수동(Manual) 및 자동(Auto) 두 가지 제어 모드를 지원한다.
+> - **Manual** (기본값): 사람이 UI에서 직접 제어. 시스템은 감지·알람만 담당.
+> - **Auto**: MCG가 센서값 기반 룩업 테이블로 Pump/Fan PWM을 자동 조절. 사람은 모드 전환·모니터링 담당.
+> - AEM은 두 모드에서 동일 동작 (감지·알람만, 제어 명령 생성 안 함).
 
 ---
 
@@ -382,8 +387,11 @@ sequenceDiagram
         AEM->>AEM: 복구 이벤트 기록
         Redis-->>UI: Keyspace Notification (DEL 이벤트)
         UI-->>UI: 알람 해제
+        Note over TS: control:mode=auto인 경우 Auto Control Cycle 자동 재개
     end
 ```
+
+> Auto 모드 중 통신 두절 → 복구 시: Watchdog이 OP_MODE을 변경했을 수 있으므로 OP_MODE=0 확인/복구 후 Auto Control Cycle 자동 재개.
 
 ---
 
@@ -412,6 +420,103 @@ sequenceDiagram
     PCB->>PCB: 모든 PWM·DOUT 즉시 0/Off 전환
     MTM->>PGW: POST control_cmd_op_mode (value=1, result=success)
     MTM-)Redis: SET comm:status + Pub/Sub publish
+    TS-)Redis: SET control:mode=manual + Pub/Sub publish
+    Note over TS: Auto 모드였다면 자동으로 Manual 복귀
     Redis-->>UI: Pub/Sub 수신
-    UI-->>UI: 비상정지 상태 표시
+    UI-->>UI: 비상정지 상태 표시, 모드=Manual로 갱신
 ```
+
+> Auto 모드에서 비상정지 발생 시 자동으로 Manual 모드로 전환. 사용자가 명시적으로 Auto를 재활성화해야 함 (안전 설계).
+
+---
+
+### 시나리오 6. Manual → Auto 모드 전환
+
+트리거: UI에서 Auto 모드 전환 요청
+
+```mermaid
+sequenceDiagram
+    participant UI as UI
+    participant CR as Command Receiver
+    participant CQ as Control Queue
+    participant TS as Task Scheduler
+    participant Redis as Redis DB
+
+    UI->>CR: 모드 전환 요청 (manual → auto)
+    CR->>CQ: 모드 전환 요청 적재
+    TS->>CQ: dequeue
+    TS->>TS: 내부 모드 상태를 Auto로 변경
+    TS-)Redis: SET control:mode=auto + Pub/Sub publish
+    Redis-->>UI: Pub/Sub (control:mode 변경)
+    UI-->>UI: 모드 표시 갱신 (Auto), Pump/Fan 오버레이 버튼 비활성화
+```
+
+---
+
+### 시나리오 7. Auto 모드 제어 사이클
+
+트리거: Auto 모드에서 Task Scheduler 주기 도달
+
+```mermaid
+sequenceDiagram
+    participant TS as Task Scheduler
+    participant MTM as Modbus Transport Manager
+    participant PCB as PCB
+    participant Redis as Redis DB
+    participant AEM as Alarm / Event Manager
+    participant PGW as Prometheus Pushgateway
+
+    rect rgb(30, 40, 60)
+        Note over TS,AEM: Polling cycle — 센서값 수집 (시나리오 1과 동일)
+        TS->>MTM: 주기 도달 → read 작업 트리거
+        MTM->>PCB: Modbus RTU read 요청
+        PCB-->>MTM: register 응답
+        MTM->>MTM: scaling / bitfield 디코딩
+        MTM-)Redis: SET sensor:* + Pub/Sub publish (async)
+        MTM->>AEM: 디코딩된 값 전달
+        AEM->>AEM: threshold 검사 (기존과 동일)
+    end
+
+    rect rgb(40, 55, 30)
+        Note over TS,PGW: Auto Control Cycle — PWM 자동 계산 및 적용
+        TS->>TS: inlet temp (max of L1, L2) → 룩업 테이블 → Pump/Fan PWM duty 결정
+        TS->>MTM: Pump PWM write 요청 (계산된 값)
+        MTM->>PCB: Modbus RTU write 요청
+        PCB-->>MTM: ACK
+        TS->>MTM: Fan PWM write 요청 (계산된 값)
+        MTM->>PCB: Modbus RTU write 요청
+        PCB-->>MTM: ACK
+        MTM-)Redis: SET sensor:pump_pwm_duty_* / sensor:fan_pwm_duty_* + Pub/Sub publish
+        MTM->>PGW: POST control_cmd_pump (value, result=success, source=auto)
+        MTM->>PGW: POST control_cmd_fan (value, result=success, source=auto)
+    end
+```
+
+> Auto Control Cycle은 Polling 결과를 기반으로 동일 주기에서 실행. Heartbeat 갱신은 별도로 계속.
+> Pushgateway POST에 `source=auto` 라벨을 추가하여 수동/자동 제어 이력을 구분.
+> 룩업 테이블은 v1/MCG.md "Auto Control 룩업 테이블" 섹션 참고.
+
+---
+
+### 시나리오 8. Auto → Manual 모드 전환
+
+트리거: UI에서 Manual 모드 전환 요청
+
+```mermaid
+sequenceDiagram
+    participant UI as UI
+    participant CR as Command Receiver
+    participant CQ as Control Queue
+    participant TS as Task Scheduler
+    participant Redis as Redis DB
+
+    UI->>CR: 모드 전환 요청 (auto → manual)
+    CR->>CQ: 모드 전환 요청 적재
+    TS->>CQ: dequeue
+    TS->>TS: 내부 모드 상태를 Manual로 변경
+    TS-)Redis: SET control:mode=manual + Pub/Sub publish
+    Redis-->>UI: Pub/Sub (control:mode 변경)
+    UI-->>UI: 모드 표시 갱신 (Manual), Pump/Fan 오버레이 버튼 활성화
+```
+
+> PWM은 마지막 Auto 제어 시점의 값을 유지. 사람이 수동으로 변경하기 전까지 변하지 않음.
