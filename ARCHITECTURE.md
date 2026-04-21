@@ -113,7 +113,7 @@
   - Auto 모드에서 Pump/Fan 수동 제어 UI는 비활성화 (Manual 전환 시 재활성화)
   - AEM 동작은 두 모드에서 동일 (감지·알람만, 제어 명령 생성 안 함)
 
-> 상세 내용: [v1/MCG.md](docs/v1/MCG.md) (MCG 단독 시퀀스) / [v2/MCG.md](docs/v2/MCG.md) (PCB Watchdog/OP_MODE 연동)
+> 상세 내용: [MCG.md](docs/MCG.md)
 
 ### 4.3 UI
 
@@ -133,7 +133,7 @@
   - **OP_MODE** (HR addr=19): Normal / Emergency Stop / Default Value / Auto Control 선택
   - **Master Heartbeat Watchdog**: MCG가 `MASTER_HEARTBEAT` (HR addr=20)를 주기적으로 갱신하지 않으면 Timeout 후 자동 모드 전환
   - **Flash 저장 파라미터**: 전원 재인가 후에도 초기값·Watchdog 정책 유지
-- 상세 내용: [v1/PCB.md](docs/v1/PCB.md) (단순 R/W) / [v2/PCB.md](docs/v2/PCB.md) (자율 동작)
+- 상세 내용: [PCB.md](docs/PCB.md)
 
 ### 4.5 Sensor / Actuator
 
