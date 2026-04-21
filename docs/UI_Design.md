@@ -60,7 +60,22 @@
 | IP | `IP: 192.168.x.x` | 중앙. 유선 우선, 없으면 `IP: --` |
 | System | `System:` + **상태값(bold, 색상)** | 중앙. 버튼·배지 형태 없음 — bold 컬러 텍스트만. Normal=green / Warning=orange / Critical=red / `-`=black |
 | Link | `Link:` + **상태값(bold, 색상)** | 중앙. 버튼·배지 형태 없음 — bold 컬러 텍스트만. ok=green / timeout=orange / disconnected=red |
+| Mode | `[Manual]` / `[Auto]` 토글 버튼 | 중앙, Link 우측에 배치. 탭하면 모드 전환 요청. 아래 "Mode 토글 버튼 상세" 참고 |
 | 시각 | `HH:MM:SS` | 우측 고정, 1초 갱신 |
+
+**Mode 토글 버튼 상세**
+
+| 상태 | 텍스트 | 스타일 |
+|---|---|---|
+| Manual (기본) | `Manual` | 흰 배경 + `#2c3e50` 테두리/글자 (20px bold) |
+| Auto (활성) | `Auto` | `#3498db` 파랑 배경 + 흰 글자 (20px bold) |
+
+| 동작 | 설명 |
+|---|---|
+| 탭 시 | MCG에 모드 전환 요청 전송 (real mode: IPC / fake mode: Redis `control:mode` 직접 write) |
+| 응답 | MCG 응답 후 Redis `control:mode` 변경 → Pub/Sub → UI 갱신 |
+| 전환 중 | 버튼 일시 비활성화 (더블 탭 방지) |
+| 비상정지 | Auto 모드 중 비상정지 시 자동으로 Manual 복귀 |
 
 **알람 배지 상세**
 
@@ -74,15 +89,17 @@
 
 **Pump·Fan 인라인 제어**
 
-| 항목 | SVG 내 표시 | 동작 |
-|---|---|---|
-| Pump Loop1 | PWM duty `XX% ✎` | 탭 → 숫자 키패드 팝업 → **Apply** → MCG 전송 (real mode) / Redis 직접 쓰기 (fake mode) |
-| Pump Loop2 | 〃 | 〃 |
-| Fan Loop1 | 〃 | 〃 |
-| Fan Loop2 | 〃 | 〃 |
+| 항목 | SVG 내 표시 (Manual) | SVG 내 표시 (Auto) | 동작 (Manual) | 동작 (Auto) |
+|---|---|---|---|---|
+| Pump Loop1 | PWM duty `XX% ✎` | PWM duty `XX%` (✎ 숨김) | 탭 → 숫자 키패드 팝업 → **Apply** | **비활성** — 탭 무반응 |
+| Pump Loop2 | 〃 | 〃 | 〃 | 〃 |
+| Fan Loop1 | 〃 | 〃 | 〃 | 〃 |
+| Fan Loop2 | 〃 | 〃 | 〃 | 〃 |
 
-> **조작 흐름**: 다이어그램 내 Pump/Fan 노드 탭 (✎ 표시로 편집 가능 인지) → 숫자 키패드 팝업 (0–100, Range validation) → 입력 후 **Apply** → MCG 전송 (real mode) / Redis 직접 쓰기 (fake mode) → SVG 값 갱신.
+> **Manual 모드 조작 흐름**: 다이어그램 내 Pump/Fan 노드 탭 (✎ 표시로 편집 가능 인지) → 숫자 키패드 팝업 (0–100, Range validation) → 입력 후 **Apply** → MCG 전송 (real mode) / Redis 직접 쓰기 (fake mode) → SVG 값 갱신.
 > PySide6 구현: `QSvgWidget` 위에 투명 `QPushButton` 오버레이 (절대 위치), 팝업은 `QDialog` + `QGridLayout` 키패드.
+>
+> **Auto 모드**: 오버레이 버튼 비활성 (투명도 50%, 커서 기본), ✎ 아이콘 숨김. PWM 값은 MCG가 자동 계산한 값이 실시간 표시됨 (읽기 전용). 수동 제어하려면 Manual 모드로 전환 필요.
 
 **Cooling Health 구성 요소**
 
@@ -490,9 +507,9 @@
 
 **Table 컬럼**
 
-| Timestamp | Value (%) | Result |
-|---|---|---|
-| 명령 시각 | PWM duty 명령값 (0–100) | `success` / `fail` |
+| Timestamp | Value (%) | Result | Source |
+|---|---|---|---|
+| 명령 시각 | PWM duty 명령값 (0–100) | `success` / `fail` | `manual` / `auto` |
 
 ---
 
