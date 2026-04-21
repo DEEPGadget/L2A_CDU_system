@@ -153,7 +153,7 @@ sudo systemctl restart cdu-fake-simulator.service cdu-local-ui.service
 | `comm:status` | 현재 Modbus 통신 상태 `"ok"\|"timeout"\|"disconnected"` | Modbus Transport Manager |
 | `comm:consecutive_failures` | 연속 통신 실패 횟수 (성공 시 0 리셋) | Modbus Transport Manager |
 | `comm:last_error` | 마지막 오류 `{code, message, ts}` | Modbus Transport Manager |
-| `control:mode` | 현재 제어 모드 `"manual"\|"auto"` (기본값: `manual`) | MCG (모드 전환 시 SET + Pub/Sub publish). Fake mode: UI 직접 write |
+| `control:mode` | 현재 제어 모드 `"manual"\|"auto"\|"emergency"` (기본값: `manual`) | Manual↔Auto: MCG Task Scheduler (CQ 경유). Emergency: Safety Controller가 직접 SET. Fake mode: UI 직접 write |
 
 **Exporter**
 - 독립 프로세스로 동작 (Pull 방식)

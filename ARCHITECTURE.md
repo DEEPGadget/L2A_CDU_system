@@ -102,14 +102,17 @@
 ### 4.2 Modbus Control Gateway (MCG)
 
 - 시스템 내 중앙 제어 및 통신 허브 (Modbus Master)
-- 4개 레이어로 구성: 요청 수신·검증 / 스케줄링·큐 / Modbus 통신 / 이벤트 처리
-- 작업 소스 우선순위: Emergency Queue > Control Queue > Auto Control Cycle > Polling (Task Scheduler가 중재)
+- 4개 레이어로 구성: 요청 수신 / 스케줄링·큐·안전 / Modbus 통신 / 이벤트 처리
+- 작업 소스 우선순위: Control Queue > Polling (Task Scheduler가 매 cycle 모드 확인 후 처리)
+- Control Queue: Command Receiver 전용 (Manual 제어 + 모드 전환)
+- Auto write: Task Scheduler가 Polling 후 직접 MTM write (CQ 미경유)
+- Safety Controller: AEM critical 알람 → 비상정지 판단 → `control:mode=emergency` Redis 직접 SET (CQ 미경유)
 - **제어 모드 (Manual / Auto)**:
   - **Manual** (기본값): 사람이 UI에서 Pump/Fan PWM을 직접 설정. 시스템은 감지·알람만 담당.
-  - **Auto**: MCG가 센서값(inlet temp) 기반 룩업 테이블로 Pump/Fan PWM을 자동 계산 → Modbus write. 사람은 모드 전환·모니터링 담당.
+  - **Auto**: MCG가 냉각수온·유량 기반으로 지정된 알고리즘에 의해 Pump/Fan PWM을 자동 계산 → Modbus write. 사람은 모드 전환·모니터링 담당.
   - 모드 전환은 UI 요청으로만 발생 (AEM은 모드 전환을 트리거하지 않음)
-  - 현재 모드는 Redis `control:mode` 키로 관리 (`manual` / `auto`)
-  - v1/v2 공통: MCG가 제어 주체. PCB OP_MODE=3 (펌웨어 PID)는 사용하지 않음 — PCB는 Normal 모드(OP_MODE=0) 유지
+  - 현재 모드는 Redis `control:mode` 키로 관리 (`manual` / `auto` / `emergency`)
+  - MCG가 제어 주체. PCB는 단순 R/W Slave로 동작 (OP_MODE/Watchdog 미구현 — 향후 펌웨어 업데이트 필요)
   - Auto 모드에서 Pump/Fan 수동 제어 UI는 비활성화 (Manual 전환 시 재활성화)
   - AEM 동작은 두 모드에서 동일 (감지·알람만, 제어 명령 생성 안 함)
 
@@ -124,15 +127,15 @@
 
 > 상세 내용: [UI.md](docs/UI.md)
 
-### 4.4 PCB (Modbus Slave)
+### 4.4 PCB (Modbus Slave) — MCS_IO Board Rev2
 
-- 센서 입력 값 제공
-- 펌프 및 팬 제어 출력 수행 (PWM / DOUT)
-- Modbus 레지스터 기반 Read / Write 지원
-- Master(MCG)와 독립적인 자율 동작 기능 내장:
-  - **OP_MODE** (HR addr=19): Normal / Emergency Stop / Default Value / Auto Control 선택
-  - **Master Heartbeat Watchdog**: MCG가 `MASTER_HEARTBEAT` (HR addr=20)를 주기적으로 갱신하지 않으면 Timeout 후 자동 모드 전환
-  - **Flash 저장 파라미터**: 전원 재인가 후에도 초기값·Watchdog 정책 유지
+- STM32G474 기반 다목적 I/O 제어 보드
+- 센서 입력 값 제공 (ADC 8ch 전압 + 4ch NTC 온도, Pulse 12ch, DIN 6ch)
+- 펌프 및 팬 제어 출력 수행 (PWM 12ch, DOUT 6ch)
+- Modbus RTU Slave — MCG 명령에 따른 레지스터 Read / Write 수행
+- PWM 변경 시 S-Curve 1초 고정 램프 적용
+- Flash 저장: PWM 주파수, 극성, ADC 게인 (PWM Duty/DOUT 초기값은 미저장 — MCG 서비스 초기화로 대체)
+- **미구현 (향후 펌웨어 업데이트 필요)**: Watchdog (Master Heartbeat 감시), OP_MODE (운전 모드 전환)
 - 상세 내용: [PCB.md](docs/PCB.md)
 
 ### 4.5 Sensor / Actuator
