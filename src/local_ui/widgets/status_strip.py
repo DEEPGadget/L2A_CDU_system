@@ -33,7 +33,8 @@ class StatusStripWidget(QWidget):
 
     def _build_ui(self) -> None:
         self.setFixedHeight(_STRIP_HEIGHT)
-        self.setStyleSheet("background:#ffffff; border-top:1px solid #dee2e6;")
+        self.setAutoFillBackground(True)
+        self.setStyleSheet("StatusStripWidget { background:#ffffff; border-top:1px solid #dee2e6; }")
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(20, 0, 20, 0)
