@@ -104,9 +104,9 @@
 - 시스템 내 중앙 제어 및 통신 허브 (Modbus Master)
 - 4개 레이어로 구성: 요청 수신 / 스케줄링·큐·안전 / Modbus 통신 / 이벤트 처리
 - 작업 소스 우선순위: Control Queue > Polling (Task Scheduler가 매 cycle 모드 확인 후 처리)
-- Control Queue: Command Receiver 전용 (Manual 제어 + 모드 전환)
+- Control Queue: Command Receiver 전용 (사람의 제어 요청 + 모드 전환)
 - Auto write: Task Scheduler가 Polling 후 직접 MTM write (CQ 미경유)
-- Safety Controller: AEM critical 알람 → 비상정지 판단 → `control:mode=emergency` Redis 직접 SET (CQ 미경유)
+- Emergency: AEM critical 알람 → TS가 비상정지 판단 → `control:mode=emergency` 직접 SET (CQ 미경유)
 - **제어 모드 (Manual / Auto)**:
   - **Manual** (기본값): 사람이 UI에서 Pump/Fan PWM을 직접 설정. 시스템은 감지·알람만 담당.
   - **Auto**: MCG가 냉각수온·유량 기반으로 지정된 알고리즘에 의해 Pump/Fan PWM을 자동 계산 → Modbus write. 사람은 모드 전환·모니터링 담당.
