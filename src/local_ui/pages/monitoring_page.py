@@ -28,6 +28,8 @@ class MonitoringPage(QWidget):
         self.installEventFilter(self)
 
     def _build_ui(self) -> None:
+        self.setAutoFillBackground(True)
+        self.setStyleSheet("MonitoringPage { background:#ffffff; }")
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)

@@ -2,7 +2,7 @@
 
 Layout (left → center → right):
   Left  : [Monitoring] [History] tab buttons
-  Center: [🔔 N]  IP: x.x.x.x  System: <bold colored>  Link: <bold colored>
+  Center: [🔔 N]  IP: x.x.x.x  System: <bold colored>  Link: <bold colored>  [Manual/Auto/Emergency]
   Right : HH:MM:SS
 
 Design rules (from UI_Design.md):
@@ -10,6 +10,7 @@ Design rules (from UI_Design.md):
   - Tab buttons: slightly enlarged, active tab highlighted
   - Alarm badge: hidden when 0 alarms, orange=Warning / red=Critical
   - System / Link: plain text — label regular, value bold + color coded
+  - Mode button: Manual=white/dark, Auto=blue, Emergency=red
   - No badge/button shapes for System or Link
 """
 
@@ -21,8 +22,8 @@ import os
 import socket
 import struct
 
-from PySide6.QtCore import QTimer, Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtCore import QPropertyAnimation, QTimer, Qt, Signal, Property, QEasingCurve
+from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -51,28 +52,149 @@ _LINK_COLORS: dict[str, str] = {
 # ── Alarm badge colors ─────────────────────────────────────────────────────────
 _BADGE_NORMAL_STYLE = (
     "QPushButton { background:#ffffff; color:#000000; border-radius:14px;"
-    " padding:4px 14px; font-size:24px; font-weight:bold;"
+    " padding:4px 14px; font-size:15pt; font-weight:bold;"
     " border:2px solid #000000; }"
 )
 _BADGE_WARNING_STYLE  = (
     "QPushButton { background:#e67e22; color:white; border-radius:14px;"
-    " padding:4px 14px; font-size:24px; font-weight:bold; border:none; }"
+    " padding:4px 14px; font-size:15pt; font-weight:bold; border:none; }"
 )
 _BADGE_CRITICAL_STYLE = (
     "QPushButton { background:#e74c3c; color:white; border-radius:14px;"
-    " padding:4px 14px; font-size:24px; font-weight:bold; border:none; }"
+    " padding:4px 14px; font-size:15pt; font-weight:bold; border:none; }"
 )
 
 # ── Tab button styles ──────────────────────────────────────────────────────────
 _TAB_ACTIVE_STYLE = (
     "QPushButton { background:#2c3e50; color:white; border:2px solid transparent;"
-    " padding:10px 28px; font-size:20px; font-weight:bold; border-radius:4px; }"
+    " padding:6px 16px; font-size:15pt; font-weight:bold; border-radius:4px; }"
 )
 _TAB_INACTIVE_STYLE = (
-    "QPushButton { background:#ffffff; color:#2c3e50; border:2px solid transparent;"
-    " padding:10px 28px; font-size:20px; font-weight:bold; border-radius:4px; }"
-    "QPushButton:hover { background:#f0f0f0; }"
+    "QPushButton { background:#ecf0f1; color:#2c3e50; border:2px solid transparent;"
+    " padding:6px 16px; font-size:15pt; font-weight:bold; border-radius:4px; }"
+    "QPushButton:hover { background:#d5dbdb; }"
 )
+
+# ── Toggle switch widget ──────────────────────────────────────────────────────
+
+class ToggleSwitch(QWidget):
+    """Sliding toggle switch with ON/OFF labels."""
+
+    toggled = Signal(bool)
+
+    _TRACK_W = 140
+    _TRACK_H = 36
+    _KNOB_R = 14
+    _KNOB_MARGIN = 4
+
+    _COLOR_ON = QColor("#27ae60")
+    _COLOR_OFF = QColor("#3498db")
+    _COLOR_EMERGENCY = QColor("#e74c3c")
+    _COLOR_KNOB = QColor("#ffffff")
+
+    def __init__(self, checked: bool = True, parent=None) -> None:
+        super().__init__(parent)
+        self._checked = checked
+        self._emergency = False
+        self._knob_x = float(self._on_x() if checked else self._off_x())
+        self.setFixedSize(self._TRACK_W, self._TRACK_H)
+        self.setCursor(Qt.PointingHandCursor)
+
+        self._anim = QPropertyAnimation(self, b"knob_x")
+        self._anim.setDuration(200)
+        self._anim.setEasingCurve(QEasingCurve.InOutCubic)
+
+    def _on_x(self) -> float:
+        return float(self._TRACK_W - self._KNOB_MARGIN - self._KNOB_R * 2)
+
+    def _off_x(self) -> float:
+        return float(self._KNOB_MARGIN)
+
+    def is_checked(self) -> bool:
+        return self._checked
+
+    def set_checked(self, on: bool) -> None:
+        if self._emergency:
+            return
+        self._checked = on
+        self._animate(self._on_x() if on else self._off_x())
+        self.update()
+
+    def set_emergency(self, em: bool) -> None:
+        self._emergency = em
+        if em:
+            self._checked = False
+            self._animate(self._off_x())
+        self.update()
+
+    def _animate(self, target: float) -> None:
+        self._anim.stop()
+        self._anim.setStartValue(self._knob_x)
+        self._anim.setEndValue(target)
+        self._anim.start()
+
+    def _get_knob_x(self) -> float:
+        return self._knob_x
+
+    def _set_knob_x(self, v: float) -> None:
+        self._knob_x = v
+        self.update()
+
+    knob_x = Property(float, _get_knob_x, _set_knob_x)
+
+    def mousePressEvent(self, event) -> None:
+        if self._emergency:
+            self._emergency = False
+            self._checked = False
+            self._animate(self._off_x())
+            self.toggled.emit(False)
+            self.update()
+            return
+        self._checked = not self._checked
+        self._animate(self._on_x() if self._checked else self._off_x())
+        self.toggled.emit(self._checked)
+
+    def paintEvent(self, event) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+
+        # Track
+        if self._emergency:
+            track_color = self._COLOR_EMERGENCY
+        elif self._checked:
+            track_color = self._COLOR_ON
+        else:
+            track_color = self._COLOR_OFF
+
+        r = self._TRACK_H / 2
+        p.setPen(Qt.NoPen)
+        p.setBrush(track_color)
+        p.drawRoundedRect(0, 0, self._TRACK_W, self._TRACK_H, r, r)
+
+        # Label
+        label_font = QFont()
+        label_font.setPointSize(15)
+        label_font.setBold(True)
+        p.setFont(label_font)
+        p.setPen(QPen(self._COLOR_KNOB))
+
+        knob_w = self._KNOB_R * 2 + self._KNOB_MARGIN * 2
+        if self._emergency:
+            p.drawText(self.rect(), Qt.AlignCenter, "STOP")
+        elif self._checked:
+            # Knob is on right — text area is left side
+            p.drawText(0, 0, self._TRACK_W - knob_w, self._TRACK_H, Qt.AlignCenter, "Auto")
+        else:
+            # Knob is on left — text area is right side
+            p.drawText(knob_w, 0, self._TRACK_W - knob_w, self._TRACK_H, Qt.AlignCenter, "Manual")
+
+        # Knob
+        p.setPen(Qt.NoPen)
+        p.setBrush(self._COLOR_KNOB)
+        cy = self._TRACK_H / 2
+        p.drawEllipse(int(self._knob_x), int(cy - self._KNOB_R),
+                       self._KNOB_R * 2, self._KNOB_R * 2)
+        p.end()
 
 
 def _iface_ip(iface: str) -> str | None:
@@ -142,13 +264,13 @@ class TopBarWidget(QWidget):
 
         def _sep() -> QLabel:
             s = QLabel("|")
-            s.setStyleSheet("color:#9e9e9e; font-size:20px; padding:0 10px;")
+            s.setStyleSheet("color:#9e9e9e; font-size:15pt; padding:0 6px;")
             s.setAlignment(Qt.AlignVCenter)
             return s
 
         # Alarm badge
         self._alarm_badge = QPushButton("🔔 -")
-        self._alarm_badge.setMinimumSize(110, 52)
+        self._alarm_badge.setMinimumSize(90, 44)
         self._alarm_badge.setCursor(Qt.PointingHandCursor)
         self._alarm_badge.setStyleSheet(_BADGE_NORMAL_STYLE)
         self._alarm_badge.clicked.connect(self.bell_tapped)
@@ -176,6 +298,14 @@ class TopBarWidget(QWidget):
         self._link_label = self._make_status_label("Link:", "ok", _LINK_COLORS["ok"])
         center_layout.addWidget(self._link_label)
 
+        center_layout.addWidget(_sep())
+
+        # Mode toggle switch (default: Auto = ON)
+        self._mode_switch = ToggleSwitch(checked=True)
+        self._mode_switch.toggled.connect(self._on_mode_toggled)
+        self._current_mode = "auto"
+        center_layout.addWidget(self._mode_switch)
+
         layout.addWidget(center)
 
         # ── Right: clock ───────────────────────────────────────────────
@@ -195,15 +325,15 @@ class TopBarWidget(QWidget):
         lbl = QLabel()
         lbl.setTextFormat(Qt.RichText)
         lbl.setText(
-            f'<span style="color:#000000; font-size:20px;">{prefix} </span>'
-            f'<span style="color:{color}; font-size:20px; font-weight:bold;">{value}</span>'
+            f'<span style="color:#000000; font-size:15pt;">{prefix} </span>'
+            f'<span style="color:{color}; font-size:15pt; font-weight:bold;">{value}</span>'
         )
         return lbl
 
     def _set_status_text(self, label: QLabel, prefix: str, value: str, color: str) -> None:
         label.setText(
-            f'<span style="color:#000000; font-size:20px;">{prefix} </span>'
-            f'<span style="color:{color}; font-size:20px; font-weight:bold;">{value}</span>'
+            f'<span style="color:#000000; font-size:15pt;">{prefix} </span>'
+            f'<span style="color:{color}; font-size:15pt; font-weight:bold;">{value}</span>'
         )
 
     # ------------------------------------------------------------------
@@ -238,6 +368,27 @@ class TopBarWidget(QWidget):
 
     def _refresh_ip(self) -> None:
         self._ip_label.setText(f"IP: {get_display_ip()}")
+
+    # ------------------------------------------------------------------
+    # Mode button
+
+    def _on_mode_toggled(self, checked: bool) -> None:
+        """Handle toggle switch change. TODO: send mode switch request to MCG."""
+        # TODO: In real mode, send IPC request to MCG for mode switch.
+        # TODO: In fake mode, write control:mode directly to Redis.
+        self._current_mode = "auto" if checked else "manual"
+
+    def on_mode_updated(self, mode: str) -> None:
+        """Update toggle switch display. Called when control:mode changes."""
+        self._current_mode = mode
+        if mode == "emergency":
+            self._mode_switch.set_emergency(True)
+        elif mode == "auto":
+            self._mode_switch.set_emergency(False)
+            self._mode_switch.set_checked(True)
+        else:
+            self._mode_switch.set_emergency(False)
+            self._mode_switch.set_checked(False)
 
     # ------------------------------------------------------------------
     # Signal handlers (called by main window)

@@ -134,6 +134,8 @@ class HistoryPage(QWidget):
     # UI construction
 
     def _build_ui(self) -> None:
+        self.setAutoFillBackground(True)
+        self.setStyleSheet("HistoryPage { background:#ffffff; }")
         layout = QHBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
