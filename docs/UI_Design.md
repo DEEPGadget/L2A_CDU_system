@@ -69,13 +69,15 @@
 |---|---|---|
 | Manual (기본) | `Manual` | 흰 배경 + `#2c3e50` 테두리/글자 (20px bold) |
 | Auto (활성) | `Auto` | `#3498db` 파랑 배경 + 흰 글자 (20px bold) |
+| Emergency | `Emergency` | `#e74c3c` 빨강 배경 + 흰 글자 (20px bold) — 읽기 전용, 탭 불가 |
 
 | 동작 | 설명 |
 |---|---|
-| 탭 시 | MCG에 모드 전환 요청 전송 (real mode: IPC / fake mode: Redis `control:mode` 직접 write) |
+| Manual/Auto 탭 시 | MCG에 모드 전환 요청 전송 (real mode: IPC / fake mode: Redis `control:mode` 직접 write) |
 | 응답 | MCG 응답 후 Redis `control:mode` 변경 → Pub/Sub → UI 갱신 |
 | 전환 중 | 버튼 일시 비활성화 (더블 탭 방지) |
-| 비상정지 | Auto 모드 중 비상정지 시 자동으로 Manual 복귀 |
+| Emergency 진입 | Safety Controller가 critical 감지 → `control:mode=emergency` SET → UI 자동 갱신 (UI에서 진입 불가) |
+| Emergency 복귀 | Emergency 상태에서 버튼 탭 → Manual 전환 요청 (Emergency → Manual만 허용, Emergency → Auto 불가) |
 
 **알람 배지 상세**
 
