@@ -44,7 +44,7 @@
 
 | 전환 | 트리거 |
 |---|---|
-| Manual ↔ Auto | UI 요청 → 큐 → 메인 루프에서 mode 변경 |
+| Manual ↔ Auto | UI 요청 → UI 수신 쓰레드 → mode flag SET → 메인 루프가 cycle 시작 시 확인하여 변경 |
 
 ### 비상정지 (TODO)
 
@@ -59,13 +59,11 @@
 ```
 매 cycle:
 
-  1. mode 확인
+  1. mode flag 확인 → 변경 요청 있으면 mode 변경 + Redis `control:mode` publish
 
   2. if Emergency: TODO (시스템 안정화 후 설계)
 
-  3. 큐 확인
-       → PWM 변경 요청 있음 → Modbus Write (Manual에서만 유효)
-       → 모드 전환 요청 있음 → mode 변경
+  3. 큐 확인 → PWM 변경 요청 있음 → Modbus Write (Manual에서만 유효)
 
   4. Polling
        → Modbus Read (센서 레지스터)
@@ -74,7 +72,7 @@
 
   5. if Auto:
        → 알고리즘 (센서값 → PWM duty 결정)
-       → Modbus Write (Holding Register 0~11)
+       → Modbus Write (Fan: Holding Register 0~1, Pump: Holding Register 4~5)
 ```
 
 > step 3의 Modbus Write와 step 5의 Modbus Write는 같은 시리얼 버스를 사용하므로 동일 cycle 내에서 순차 실행.
@@ -97,7 +95,10 @@
 
 | 대상 | PCB 레지스터 | 값 범위 |
 |---|---|---|
-| Pump/Fan PWM duty | Holding Register 0~11 | 0~1000 (0.0~100.0%) |
+| Fan L1 PWM | Holding Register 0 (CH1, TIM1) | 0~1000 (0.0~100.0%) |
+| Fan L2 PWM | Holding Register 1 (CH2, TIM1) | 0~1000 |
+| Pump L1 PWM | Holding Register 4 (CH5, TIM2) | 0~1000 |
+| Pump L2 PWM | Holding Register 5 (CH6, TIM2) | 0~1000 |
 
 - Manual: 사람이 UI에서 설정한 값 Write
 - Auto: 알고리즘이 결정한 값 Write
@@ -114,7 +115,7 @@
 ### Auto 알고리즘
 
 - **입력**: 냉각수 inlet/outlet 온도, 유량, 현재 Pump/Fan PWM duty
-- **출력**: 새 Pump/Fan PWM duty → Modbus Write (Holding Register 0~11)
+- **출력**: 새 Pump/Fan PWM duty → Modbus Write (Fan: Holding Register 0~1, Pump: Holding Register 4~5)
 - **알고리즘**: 지정된 알고리즘에 의해 결정 (상세는 구현 시 정의)
 - **적용**: 양 루프(L1, L2) 독립 또는 대칭 (구현 시 결정)
 
@@ -161,15 +162,14 @@ sequenceDiagram
 sequenceDiagram
     participant UI as UI
     participant Listen as UI 수신 쓰레드
-    participant Queue as 큐
     participant Main as 메인 루프
     participant Redis as Redis
 
     UI->>Listen: 모드 전환 요청
-    Listen->>Queue: 적재
-    Main->>Queue: dequeue
-    Main->>Main: mode 변경
+    Listen->>Listen: mode flag SET
+    Main->>Main: cycle 시작 → mode flag 확인 → mode 변경
     Main-)Redis: SET control:mode + Pub/Sub
+    Redis-->>UI: Pub/Sub → UI 갱신
 ```
 
 ---
@@ -180,11 +180,12 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 | 대상 | HR 주소 | 비고 |
 |---|---|---|
-| Pump L1 PWM | Holding Register 0~3 | TIM1 (CH1~4) |
-| Pump L2 PWM | Holding Register 4~7 | TIM2 (CH5~8) |
-| Fan PWM | Holding Register 8~11 | TIM8 (CH9~12) |
-| PWM Freq | Holding Register 12~14 | TIM1/TIM2/TIM8 |
-| DOUT | Holding Register 15 | bit0~5 |
+| Fan L1 PWM | Holding Register 0 | CH1, TIM1 25KHz |
+| Fan L2 PWM | Holding Register 1 | CH2, TIM1 25KHz |
+| Pump L1 PWM | Holding Register 4 | CH5, TIM2 1KHz |
+| Pump L2 PWM | Holding Register 5 | CH6, TIM2 1KHz |
+| PWM Freq (TIM1) | Holding Register 12 | 25000 Hz (팬) |
+| PWM Freq (TIM2) | Holding Register 13 | 1000 Hz (펌프) |
 
 > 전원 재인가 시 MCG 재시작(systemd Restart=always)으로 초기값 자동 적용.
 
@@ -248,11 +249,13 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 | Key | 설명 | Register | 제어 대상 |
 |---|---|---|---|
-| `sensor:fan_pwm_duty_1` | 팬 PWM L1 (0–100%) | Holding Register 0~1 (TIM1, 25KHz) | COOLTRON FD8038B12W7, L1 최대 60개 |
-| `sensor:fan_pwm_duty_2` | 팬 PWM L2 (0–100%) | Holding Register 2~3 (TIM1, 25KHz) | COOLTRON FD8038B12W7, L2 최대 60개 |
-| `sensor:pump_pwm_duty_1` | 펌프 PWM L1 (0–100%) | Holding Register 4~5 (TIM2, 1KHz) | Johnson Electric eModule, L1 2개 직렬 |
-| `sensor:pump_pwm_duty_2` | 펌프 PWM L2 (0–100%) | Holding Register 6~7 (TIM2, 1KHz) | Johnson Electric eModule, L2 2개 직렬 |
+| `sensor:fan_pwm_duty_1` | 팬 PWM L1 (0–100%) | Holding Register 0 (CH1, TIM1 25KHz) | COOLTRON FD8038B12W7, L1 최대 60개 |
+| `sensor:fan_pwm_duty_2` | 팬 PWM L2 (0–100%) | Holding Register 1 (CH2, TIM1 25KHz) | COOLTRON FD8038B12W7, L2 최대 60개 |
+| `sensor:pump_pwm_duty_1` | 펌프 PWM L1 (0–100%) | Holding Register 4 (CH5, TIM2 1KHz) | Johnson Electric eModule, L1 2개 |
+| `sensor:pump_pwm_duty_2` | 펌프 PWM L2 (0–100%) | Holding Register 5 (CH6, TIM2 1KHz) | Johnson Electric eModule, L2 2개 |
 
+> TIM1 CH3~4 (Holding Register 2~3): 미사용 예비.
+> TIM2 CH7~8 (Holding Register 6~7): 미사용 예비.
 > TIM8 (Holding Register 8~11): 전압제어 펌프용 (Koolance PMP-500, dg5R용). L2A CDU에서는 미사용.
 
 **팬 RPM 피드백 (Pulse Freq — Input Register 13~24)**

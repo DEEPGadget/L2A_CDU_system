@@ -76,8 +76,8 @@
 | Manual/Auto 탭 시 | MCG에 모드 전환 요청 전송 (real mode: IPC / fake mode: Redis `control:mode` 직접 write) |
 | 응답 | MCG 응답 후 Redis `control:mode` 변경 → Pub/Sub → UI 갱신 |
 | 전환 중 | 버튼 일시 비활성화 (더블 탭 방지) |
-| Emergency 진입 | MCG Task Scheduler가 AEM critical 수신 → `control:mode=emergency` SET → UI 자동 갱신 (UI에서 진입 불가) |
-| Emergency 복귀 | Emergency 상태에서 버튼 탭 → Manual 전환 요청 (Emergency → Manual만 허용, Emergency → Auto 불가) |
+| Emergency 진입 | TODO — 시스템 안정화 후 설계. MCG가 특정 센서 critical 감지 → `control:mode=emergency` SET → UI 자동 갱신 (UI에서 진입 불가) |
+| Emergency 복귀 | TODO — Emergency 상태에서 버튼 탭 → Manual 전환 요청 |
 
 **알람 배지 상세**
 
@@ -134,6 +134,7 @@
 | 항목 | 표시 데이터 | Redis key |
 |---|---|---|
 | Coolant ΔT1 / ΔT2 | outlet − inlet 계산값 (°C), 색상 코딩 적용 — ≤15°C=green / 15–20°C=orange / >20°C=red | (계산) |
+| Fan RPM L1 / L2 | 팬 실측 회전수 (RPM) — 타코미터 피드백 | `sensor:fan_rpm_1`, `sensor:fan_rpm_2` |
 | Leak Detection | `None` (green) / `Detected` (red) | `sensor:leak` |
 | Ambient Temp / Humidity | 장치 내부 온·습도 (°C / % RH) — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
 | Pressure | 유압 (bar, 부착 여부 미확정) | `sensor:pressure` |
