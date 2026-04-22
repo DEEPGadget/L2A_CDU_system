@@ -26,7 +26,7 @@
 | 쓰레드 | 역할 | 근거 |
 |---|---|---|
 | **UI 수신 쓰레드** | IPC/REST 소켓 listen → PWM 제어 요청은 큐에 적재, 모드 전환은 mode flag SET | R2: UI 요청은 언제든 올 수 있으므로 항상 listen 필요 |
-| **메인 루프 쓰레드** | mode 확인 → 큐 확인(항상) → Polling(항상) → Auto면 알고리즘 Write | R1~R4 + Modbus 순차 제약 |
+| **메인 루프 쓰레드** | mode 확인 → 큐 확인 → Polling → Auto 모드일 경우 알고리즘으로 PWM 결정 후 Modbus Write | R1~R4 + Modbus 순차 제약 |
 
 ---
 
