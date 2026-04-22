@@ -102,19 +102,16 @@
 ### 4.2 Modbus Control Gateway (MCG)
 
 - 시스템 내 중앙 제어 및 통신 허브 (Modbus Master)
-- 4개 레이어로 구성: 요청 수신 / 스케줄링·큐·안전 / Modbus 통신 / 이벤트 처리
-- 작업 소스 우선순위: Control Queue > Polling (Task Scheduler가 매 cycle 모드 확인 후 처리)
-- Control Queue: Command Receiver 전용 (사람의 제어 요청 + 모드 전환)
-- Auto write: Task Scheduler가 Polling 후 직접 MTM write (CQ 미경유)
-- Emergency: AEM critical 알람 → TS가 비상정지 판단 → `control:mode=emergency` 직접 SET (CQ 미경유)
+- 2 쓰레드: UI 수신 쓰레드 (항상 listen) + 메인 루프 쓰레드 (mode 확인 → 큐 → Polling → Auto write 순차)
+- 큐: 사람의 PWM 제어 요청 전용. 모드 전환은 메인 루프에 직접 전달. Auto write와 비상정지는 큐 미경유.
 - **제어 모드 (Manual / Auto)**:
   - **Manual** (기본값): 사람이 UI에서 Pump/Fan PWM을 직접 설정. 시스템은 감지·알람만 담당.
   - **Auto**: MCG가 냉각수온·유량 기반으로 지정된 알고리즘에 의해 Pump/Fan PWM을 자동 계산 → Modbus write. 사람은 모드 전환·모니터링 담당.
-  - 모드 전환은 UI 요청으로만 발생 (AEM은 모드 전환을 트리거하지 않음)
+  - 모드 전환은 UI 요청으로만 발생
   - 현재 모드는 Redis `control:mode` 키로 관리 (`manual` / `auto` / `emergency`)
-  - MCG가 제어 주체. PCB는 단순 R/W Slave로 동작 (OP_MODE/Watchdog 미구현 — 향후 펌웨어 업데이트 필요)
+  - MCG가 제어 주체. PCB는 단순 R/W Slave (OP_MODE/Watchdog 미구현 — 향후 펌웨어 업데이트 필요)
   - Auto 모드에서 Pump/Fan 수동 제어 UI는 비활성화 (Manual 전환 시 재활성화)
-  - AEM 동작은 두 모드에서 동일 (감지·알람만, 제어 명령 생성 안 함)
+  - Emergency 모드: TODO — 시스템 안정화 후 설계
 
 > 상세 내용: [MCG.md](docs/MCG.md)
 
