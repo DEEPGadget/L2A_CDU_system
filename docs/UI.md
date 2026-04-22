@@ -109,74 +109,7 @@ sudo systemctl restart cdu-fake-simulator.service cdu-local-ui.service
 
 ## DB
 
-> **Redis 설계 원칙**: Redis는 현재값 전용 DB. 이벤트 이력·명령 기록은 저장하지 않음.
-> Local UI는 폴링 없이 Pub/Sub(`sensor:*`, `comm:*`) + Keyspace Notifications(`alarm:*`)로 변경 시 즉시 수신.
+Redis Key, Prometheus 메트릭 등 DB 상세는 [MCG.md §9](MCG.md#9-db-redis--prometheus) 참고.
 
-**Redis DB**
-
-| Key | 설명 | 위치 | 설정 주체 |
-|---|---|---|---|
-| `sensor:coolant_temp_inlet_1` | 냉각수 입수 온도 (루프 1) | Inlet Manifold | Modbus Transport Manager |
-| `sensor:coolant_temp_inlet_2` | 냉각수 입수 온도 (루프 2) | Inlet Manifold | Modbus Transport Manager |
-| `sensor:coolant_temp_outlet_1` | 냉각수 출수 온도 (루프 1) | Outlet Manifold | Modbus Transport Manager |
-| `sensor:coolant_temp_outlet_2` | 냉각수 출수 온도 (루프 2) | Outlet Manifold | Modbus Transport Manager |
-| `sensor:flow_rate_1` | 유량 (루프 1) | Pump ~ Manifold 구간 (루프1) | Modbus Transport Manager |
-| `sensor:flow_rate_2` | 유량 (루프 2) | Pump ~ Manifold 구간 (루프2) | Modbus Transport Manager |
-| `sensor:water_level` | 수위 상태 (`2`: HIGH / `1`: MIDDLE / `0`: LOW) — MTM이 상·하위 광센서 비트 조합으로 판단해 단일 값으로 SET | Water Tank | Modbus Transport Manager |
-| `sensor:ph` | pH | Water Tank | Modbus Transport Manager |
-| `sensor:conductivity` | 전도도 | Water Tank | Modbus Transport Manager |
-| `sensor:leak` | 누수 | 시스템 부착 (위치 미확정) | Modbus Transport Manager |
-| `sensor:ambient_temp` | 장치 내부 온도 | 시스템 부착 (위치 미확정) | RPi Ambient Sensor Reader (I2C/GPIO 직접 수집 — Modbus 미경유) |
-| `sensor:ambient_humidity` | 장치 내부 습도 | 시스템 부착 (위치 미확정) | RPi Ambient Sensor Reader (I2C/GPIO 직접 수집 — Modbus 미경유) |
-| `sensor:pressure` | 유압 (부착 여부 미확정) | — | Modbus Transport Manager |
-| `sensor:pump_pwm_duty_1` | 펌프 PWM duty (루프 1 — P1·P2 직렬, 0–100 %) | — | Modbus Transport Manager |
-| `sensor:pump_pwm_duty_2` | 펌프 PWM duty (루프 2 — P3·P4 직렬, 0–100 %) | — | Modbus Transport Manager |
-| `sensor:fan_pwm_duty_1` | 팬 1 PWM duty (루프 1, 0–100 %) | — | Modbus Transport Manager |
-| `sensor:fan_pwm_duty_2` | 팬 2 PWM duty (루프 2, 0–100 %) | — | Modbus Transport Manager |
-| `alarm:coolant_temp_l1_warning` | 수온 경고 — Loop 1 (warning) | — | Alarm / Event Manager |
-| `alarm:coolant_temp_l1_critical` | 수온 위험 — Loop 1 (critical) | — | Alarm / Event Manager |
-| `alarm:coolant_temp_l2_warning` | 수온 경고 — Loop 2 (warning) | — | Alarm / Event Manager |
-| `alarm:coolant_temp_l2_critical` | 수온 위험 — Loop 2 (critical) | — | Alarm / Event Manager |
-| `alarm:leak_detected` | 누수 감지 | — | Alarm / Event Manager |
-| `alarm:water_level_warning` | 수위 부족 경고 (warning) — `sensor:water_level`=1 | — | Alarm / Event Manager |
-| `alarm:water_level_critical` | 수위 위험 (critical) — `sensor:water_level`=0 | — | Alarm / Event Manager |
-| `alarm:ph_warning` | pH 이상 (warning) | — | Alarm / Event Manager |
-| `alarm:conductivity_warning` | 전도도 이상 (warning) | — | Alarm / Event Manager |
-| `alarm:flow_rate_warning` | 유량 저하 (warning) | — | Alarm / Event Manager |
-| `alarm:pressure_warning` | 유압 이상 (warning, 부착 시) | — | Alarm / Event Manager |
-| `alarm:ambient_temp_warning` | 장치 내부 온도 경고 (warning) | — | Alarm / Event Manager |
-| `alarm:ambient_temp_critical` | 장치 내부 온도 한계 초과 (critical) | — | Alarm / Event Manager |
-| `alarm:ambient_humidity_warning` | 장치 내부 습도 경고 (warning) | — | Alarm / Event Manager |
-| `alarm:ambient_humidity_critical` | 장치 내부 습도 한계 초과 (critical) | — | Alarm / Event Manager |
-| `alarm:comm_timeout` | 통신 연속 실패 (warning) | — | Alarm / Event Manager |
-| `alarm:comm_disconnected` | 통신 두절 (critical) | — | Alarm / Event Manager |
-| `comm:status` | 현재 Modbus 통신 상태 `"ok"\|"timeout"\|"disconnected"` | Modbus Transport Manager |
-| `comm:consecutive_failures` | 연속 통신 실패 횟수 (성공 시 0 리셋) | Modbus Transport Manager |
-| `comm:last_error` | 마지막 오류 `{code, message, ts}` | Modbus Transport Manager |
-| `control:mode` | 현재 제어 모드 `"manual"\|"auto"\|"emergency"` (기본값: `manual`) | Manual↔Auto: MCG Task Scheduler (CQ 경유). Emergency: Safety Controller가 직접 SET. Fake mode: UI 직접 write |
-
-**Exporter**
-- 독립 프로세스로 동작 (Pull 방식)
-- 수집 대상: `sensor:*`, `alarm:*`
-- 제외 대상: `comm:*` (통신 이력은 Pushgateway 이벤트 경로로 적재)
-
-**Pushgateway**
-- MCG가 이벤트 발생 시 직접 push (이벤트 기반 — scrape 주기와 무관하게 누락 없이 기록)
-- push 메트릭:
-
-| Metric | Label | 설명 | push 시점 |
-|---|---|---|---|
-| `control_cmd_pump` | `result="success\|fail"` | 수동 제어로 명령한 pump 출력값 0~100% | Manual 제어 명령 완료 시 |
-| `control_cmd_fan` | `result="success\|fail"` | 수동 제어로 명령한 fan 출력값 0~100% | Manual 제어 명령 완료 시 |
-| `control_cmd_mode` | `result="success\|fail"` | 모드 전환 값 `manual`/`auto` | 모드 전환 시 |
-| `comm_event` | `status="timeout\|disconnected\|ok"` | 통신 상태 변경 이벤트 | 상태 전환 시 |
-| `comm_consecutive_failures` | — | 연속 실패 횟수 스냅샷 | 실패 발생 시 |
-
-**Prometheus DB**
-- Exporter 수집분: 센서 시계열 이력 (`sensor_*`) + 알람 상태 이력 (`alarm_state`)
-- Pushgateway 수집분: 제어 명령 이력, 통신 장애 이력
-- 이력 조회 쿼리 예시:
-  - `sensor_coolant_temp_inlet` — 냉각수 온도 추이
-  - `control_cmd_pump{result="success"}` — 성공한 펌프 제어 명령 이력
-  - `control_cmd_fan{result="fail"}` — 실패한 팬 제어 명령 이력
-  - `comm_event{status="timeout"}` — 통신 장애 발생 이력
+- **Redis**: 현재값 전용. UI는 Pub/Sub(`sensor:*`, `comm:*`) + Keyspace Notifications(`alarm:*`)로 변경 즉시 수신.
+- **Prometheus**: 이력 조회용 (History 페이지 데이터 소스).

@@ -74,7 +74,7 @@
 
   5. if Auto:
        → 알고리즘 (센서값 → PWM duty 결정)
-       → Modbus Write (HR 0~11)
+       → Modbus Write (Holding Register 0~11)
 ```
 
 > step 3의 Modbus Write와 step 5의 Modbus Write는 같은 시리얼 버스를 사용하므로 동일 cycle 내에서 순차 실행.
@@ -106,7 +106,7 @@
 ### Auto 알고리즘
 
 - **입력**: 냉각수 inlet/outlet 온도, 유량, 현재 Pump/Fan PWM duty
-- **출력**: 새 Pump/Fan PWM duty → Modbus Write (HR 0~11)
+- **출력**: 새 Pump/Fan PWM duty → Modbus Write (Holding Register 0~11)
 - **알고리즘**: 지정된 알고리즘에 의해 결정 (상세는 구현 시 정의)
 - **적용**: 양 루프(L1, L2) 독립 또는 대칭 (구현 시 결정)
 
@@ -172,11 +172,11 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 | 대상 | HR 주소 | 비고 |
 |---|---|---|
-| Pump L1 PWM | HR 0~3 | TIM1 (CH1~4) |
-| Pump L2 PWM | HR 4~7 | TIM2 (CH5~8) |
-| Fan PWM | HR 8~11 | TIM8 (CH9~12) |
-| PWM Freq | HR 12~14 | TIM1/TIM2/TIM8 |
-| DOUT | HR 15 | bit0~5 |
+| Pump L1 PWM | Holding Register 0~3 | TIM1 (CH1~4) |
+| Pump L2 PWM | Holding Register 4~7 | TIM2 (CH5~8) |
+| Fan PWM | Holding Register 8~11 | TIM8 (CH9~12) |
+| PWM Freq | Holding Register 12~14 | TIM1/TIM2/TIM8 |
+| DOUT | Holding Register 15 | bit0~5 |
 
 > 전원 재인가 시 MCG 재시작(systemd Restart=always)으로 초기값 자동 적용.
 
@@ -214,7 +214,86 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 ---
 
-## 9. 미구현 — PCB Watchdog
+## 9. DB (Redis / Prometheus)
+
+> Redis는 현재값 전용 DB. 이벤트 이력·명령 기록은 저장하지 않음.
+
+### Redis Key — 센서 (Modbus Read)
+
+| Key | 설명 | PCB Modbus Register | R/W |
+|---|---|---|---|
+| `sensor:coolant_temp_inlet_1` | 냉각수 입수 온도 L1 | Input Register 32 (Voltage CH1) | Read |
+| `sensor:coolant_temp_inlet_2` | 냉각수 입수 온도 L2 | Input Register 33 (Voltage CH2) | Read |
+| `sensor:coolant_temp_outlet_1` | 냉각수 출수 온도 L1 | Input Register 34 (Voltage CH3) | Read |
+| `sensor:coolant_temp_outlet_2` | 냉각수 출수 온도 L2 | Input Register 35 (Voltage CH4) | Read |
+| `sensor:flow_rate_1` | 유량 L1 | Input Register 13 (Pulse Freq CH1) | Read |
+| `sensor:flow_rate_2` | 유량 L2 | Input Register 14 (Pulse Freq CH2) | Read |
+| `sensor:water_level` | 수위 (2/1/0) | Input Register 25 (DIN) bit 조합 → MCG 판단 | Read |
+| `sensor:ph` | pH | Input Register 36 (Voltage CH5) | Read |
+| `sensor:conductivity` | 전도도 | Input Register 37 (Voltage CH6) | Read |
+| `sensor:leak` | 누수 (NORMAL/LEAKED) | Input Register 25 (DIN) 특정 bit | Read |
+| `sensor:pressure` | 유압 (미확정) | Input Register 38 (Voltage CH7) | Read |
+| `sensor:ambient_temp` | 장치 내부 온도 | RPi I2C (Modbus 미경유) | — |
+| `sensor:ambient_humidity` | 장치 내부 습도 | RPi I2C (Modbus 미경유) | — |
+
+> 레지스터 매핑은 실제 배선에 따라 변경될 수 있음. 위는 초기 할당 기준.
+
+### Redis Key — 제어 (Modbus Write)
+
+| Key | 설명 | PCB Modbus Register | R/W |
+|---|---|---|---|
+| `sensor:pump_pwm_duty_1` | 펌프 PWM L1 (0–100%) | Holding Register 0~3 (TIM1 CH1~4) | Read/Write |
+| `sensor:pump_pwm_duty_2` | 펌프 PWM L2 (0–100%) | Holding Register 4~7 (TIM2 CH5~8) | Read/Write |
+| `sensor:fan_pwm_duty_1` | 팬 PWM L1 (0–100%) | Holding Register 8~9 (TIM8 CH9~10) | Read/Write |
+| `sensor:fan_pwm_duty_2` | 팬 PWM L2 (0–100%) | Holding Register 10~11 (TIM8 CH11~12) | Read/Write |
+
+### Redis Key — 알람 (MCG 내부 생성)
+
+| Key | 설명 |
+|---|---|
+| `alarm:coolant_temp_l1_warning` | 수온 경고 — L1 |
+| `alarm:coolant_temp_l1_critical` | 수온 위험 — L1 |
+| `alarm:coolant_temp_l2_warning` | 수온 경고 — L2 |
+| `alarm:coolant_temp_l2_critical` | 수온 위험 — L2 |
+| `alarm:leak_detected` | 누수 감지 |
+| `alarm:water_level_warning` | 수위 부족 |
+| `alarm:water_level_critical` | 수위 위험 |
+| `alarm:ph_warning` | pH 이상 |
+| `alarm:conductivity_warning` | 전도도 이상 |
+| `alarm:flow_rate_warning` | 유량 저하 |
+| `alarm:pressure_warning` | 유압 이상 |
+| `alarm:ambient_temp_warning` | 장치 내부 온도 경고 |
+| `alarm:ambient_temp_critical` | 장치 내부 온도 한계 초과 |
+| `alarm:ambient_humidity_warning` | 장치 내부 습도 경고 |
+| `alarm:ambient_humidity_critical` | 장치 내부 습도 한계 초과 |
+| `alarm:comm_timeout` | 통신 연속 실패 |
+| `alarm:comm_disconnected` | 통신 두절 |
+
+### Redis Key — 상태
+
+| Key | 설명 |
+|---|---|
+| `comm:status` | 통신 상태 (ok / timeout / disconnected) |
+| `comm:consecutive_failures` | 연속 실패 횟수 |
+| `comm:last_error` | 마지막 오류 |
+| `control:mode` | 제어 모드 (manual / auto / emergency) |
+
+### Prometheus (이력)
+
+**Exporter** (Pull): `sensor:*`, `alarm:*` 주기적 수집 → 시계열 적재.
+
+**Pushgateway** (Push): 이벤트 발생 시 MCG가 직접 push.
+
+| Metric | 설명 | push 시점 |
+|---|---|---|
+| `control_cmd_pump` | Manual 펌프 제어 명령값 | Manual 제어 완료 시 |
+| `control_cmd_fan` | Manual 팬 제어 명령값 | Manual 제어 완료 시 |
+| `control_cmd_mode` | 모드 전환 (manual/auto) | 모드 전환 시 |
+| `comm_event` | 통신 상태 변경 | 상태 전환 시 |
+
+---
+
+## 10. 미구현 — PCB Watchdog
 
 MCG 다운 시 PCB가 자체적으로 안전 모드로 전환하는 기능. MCG로 대체 불가 — 펌웨어 업데이트 필요.
 
