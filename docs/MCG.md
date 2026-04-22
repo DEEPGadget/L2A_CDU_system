@@ -25,8 +25,8 @@
 
 | 쓰레드 | 역할 | 근거 |
 |---|---|---|
-| **UI 수신 쓰레드** | IPC/REST 소켓 listen → 받은 요청을 thread-safe 큐에 적재 | R2: UI 요청은 언제든 올 수 있으므로 항상 listen 필요 |
-| **메인 루프 쓰레드** | mode 확인 → 큐 확인 → Polling → 알람 → Auto write. 순차 실행 | R1~R4 + Modbus 순차 제약 |
+| **UI 수신 쓰레드** | IPC/REST 소켓 listen → PWM 제어 요청은 큐에 적재, 모드 전환은 mode flag SET | R2: UI 요청은 언제든 올 수 있으므로 항상 listen 필요 |
+| **메인 루프 쓰레드** | mode flag 확인 → 큐 확인 → Polling → 알람 → Auto write. 순차 실행 | R1~R4 + Modbus 순차 제약 |
 
 ---
 
@@ -82,28 +82,20 @@
 
 ## 5. 상세
 
-### Modbus Read (모니터링)
+### Polling (Modbus Read)
 
-| 대상 | PCB 레지스터 | 용도 |
-|---|---|---|
-| 센서값 (온도, 유량, 수위, 누수 등) | Input Register | Redis SET → UI 표시 + 알람 검사 |
-| 현재 PWM duty | Holding Register 0~11 | Redis SET → UI 표시 + Auto 알고리즘 입력 |
+- 센서값 + 현재 PWM duty 읽기 → 디코딩 → Redis SET `sensor:*` + Pub/Sub publish
+- 레지스터 매핑 상세: §9 Redis Key 참고
 
-- 디코딩 → Redis SET `sensor:*` + Pub/Sub publish
+### 제어 (Modbus Write)
 
-### Modbus Write (제어)
+- Manual: 사람이 UI에서 설정한 값 Write → Pushgateway POST (이력)
+- Auto: 알고리즘이 결정한 값 Write → POST 없음 (Exporter가 `sensor:*`로 수집)
+- 레지스터 매핑 상세: §9 Redis Key 참고
 
-| 대상 | PCB 레지스터 | 값 범위 |
-|---|---|---|
-| Fan L1 PWM | Holding Register 0 (CH1, TIM1) | 0~1000 (0.0~100.0%) |
-| Fan L2 PWM | Holding Register 1 (CH2, TIM1) | 0~1000 |
-| Pump L1 PWM | Holding Register 4 (CH5, TIM2) | 0~1000 |
-| Pump L2 PWM | Holding Register 5 (CH6, TIM2) | 0~1000 |
+### 모드 전환
 
-- Manual: 사람이 UI에서 설정한 값 Write
-- Auto: 알고리즘이 결정한 값 Write
-- Manual 제어 시 Pushgateway POST (이력). Auto 시 POST 없음.
-- 모드 전환 시 Pushgateway POST `control_cmd_mode`
+- mode flag 변경 → Redis `control:mode` publish → Pushgateway POST `control_cmd_mode`
 
 ### 알람 검사
 
@@ -115,7 +107,7 @@
 ### Auto 알고리즘
 
 - **입력**: 냉각수 inlet/outlet 온도, 유량, 현재 Pump/Fan PWM duty
-- **출력**: 새 Pump/Fan PWM duty → Modbus Write (Fan: Holding Register 0~1, Pump: Holding Register 4~5)
+- **출력**: 새 Pump/Fan PWM duty → Modbus Write
 - **알고리즘**: 지정된 알고리즘에 의해 결정 (상세는 구현 시 정의)
 - **적용**: 양 루프(L1, L2) 독립 또는 대칭 (구현 시 결정)
 
@@ -127,12 +119,21 @@
 
 ```mermaid
 sequenceDiagram
+    participant UI as UI
+    participant Listen as UI 수신 쓰레드
     participant Queue as 큐
     participant Main as 메인 루프
     participant PCB as PCB
     participant Redis as Redis
 
-    Main->>Main: mode 확인 → Manual or Auto
+    UI->>Listen: PWM 제어 요청 또는 모드 전환 요청
+    alt PWM 제어
+        Listen->>Queue: 큐에 적재
+    else 모드 전환
+        Listen->>Listen: mode flag SET
+    end
+
+    Main->>Main: mode flag 확인 → 변경 있으면 mode 변경 + Redis publish
 
     alt 큐에 PWM 요청 (Manual)
         Main->>Queue: dequeue
@@ -142,7 +143,7 @@ sequenceDiagram
 
     Main->>PCB: Modbus Read (Polling)
     PCB-->>Main: 센서값
-    Main->>Main: 디코딩 + 알람 검사 → 정상
+    Main->>Main: 디코딩 + 알람 검사
     Main-)Redis: SET sensor:* + Pub/Sub
 
     alt Auto 모드
@@ -245,7 +246,7 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 | `sensor:water_level` | 수위 (2/1/0) | Input Register 25, bit 조합 | MCG가 고/저 2센서 조합 → HIGH/MIDDLE/LOW 판단 |
 | `sensor:leak` | 누수 (NORMAL/LEAKED) | Input Register 25, 특정 bit | |
 
-**팬/펌프 PWM duty (Holding Register 0~11) — Read/Write**
+**팬/펌프 PWM duty — Read/Write**
 
 | Key | 설명 | Register | 제어 대상 |
 |---|---|---|---|
