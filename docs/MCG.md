@@ -26,7 +26,7 @@
 | 쓰레드 | 역할 | 근거 |
 |---|---|---|
 | **UI 수신 쓰레드** | IPC/REST 소켓 listen → PWM 제어 요청은 큐에 적재, 모드 전환은 mode flag SET | R2: UI 요청은 언제든 올 수 있으므로 항상 listen 필요 |
-| **메인 루프 쓰레드** | mode flag 확인 → 큐 확인 → Polling → 알람 → Auto write. 순차 실행 | R1~R4 + Modbus 순차 제약 |
+| **메인 루프 쓰레드** | mode 확인 → Polling(항상) → mode별 Write 분기 (Manual: 큐 요청 Write / Auto: 알고리즘 Write) | R1~R4 + Modbus 순차 제약 |
 
 ---
 
@@ -59,20 +59,18 @@
 ```
 매 cycle:
 
-  1. mode flag 확인 → 변경 요청 있으면 mode 변경 + Redis `control:mode` publish
+  1. mode 확인 (UI 수신 쓰레드가 SET한 flag 읽기)
 
   2. if Emergency: TODO (시스템 안정화 후 설계)
 
-  3. 큐 확인 → PWM 변경 요청 있음 → Modbus Write (Manual에서만 유효)
-
-  4. Polling
+  3. Polling (항상 실행)
        → Modbus Read (센서 레지스터)
        → 디코딩 → Redis SET + Pub/Sub
-       → 알람 threshold 검사 → Warning: 알람 SET / Critical: 알람 SET
+       → 알람 threshold 검사
 
-  5. if Auto:
-       → 알고리즘 (센서값 → PWM duty 결정)
-       → Modbus Write (Fan: Holding Register 0~1, Pump: Holding Register 4~5)
+  4. mode별 Write 분기
+       → Manual: 큐에 사람 요청 있으면 Modbus Write
+       → Auto: 알고리즘 (센서값 → PWM duty 결정) → Modbus Write
 ```
 
 > step 3의 Modbus Write와 step 5의 Modbus Write는 같은 시리얼 버스를 사용하므로 동일 cycle 내에서 순차 실행.
@@ -115,7 +113,7 @@
 
 ## 6. 시나리오
 
-### 정상 동작 (Manual/Auto)
+### 정상 동작
 
 ```mermaid
 sequenceDiagram
@@ -126,29 +124,29 @@ sequenceDiagram
     participant PCB as PCB
     participant Redis as Redis
 
-    UI->>Listen: PWM 제어 요청 또는 모드 전환 요청
+    Note over Listen: UI 수신 쓰레드 (항상 listen)
+    UI->>Listen: PWM 요청 또는 모드 전환
     alt PWM 제어
         Listen->>Queue: 큐에 적재
     else 모드 전환
-        Listen->>Listen: mode flag SET
+        Listen->>Main: mode flag SET
     end
 
-    Main->>Main: mode flag 확인 → 변경 있으면 mode 변경 + Redis publish
-
-    alt 큐에 PWM 요청 (Manual)
-        Main->>Queue: dequeue
-        Main->>PCB: Modbus Write (PWM)
-        PCB-->>Main: ACK
-    end
+    Note over Main: 메인 루프 cycle
+    Main->>Main: mode 확인
 
     Main->>PCB: Modbus Read (Polling)
     PCB-->>Main: 센서값
     Main->>Main: 디코딩 + 알람 검사
     Main-)Redis: SET sensor:* + Pub/Sub
 
-    alt Auto 모드
+    alt Manual
+        Main->>Queue: 큐에 요청 있으면 dequeue
+        Main->>PCB: Modbus Write (사람이 설정한 PWM)
+        PCB-->>Main: ACK
+    else Auto
         Main->>Main: 알고리즘 → PWM 결정
-        Main->>PCB: Modbus Write (PWM)
+        Main->>PCB: Modbus Write (알고리즘 PWM)
         PCB-->>Main: ACK
     end
 ```
