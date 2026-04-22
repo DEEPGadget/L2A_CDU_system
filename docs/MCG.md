@@ -84,17 +84,25 @@
 
 ## 5. 상세
 
-### Modbus Read (Polling)
+### Modbus Read (모니터링)
 
-- PCB Input Register(IR) read → 디코딩 → Redis SET `sensor:*` + Pub/Sub publish (UI 실시간 표시)
-- 통신 오류: timeout → retry → 연속 N회 실패 → `alarm:comm_timeout` SET → PCB 무응답 → `alarm:comm_disconnected` SET + Polling 중단
+| 대상 | PCB 레지스터 | 용도 |
+|---|---|---|
+| 센서값 (온도, 유량, 수위, 누수 등) | Input Register | Redis SET → UI 표시 + 알람 검사 |
+| 현재 PWM duty | Holding Register 0~11 | Redis SET → UI 표시 + Auto 알고리즘 입력 |
+
+- 디코딩 → Redis SET `sensor:*` + Pub/Sub publish
 
 ### Modbus Write (제어)
 
-- PWM duty 값 → HR 주소 / register value 변환 → Modbus RTU write → ACK 확인
-- Manual 제어 시 Pushgateway POST (이력 기록)
-- Auto 제어 시 POST 없음 (Exporter가 `sensor:*`로 수집)
-- 모드 전환 시 Pushgateway POST `control_cmd_mode` (이력 기록)
+| 대상 | PCB 레지스터 | 값 범위 |
+|---|---|---|
+| Pump/Fan PWM duty | Holding Register 0~11 | 0~1000 (0.0~100.0%) |
+
+- Manual: 사람이 UI에서 설정한 값 Write
+- Auto: 알고리즘이 결정한 값 Write
+- Manual 제어 시 Pushgateway POST (이력). Auto 시 POST 없음.
+- 모드 전환 시 Pushgateway POST `control_cmd_mode`
 
 ### 알람 검사
 
