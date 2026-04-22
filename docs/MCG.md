@@ -119,27 +119,21 @@ UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서
 
 ```mermaid
 sequenceDiagram
-    participant UI as UI
-    participant Listen as UI 수신 쓰레드
     participant Queue as 큐
     participant Main as 메인 루프
     participant PCB as PCB
     participant Redis as Redis
 
-    Note over Listen: UI 수신 쓰레드 (항상 listen)
-    UI->>Listen: PWM 제어 요청
-    Listen->>Queue: 큐에 적재
+    Note over Main: 메인 루프 cycle 시작
+    Main->>Redis: control:mode 읽기
 
-    Note over Main: 메인 루프 cycle
-    Main->>Main: Redis에서 mode 읽기
-
+    Main->>Queue: 큐 확인
     alt 큐에 요청 있음
         alt Manual
-            Main->>Queue: dequeue
             Main->>PCB: Modbus Write (사람 PWM)
             PCB-->>Main: ACK
         else Auto
-            Main->>Queue: dequeue → 버림
+            Main->>Main: 버림
         end
     end
 
@@ -158,18 +152,6 @@ sequenceDiagram
 ### 비상정지 진입 (TODO)
 
 > 시스템 안정화 후 설계. 특정 센서 critical 시 전체 PWM=0, DOUT=0 강제하는 시나리오.
-
-### 모드 전환
-
-```mermaid
-sequenceDiagram
-    participant UI as UI
-    participant Redis as Redis
-    participant Main as 메인 루프
-
-    UI-)Redis: SET control:mode (manual 또는 auto)
-    Main->>Main: 다음 cycle → Redis에서 mode 읽기 → 분기 변경
-```
 
 ---
 
