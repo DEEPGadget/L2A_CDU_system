@@ -73,11 +73,9 @@
 
 | 동작 | 설명 |
 |---|---|
-| Manual/Auto 탭 시 | MCG에 모드 전환 요청 전송 (real mode: IPC / fake mode: Redis `control:mode` 직접 write) |
-| 응답 | MCG 응답 후 Redis `control:mode` 변경 → Pub/Sub → UI 갱신 |
-| 전환 중 | 버튼 일시 비활성화 (더블 탭 방지) |
-| Emergency 진입 | TODO — 시스템 안정화 후 설계. MCG가 특정 센서 critical 감지 → `control:mode=emergency` SET → UI 자동 갱신 (UI에서 진입 불가) |
-| Emergency 복귀 | TODO — Emergency 상태에서 버튼 탭 → Manual 전환 요청 |
+| Manual/Auto 탭 시 | UI가 Redis `control:mode` 직접 SET (`manual` 또는 `auto`). MCG는 다음 cycle에서 읽어서 반영. |
+| Emergency 진입 | TODO — 시스템 안정화 후 설계. |
+| Emergency 복귀 | TODO |
 
 **알람 배지 상세**
 

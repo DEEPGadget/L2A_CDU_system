@@ -25,14 +25,14 @@
 
 | 쓰레드 | 역할 | 근거 |
 |---|---|---|
-| **UI 수신 쓰레드** | IPC/REST 소켓 listen → PWM 제어 요청은 큐에 적재, 모드 전환은 mode flag SET | R2: UI 요청은 언제든 올 수 있으므로 항상 listen 필요 |
-| **메인 루프 쓰레드** | mode 확인 → 큐 확인 → Polling → Auto 모드일 경우 알고리즘으로 PWM 결정 후 Modbus Write | R1~R4 + Modbus 순차 제약 |
+| **UI 수신 쓰레드** | IPC/REST 소켓 listen → PWM 제어 요청을 큐에 적재 | R2: UI 요청은 언제든 올 수 있으므로 항상 listen 필요 |
+| **메인 루프 쓰레드** | Redis에서 mode 읽기 → 큐 확인 → Polling → Auto면 알고리즘으로 PWM 결정 후 Modbus Write | R1~R4 + Modbus 순차 제약 |
 
 ---
 
 ## 3. 제어 모드
 
-메인 루프의 내부 변수 `mode`. 변경 시 Redis `control:mode`에 publish (UI 표시용).
+UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서 읽어서 분기.
 
 | 모드 | 동작 | 진입 |
 |---|---|---|
@@ -44,7 +44,7 @@
 
 | 전환 | 트리거 |
 |---|---|
-| Manual ↔ Auto | UI 요청 → UI 수신 쓰레드 → mode flag SET → 메인 루프가 cycle 시작 시 확인하여 변경 |
+| Manual ↔ Auto | UI가 Redis `control:mode` 직접 SET → 메인 루프가 다음 cycle에서 읽어서 반영 |
 
 ### 비상정지 (TODO)
 
@@ -59,7 +59,7 @@
 ```
 매 cycle:
 
-  1. mode 확인 (UI 수신 쓰레드가 SET한 flag 읽기)
+  1. Redis에서 `control:mode` 읽기
 
   2. if Emergency: TODO (시스템 안정화 후 설계)
 
@@ -95,7 +95,7 @@
 
 ### 모드 전환
 
-- mode flag 변경 → Redis `control:mode` publish → Pushgateway POST `control_cmd_mode`
+- UI가 Redis `control:mode` 직접 SET (MCG 관여 없음)
 
 ### 알람 검사
 
@@ -127,15 +127,11 @@ sequenceDiagram
     participant Redis as Redis
 
     Note over Listen: UI 수신 쓰레드 (항상 listen)
-    UI->>Listen: PWM 요청 또는 모드 전환
-    alt PWM 제어
-        Listen->>Queue: 큐에 적재
-    else 모드 전환
-        Listen->>Main: mode flag SET
-    end
+    UI->>Listen: PWM 제어 요청
+    Listen->>Queue: 큐에 적재
 
     Note over Main: 메인 루프 cycle
-    Main->>Main: mode 확인
+    Main->>Main: Redis에서 mode 읽기
 
     alt 큐에 요청 있음
         alt Manual
@@ -168,15 +164,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant UI as UI
-    participant Listen as UI 수신 쓰레드
-    participant Main as 메인 루프
     participant Redis as Redis
+    participant Main as 메인 루프
 
-    UI->>Listen: 모드 전환 요청
-    Listen->>Listen: mode flag SET
-    Main->>Main: cycle 시작 → mode flag 확인 → mode 변경
-    Main-)Redis: SET control:mode + Pub/Sub
-    Redis-->>UI: Pub/Sub → UI 갱신
+    UI-)Redis: SET control:mode (manual 또는 auto)
+    Main->>Main: 다음 cycle → Redis에서 mode 읽기 → 분기 변경
 ```
 
 ---

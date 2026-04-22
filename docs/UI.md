@@ -39,13 +39,14 @@
 - 기록 확인 페이지: Prometheus에서 센서 이력 및 제어 명령 이력 조회 및 표시
 
 **BE (PySide6)**
-- MCG와 IPC 기반 통신 (제어 요청 전달)
-- Redis Pub/Sub 구독 (`sensor:*`, `comm:*` 현재값 — MCG가 SET 시 publish, UI가 수신)
-  - `comm:status` 수신 → Top bar **Link 배지** 즉시 갱신 (`ok` / `timeout` / `disconnected` — `comm:status` 값 그대로 표시)
+- MCG와 IPC 기반 통신 (PWM 제어 요청 전달)
+- 모드 전환: UI가 Redis `control:mode` 직접 SET (`manual` / `auto`) — MCG 경유 없음
+- Redis Pub/Sub 구독 (`sensor:*`, `comm:*`, `control:mode` — 변경 시 즉시 수신)
+  - `comm:status` 수신 → Top bar Link 상태 갱신
+  - `control:mode` 수신 → Top bar Mode 토글 갱신
 - Redis Keyspace Notifications 구독 (`alarm:*` SET/DEL 이벤트 — 알람 발생·해제 즉시 감지)
-  - 활성 알람 유무/등급 → Top bar **System 배지** 즉시 갱신 (`Normal` / `Warning` / `Critical`)
-  - Link `Warning` / `Critical` 시 System 배지 `-` 표시 (데이터 없음)
-- Prometheus DB 조회 (이력 데이터 소스 — 센서 이력 + 제어 명령 이력)
+  - 활성 알람 유무/등급 → Top bar System 상태 갱신
+- Prometheus DB 조회 (이력 데이터 소스)
 
 ## WEB UI (Svelte + FastAPI)
 
