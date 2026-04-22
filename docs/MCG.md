@@ -226,34 +226,60 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 > Redis는 현재값 전용 DB. 이벤트 이력·명령 기록은 저장하지 않음.
 
-### Redis Key — 센서 (Modbus Read)
+### Redis Key — Modbus 연동
 
-| Key | 설명 | PCB Modbus Register | R/W |
+**수온 (NTC — Input Register 28~31)**
+
+| Key | 설명 | Register | 단위 |
 |---|---|---|---|
-| `sensor:coolant_temp_inlet_1` | 냉각수 입수 온도 L1 | Input Register 32 (Voltage CH1) | Read |
-| `sensor:coolant_temp_inlet_2` | 냉각수 입수 온도 L2 | Input Register 33 (Voltage CH2) | Read |
-| `sensor:coolant_temp_outlet_1` | 냉각수 출수 온도 L1 | Input Register 34 (Voltage CH3) | Read |
-| `sensor:coolant_temp_outlet_2` | 냉각수 출수 온도 L2 | Input Register 35 (Voltage CH4) | Read |
-| `sensor:flow_rate_1` | 유량 L1 | Input Register 13 (Pulse Freq CH1) | Read |
-| `sensor:flow_rate_2` | 유량 L2 | Input Register 14 (Pulse Freq CH2) | Read |
-| `sensor:water_level` | 수위 (2/1/0) | Input Register 25 (DIN) bit 조합 → MCG 판단 | Read |
-| `sensor:ph` | pH | Input Register 36 (Voltage CH5) | Read |
-| `sensor:conductivity` | 전도도 | Input Register 37 (Voltage CH6) | Read |
-| `sensor:leak` | 누수 (NORMAL/LEAKED) | Input Register 25 (DIN) 특정 bit | Read |
-| `sensor:pressure` | 유압 (미확정) | Input Register 38 (Voltage CH7) | Read |
-| `sensor:ambient_temp` | 장치 내부 온도 | RPi I2C (Modbus 미경유) | — |
-| `sensor:ambient_humidity` | 장치 내부 습도 | RPi I2C (Modbus 미경유) | — |
+| `sensor:coolant_temp_inlet_1` | 냉각수 입수 온도 L1 | Input Register 28 (NTC CH13) | 0.1°C |
+| `sensor:coolant_temp_inlet_2` | 냉각수 입수 온도 L2 | Input Register 29 (NTC CH14) | 0.1°C |
+| `sensor:coolant_temp_outlet_1` | 냉각수 출수 온도 L1 | Input Register 30 (NTC CH15) | 0.1°C |
+| `sensor:coolant_temp_outlet_2` | 냉각수 출수 온도 L2 | Input Register 31 (NTC CH16) | 0.1°C |
 
-> 레지스터 매핑은 실제 배선에 따라 변경될 수 있음. 위는 초기 할당 기준.
+**디지털 입력 (DIN — Input Register 25)**
 
-### Redis Key — 제어 (Modbus Write)
-
-| Key | 설명 | PCB Modbus Register | R/W |
+| Key | 설명 | Register | 비고 |
 |---|---|---|---|
-| `sensor:pump_pwm_duty_1` | 펌프 PWM L1 (0–100%) | Holding Register 0~3 (TIM1 CH1~4) | Read/Write |
-| `sensor:pump_pwm_duty_2` | 펌프 PWM L2 (0–100%) | Holding Register 4~7 (TIM2 CH5~8) | Read/Write |
-| `sensor:fan_pwm_duty_1` | 팬 PWM L1 (0–100%) | Holding Register 8~9 (TIM8 CH9~10) | Read/Write |
-| `sensor:fan_pwm_duty_2` | 팬 PWM L2 (0–100%) | Holding Register 10~11 (TIM8 CH11~12) | Read/Write |
+| `sensor:water_level` | 수위 (2/1/0) | Input Register 25, bit 조합 | MCG가 고/저 2센서 조합 → HIGH/MIDDLE/LOW 판단 |
+| `sensor:leak` | 누수 (NORMAL/LEAKED) | Input Register 25, 특정 bit | |
+
+**팬/펌프 PWM duty (Holding Register 0~11) — Read/Write**
+
+| Key | 설명 | Register | 제어 대상 |
+|---|---|---|---|
+| `sensor:fan_pwm_duty_1` | 팬 PWM L1 (0–100%) | Holding Register 0~1 (TIM1, 25KHz) | COOLTRON FD8038B12W7, L1 최대 60개 |
+| `sensor:fan_pwm_duty_2` | 팬 PWM L2 (0–100%) | Holding Register 2~3 (TIM1, 25KHz) | COOLTRON FD8038B12W7, L2 최대 60개 |
+| `sensor:pump_pwm_duty_1` | 펌프 PWM L1 (0–100%) | Holding Register 4~5 (TIM2, 1KHz) | Johnson Electric eModule, L1 2개 직렬 |
+| `sensor:pump_pwm_duty_2` | 펌프 PWM L2 (0–100%) | Holding Register 6~7 (TIM2, 1KHz) | Johnson Electric eModule, L2 2개 직렬 |
+
+> TIM8 (Holding Register 8~11): 전압제어 펌프용 (Koolance PMP-500, dg5R용). L2A CDU에서는 미사용.
+
+**팬 RPM 피드백 (Pulse Freq — Input Register 13~24)**
+
+| Key | 설명 | Register | 비고 |
+|---|---|---|---|
+| `sensor:fan_rpm_1` | 팬 RPM L1 | Input Register 13 (Pulse CH1) | FG wire, 2 pulses/rotation → RPM 환산 |
+| `sensor:fan_rpm_2` | 팬 RPM L2 | Input Register 14 (Pulse CH2) | FG wire, 2 pulses/rotation → RPM 환산 |
+
+> 펌프 Fault 피드백 (Johnson Electric PWM 에러 패턴): TODO — 구현 시 Pulse 채널 추가 할당.
+
+**RPi 직접 수집 (Modbus 미경유)**
+
+| Key | 설명 | 인터페이스 |
+|---|---|---|
+| `sensor:ambient_temp` | 장치 내부 온도 | RPi I2C |
+| `sensor:ambient_humidity` | 장치 내부 습도 | RPi I2C |
+
+**4-20mA 센서 (TODO — 호환 방법 미정)**
+
+| Key | 설명 | Register |
+|---|---|---|
+| `sensor:flow_rate_1` | 유량 L1 | TODO — Input Register 32~39 (Voltage) 예상 |
+| `sensor:flow_rate_2` | 유량 L2 | TODO |
+| `sensor:ph` | pH | TODO |
+| `sensor:conductivity` | 전도도 | TODO |
+| `sensor:pressure` | 유압 | TODO |
 
 ### Redis Key — 알람 (MCG 내부 생성)
 
