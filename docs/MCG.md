@@ -1,212 +1,175 @@
 # Modbus Control Gateway (MCG)
 
-## 1. 개요
+## 1. 요구사항
 
-MCG는 L2A CDU 시스템의 중앙 제어 허브로, PCB(Modbus Slave)와 UI 사이에서 센서 수집·제어 명령·알람 관리를 수행한다.
-
-**컴포넌트 4개:**
-
-| 컴포넌트 | 약어 | 역할 |
+| # | 요구사항 | 설명 |
 |---|---|---|
-| Command Receiver | CR | UI 요청 수신 → PWM 제어는 CQ에 적재, 모드 전환은 TS에 직접 전달 |
-| Control Queue | CQ | Pump/Fan PWM write 요청 전용 큐 |
-| Task Scheduler | TS | MCG의 핵심 주체 — 모드 관리 + CQ 소비 + Polling + Auto write + 비상정지 |
-| Modbus Transport Manager | MTM | TS의 지시로 Modbus RTU 송수신 실행 |
-| Alarm / Event Manager | AEM | 센서값 threshold 검사 → 알람 SET/DEL. 제어 명령은 생성하지 않음 |
-
-```
-UI ──→ CR ──┬──→ CQ (PWM 제어 요청만)──→ TS ──→ MTM ──→ PCB
-            │                              ▲
-            └──→ TS (모드 전환 직접 전달)    │ critical 통보
-                                          │
-                                   AEM ←── MTM
-                                  (감지·알람만)
-```
+| R1 | **모니터링** | PCB에서 센서값을 주기적으로 읽어와 Redis에 저장. UI에 실시간 표시. |
+| R2 | **Manual 제어** | 사람이 UI에서 팬/펌프 PWM을 직접 설정 → PCB에 write |
+| R3 | **Auto 제어** | 모니터링값 기반으로 자동으로 팬/펌프 PWM 결정 → PCB에 write |
+| R4 | **비상정지** | 지정한 특정 센서가 critical 상태 → 전체 정지 (PWM=0, DOUT=0) |
 
 ---
 
-## 2. 제어 모드
+## 2. 구조 개요
 
-TS가 내부 변수(`mode`)로 관리하는 시스템 상태. 모드 변경 시 Redis `control:mode`에 publish (UI 표시용).
+### 요구사항에서 도출
 
-### 모드 정의
+- **R1 모니터링** → PCB 센서 레지스터를 주기적으로 Modbus Read. 읽은 값을 Redis SET + 알람 threshold 검사.
+- **R2 Manual 제어** → UI에서 PWM 값을 받으면 PCB에 Modbus Write. UI 요청은 **언제든** 올 수 있음.
+- **R3 Auto 제어** → 모니터링 결과를 보고 알고리즘이 PWM 결정 → PCB에 Modbus Write.
+- **R4 비상정지** → 모니터링 결과에서 특정 센서 critical → 전체 PWM=0, DOUT=0 Write.
+- **공통** → Modbus는 단일 시리얼 버스. Read와 Write를 동시에 할 수 없음. 모든 Modbus 통신은 순차 실행.
 
-| 모드 | 동작 |
-|---|---|
-| **Manual** (기본값) | CQ에서 사람의 PWM 요청을 dequeue → MTM write. Polling 수행. |
-| **Auto** | Polling 후 알고리즘으로 PWM 자동 계산 → MTM 직접 write. CQ의 PWM 요청은 무시. |
-| **Emergency** | 전체 PWM=0, DOUT=0 매 cycle 강제. CQ/Polling/Auto 중단. |
+### 2 쓰레드
+
+| 쓰레드 | 역할 | 근거 |
+|---|---|---|
+| **UI 수신 쓰레드** | IPC/REST 소켓 listen → 받은 요청을 thread-safe 큐에 적재 | R2: UI 요청은 언제든 올 수 있으므로 항상 listen 필요 |
+| **메인 루프 쓰레드** | mode 확인 → 큐 확인 → Polling → 알람 → Auto write. 순차 실행 | R1~R4 + Modbus 순차 제약 |
+
+---
+
+## 3. 제어 모드
+
+메인 루프의 내부 변수 `mode`. 변경 시 Redis `control:mode`에 publish (UI 표시용).
+
+| 모드 | 동작 | 진입 |
+|---|---|---|
+| **Manual** (기본값) | 큐에서 사람의 PWM 요청 꺼내서 Write + Polling | UI 요청 (모드 전환) |
+| **Auto** | Polling 후 알고리즘으로 PWM 결정 → Write | UI 요청 (모드 전환) |
+| **Emergency** | TODO — 시스템 안정화 후 설계 | TODO |
 
 ### 전환 규칙
 
-| 전환 | 트리거 | 경로 |
-|---|---|---|
-| Manual ↔ Auto | 사용자 UI 요청 | CR → TS 직접 (CQ 미경유) |
-| Any → Emergency | 특정 센서 critical | AEM → TS 통보 → TS 내부 mode 변경 |
-| Emergency → Manual | 사용자 UI 명시적 복귀 | CR → TS 직접 (CQ 미경유) |
+| 전환 | 트리거 |
+|---|---|
+| Manual ↔ Auto | UI 요청 → 큐 → 메인 루프에서 mode 변경 |
 
-### 비상정지 트리거 센서 (모든 critical이 아닌 특정 센서만)
+### 비상정지 (TODO)
 
-| 센서 | 조건 | 사유 |
-|---|---|---|
-| 누수 | `alarm:leak_detected` | 침수 피해 방지 — 즉시 정지 필요 |
-| 수위 | `alarm:water_level_critical` | 냉각수 고갈 — 펌프 공회전 방지 |
+> 비상정지 모드는 특정 센서(예: 누수, 수위 위험)가 critical일 때 전체 PWM=0, DOUT=0을 강제하는 모드.
+> 어떤 센서가 비상정지를 트리거할지, 어떤 상황에서 어떻게 제어할지는 시스템 구현·안정화 후 결정.
+> 현재는 Manual / Auto 2가지 모드에 집중하여 설계.
 
-> 수온 critical, 통신 두절 등은 Emergency가 아닌 **알람만** 발생. 사람이 판단 후 조치.
-> 비상정지 대상 센서는 구현 시 확장 가능.
+---
 
-### TS 매 cycle 로직
+## 4. 메인 루프
 
 ```
 매 cycle:
-  1. mode 확인 (TS 내부 변수, 최우선)
 
-  2. if mode == Emergency:
-       → HR 0~11=0, HR 15=0 write (매 cycle 강제)
-       → 다음 cycle
+  1. mode 확인
 
-  3. CQ 확인 → 있으면 dequeue → MTM write (Manual 모드에서만 유효)
+  2. if Emergency: TODO (시스템 안정화 후 설계)
 
-  4. Polling → MTM read → 센서 수집 → AEM 검사
-       → 비상정지 대상 센서 critical 시: TS가 mode=emergency SET
+  3. 큐 확인
+       → PWM 변경 요청 있음 → Modbus Write (Manual에서만 유효)
+       → 모드 전환 요청 있음 → mode 변경
 
-  5. if mode == Auto: 알고리즘 → MTM 직접 write
+  4. Polling
+       → Modbus Read (센서 레지스터)
+       → 디코딩 → Redis SET + Pub/Sub
+       → 알람 threshold 검사 → Warning: 알람 SET / Critical: 알람 SET
+
+  5. if Auto:
+       → 알고리즘 (센서값 → PWM duty 결정)
+       → Modbus Write (HR 0~11)
 ```
 
----
-
-## 3. 컴포넌트 상세
-
-### CR (Command Receiver)
-
-UI(Local PySide6 / Web Svelte)로부터 IPC 또는 REST API로 요청을 수신.
-- **PWM 제어 요청** (Pump/Fan duty 변경) → CQ에 적재
-- **모드 전환 요청** (Manual↔Auto, Emergency→Manual) → TS에 직접 전달 (CQ 미경유)
-
-### CQ (Control Queue)
-
-Pump/Fan PWM write 요청 전용. 적재 소스는 CR만. TS가 매 cycle Polling보다 우선 dequeue. Auto 모드에서는 CQ의 PWM 요청을 무시(또는 거부)한다.
-
-### TS (Task Scheduler)
-
-MCG의 핵심. 위 §2 "TS 매 cycle 로직" 참고. 내부 변수:
-- `mode`: manual / auto / emergency
-- 모드 변경 시 Redis `control:mode` publish (UI 표시용)
-- 모드 변경 시 Pushgateway POST `control_cmd_mode` (이력 기록)
-
-### MTM (Modbus Transport Manager)
-
-TS의 지시로 Modbus RTU 송수신 실행.
-- **Read path**: IR read → 디코딩 → Redis SET `sensor:*` + Pub/Sub → AEM에 값 전달
-- **Write path**: 입력값 → HR 변환 → Modbus write → ACK 확인
-  - Manual 제어 시 Pushgateway POST. Auto/Emergency 시 POST 없음
-- **통신 오류**: timeout → retry → 연속 실패 시 AEM 통보 → PCB 무응답 시 Polling 중단
-
-> 레지스터 맵, S-Curve 등 PCB 하드웨어 상세는 [PCB.md](PCB.md) 참고.
-
-### AEM (Alarm / Event Manager)
-
-MTM으로부터 센서값 수신 → threshold 검사 → 알람 SET/DEL. Critical 알람 시 TS에 통보. AEM은 감지와 알람 전달만 담당하며 제어 명령은 생성하지 않는다.
+> step 3의 Modbus Write와 step 5의 Modbus Write는 같은 시리얼 버스를 사용하므로 동일 cycle 내에서 순차 실행.
+> S-Curve 1초 적용 (보드 사양 — [PCB.md](PCB.md) 참고).
 
 ---
 
-## 4. Auto Control 알고리즘
+## 5. 상세
 
-mode=Auto일 때 TS가 Polling 완료 후 실행.
+### Modbus Read (Polling)
+
+- PCB Input Register(IR) read → scaling / bitfield 디코딩
+- Redis SET `sensor:*` + Pub/Sub publish (UI 실시간 표시)
+- 수위 센서: 상·하위 광센서 2bit → `sensor:water_level` (0/1/2) 단일값 변환
+- 통신 오류: timeout → retry → 연속 N회 실패 → `alarm:comm_timeout` SET → PCB 무응답 → `alarm:comm_disconnected` SET + Polling 중단
+
+### Modbus Write (제어)
+
+- PWM duty 값 → HR 주소 / register value 변환 → Modbus RTU write → ACK 확인
+- Manual 제어 시 Pushgateway POST (이력 기록)
+- Auto 제어 시 POST 없음 (Exporter가 `sensor:*`로 수집)
+- 모드 전환 시 Pushgateway POST `control_cmd_mode` (이력 기록)
+
+### 알람 검사
+
+- 매 Polling 후 센서값 threshold 비교 → 초과 시 Redis SET `alarm:*`, 복귀 시 DEL
+- 비상정지 대상 센서 critical → 메인 루프가 mode=Emergency SET
+- 알람 검사는 제어 명령을 생성하지 않음 (감지·알람만)
+
+### Auto 알고리즘
 
 - **입력**: 냉각수 inlet/outlet 온도, 유량
-- **출력**: HR 0~11 (Pump/Fan PWM Duty)
-- **알고리즘**: 지정된 알고리즘에 의해 PWM duty 결정 (상세는 구현 시 정의)
-- **적용**: 양 루프(L1, L2) 독립 또는 대칭 제어 (구현 시 결정)
-- **이력**: Pushgateway POST 없음 — Exporter가 `sensor:*`로 수집
+- **출력**: Pump/Fan PWM duty (HR 0~11)
+- **알고리즘**: 지정된 알고리즘에 의해 결정 (상세는 구현 시 정의)
+- **적용**: 양 루프(L1, L2) 독립 또는 대칭 (구현 시 결정)
 
 ---
 
-## 5. 시나리오
+## 6. 시나리오
 
-### 시나리오 1. 정상 동작 (Manual/Auto)
-
-```mermaid
-sequenceDiagram
-    participant CR as CR
-    participant CQ as CQ
-    participant TS as TS
-    participant MTM as MTM
-    participant PCB as PCB
-    participant Redis as Redis
-    participant AEM as AEM
-
-    TS->>TS: mode 확인 → Manual or Auto
-
-    alt CQ에 PWM 요청 있음 (Manual)
-        TS->>CQ: dequeue
-        TS->>MTM: PWM write
-        MTM->>PCB: Modbus write
-        PCB-->>MTM: ACK
-    end
-
-    TS->>MTM: Polling
-    MTM->>PCB: Modbus read
-    PCB-->>MTM: register 응답
-    MTM-)Redis: SET sensor:* + Pub/Sub
-    MTM->>AEM: 값 전달
-    AEM->>AEM: threshold 검사 → 정상
-
-    alt mode == Auto
-        TS->>TS: 알고리즘 → PWM duty 결정
-        TS->>MTM: PWM write (직접)
-        MTM->>PCB: Modbus write
-        PCB-->>MTM: ACK
-    end
-```
-
-### 시나리오 2. 비상정지 진입
+### 정상 동작 (Manual/Auto)
 
 ```mermaid
 sequenceDiagram
-    participant TS as TS
-    participant MTM as MTM
+    participant Queue as 큐
+    participant Main as 메인 루프
     participant PCB as PCB
     participant Redis as Redis
-    participant AEM as AEM
 
-    MTM->>AEM: 센서값 전달
-    AEM->>AEM: threshold → 누수 감지 (Critical)
-    AEM->>Redis: SET alarm:leak_detected
-    AEM->>TS: Critical 통보 (비상정지 대상 센서)
+    Main->>Main: mode 확인 → Manual or Auto
 
-    TS->>TS: mode = emergency
-    TS-)Redis: SET control:mode=emergency + Pub/Sub
+    alt 큐에 PWM 요청 (Manual)
+        Main->>Queue: dequeue
+        Main->>PCB: Modbus Write (PWM)
+        PCB-->>Main: ACK
+    end
 
-    Note over TS,PCB: 다음 cycle
-    TS->>TS: mode → Emergency
-    TS->>MTM: HR 0~11=0, HR 15=0 (강제)
-    MTM->>PCB: Modbus write
-    PCB-->>MTM: ACK
+    Main->>PCB: Modbus Read (Polling)
+    PCB-->>Main: 센서값
+    Main->>Main: 디코딩 + 알람 검사 → 정상
+    Main-)Redis: SET sensor:* + Pub/Sub
+
+    alt Auto 모드
+        Main->>Main: 알고리즘 → PWM 결정
+        Main->>PCB: Modbus Write (PWM)
+        PCB-->>Main: ACK
+    end
 ```
 
-### 시나리오 3. 모드 전환
+### 비상정지 진입 (TODO)
+
+> 시스템 안정화 후 설계. 특정 센서 critical 시 전체 PWM=0, DOUT=0 강제하는 시나리오.
+
+### 모드 전환
 
 ```mermaid
 sequenceDiagram
     participant UI as UI
-    participant CR as CR
-    participant TS as TS
+    participant Listen as UI 수신 쓰레드
+    participant Queue as 큐
+    participant Main as 메인 루프
     participant Redis as Redis
-    participant PGW as Pushgateway
 
-    UI->>CR: 모드 전환 요청
-    CR->>TS: 직접 전달 (CQ 미경유)
-    TS->>TS: mode 변경
-    TS-)Redis: SET control:mode + Pub/Sub
-    TS->>PGW: POST control_cmd_mode
+    UI->>Listen: 모드 전환 요청
+    Listen->>Queue: 적재
+    Main->>Queue: dequeue
+    Main->>Main: mode 변경
+    Main-)Redis: SET control:mode + Pub/Sub
 ```
 
 ---
 
-## 6. 서비스 초기화
+## 7. 서비스 초기화
 
-PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 서비스 시작 시 config.yaml에서 로드한 초기값을 PCB에 write.
+PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 config.yaml에서 로드한 값을 PCB에 Write.
 
 | 대상 | HR 주소 | 비고 |
 |---|---|---|
@@ -220,67 +183,42 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 서비스 시
 
 ---
 
-## 7. 예외 처리
+## 8. 알람 및 이상 감지
 
-### 목표
+모니터링 중 센서값이 정상 범위를 벗어나면 알람을 발생시켜 UI에 표시한다.
 
-L2A CDU의 1차 목표는 **서버의 안정적인 냉각 유지**.
+### 알람 목록
 
-| # | 시나리오 | 트리거 조건 |
-|---|----------|-------------|
-| S1 | 냉각 성능 저하 | 냉각수 온도 임계 초과 |
-| S2 | 냉각수 손실 | 수위 부족 |
-| S3 | 냉각수 누출 | 누수 감지 |
-| S4 | 제어 불능 | Modbus 통신 두절 |
-| S5 | 환경 한계 초과 | 장치 내부 온도·습도 한계 초과 |
-
-### 심각도와 MCG 대응
-
-| 심각도 | MCG 동작 |
-|---|---|
-| **Warning** | AEM → 알람 SET → UI 표시. 사람이 판단. |
-| **Critical (일반)** | AEM → 알람 SET → UI 표시. 사람이 판단. |
-| **Critical (비상정지 대상)** | AEM → 알람 SET + TS 통보 → **TS가 mode=emergency SET** |
-
-> 비상정지 대상: 누수(`leak_detected`), 수위 위험(`water_level_critical`). 나머지 critical은 알람만.
-
-### 센서별 알람
-
-| 예외 | 심각도 | 알람 키 | 비상정지 | 복구 조건 |
-|---|---|---|---|---|
-| 수온 경고 (L1/L2) | Warning | `alarm:coolant_temp_l1_warning` / `l2_warning` | — | 임계치 이하 |
-| 수온 위험 (L1/L2) | Critical | `alarm:coolant_temp_l1_critical` / `l2_critical` | — | 임계치 이하 |
-| **누수 감지** | Critical | `alarm:leak_detected` | **비상정지** | 누수 비트 해제 |
-| 수위 부족 | Warning | `alarm:water_level_warning` | — | `water_level`≥2 |
-| **수위 위험** | Critical | `alarm:water_level_critical` | **비상정지** | `water_level`≥1 |
-| 유압 이상 | Warning | `alarm:pressure_warning` | — | 정상 범위 |
-| 유량 저하 | Warning | `alarm:flow_rate_warning` | — | 정상 유량 |
-| 장치 내부 온도 경고 | Warning | `alarm:ambient_temp_warning` | — | 임계치 이하 |
-| 장치 내부 온도 한계 초과 | Critical | `alarm:ambient_temp_critical` | — | 정상 범위 |
-| 장치 내부 습도 경고 | Warning | `alarm:ambient_humidity_warning` | — | 임계치 이하 |
-| 장치 내부 습도 한계 초과 | Critical | `alarm:ambient_humidity_critical` | — | 정상 범위 |
-
-### 통신 이상
-
-| 예외 | 심각도 | 처리 | 복구 |
+| 예외 | 심각도 | 알람 키 | 복구 조건 |
 |---|---|---|---|
-| 단일 timeout | — | MTM 내부 retry | retry 성공 |
-| 연속 N회 실패 | Warning | `alarm:comm_timeout` SET | 통신 복구 |
-| PCB 무응답 | Critical | `alarm:comm_disconnected` SET, Polling 중단 | 통신 복구 후 재개 |
+| 수온 경고 (L1/L2) | Warning | `alarm:coolant_temp_l1_warning` / `l2_warning` | 임계치 이하 |
+| 수온 위험 (L1/L2) | Critical | `alarm:coolant_temp_l1_critical` / `l2_critical` | 임계치 이하 |
+| 누수 감지 | Critical | `alarm:leak_detected` | 누수 비트 해제 |
+| 수위 부족 | Warning | `alarm:water_level_warning` | `water_level`≥2 |
+| 수위 위험 | Critical | `alarm:water_level_critical` | `water_level`≥1 |
+| 유압 이상 | Warning | `alarm:pressure_warning` | 정상 범위 |
+| 유량 저하 | Warning | `alarm:flow_rate_warning` | 정상 유량 |
+| 장치 내부 온도 경고 | Warning | `alarm:ambient_temp_warning` | 임계치 이하 |
+| 장치 내부 온도 한계 초과 | Critical | `alarm:ambient_temp_critical` | 정상 범위 |
+| 장치 내부 습도 경고 | Warning | `alarm:ambient_humidity_warning` | 임계치 이하 |
+| 장치 내부 습도 한계 초과 | Critical | `alarm:ambient_humidity_critical` | 정상 범위 |
+| 통신 연속 실패 | Warning | `alarm:comm_timeout` | 통신 복구 |
+| PCB 무응답 | Critical | `alarm:comm_disconnected` | 통신 복구 |
+
+> 비상정지: 어떤 알람이 비상정지를 트리거할지는 TODO. 시스템 안정화 후 결정.
 
 ### 복구 원칙
 
-- 알람 해제: AEM이 threshold 복귀 확인 → `alarm:*` DEL
-- 비상정지 복구: 사용자가 UI에서 Emergency → Manual 전환 (명시적)
-- 통신 복구: MTM 재연결 성공 → Polling 재개
+- 알람 해제: threshold 복귀 확인 → `alarm:*` DEL
+- 비상정지 복구: TODO (시스템 안정화 후 설계)
+- 통신 복구: 재연결 성공 → Polling 재개
 
 ---
 
-## 8. 미구현 — PCB Watchdog
+## 9. 미구현 — PCB Watchdog
 
-MCG 다운 시 PCB가 자체적으로 안전 모드로 전환하는 Watchdog 기능은 MCG로 대체 불가. 펌웨어 업데이트 필요.
+MCG 다운 시 PCB가 자체적으로 안전 모드로 전환하는 기능. MCG로 대체 불가 — 펌웨어 업데이트 필요.
 
-- **필요 기능**: Master Heartbeat 감시 → timeout 시 PCB 자체 보호 모드 전환
 - **현재 한계**: MCG가 죽으면 PCB에 명령을 보낼 수 없음
 - **임시 대응**: systemd `Restart=always`로 MCG 자동 재시작
 - **상세**: [PCB.md](PCB.md) "미구현 기능" 참고
