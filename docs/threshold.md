@@ -43,8 +43,7 @@ Used as the source of truth for `src/fake_data/scenarios.py` and alarm manager l
 | `1` | MIDDLE | Warning | `alarm:water_level_warning` |
 | `0` | LOW | Critical | `alarm:water_level_critical` |
 
-> MTM이 상위·하위 광센서 raw bit 조합으로 판단하여 `sensor:water_level` 단일 값으로 SET.
-> raw: `high`=1, `low`=1 → `2` / `high`=0, `low`=1 → `1` / `high`=0, `low`=0 → `0` (`high`=1, `low`=0은 물리적으로 불가능)
+> 수위 탱크에 고/저 2개 레벨 센서가 부착. PCB는 각 센서의 raw 전압값을 Modbus로 제공. MCG가 두 센서값을 조합하여 `sensor:water_level` (0/1/2) 판단.
 
 ## Coolant Leakage
 

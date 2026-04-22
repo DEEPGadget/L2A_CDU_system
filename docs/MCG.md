@@ -86,9 +86,7 @@
 
 ### Modbus Read (Polling)
 
-- PCB Input Register(IR) read → scaling / bitfield 디코딩
-- Redis SET `sensor:*` + Pub/Sub publish (UI 실시간 표시)
-- 수위 센서: 상·하위 광센서 2bit → `sensor:water_level` (0/1/2) 단일값 변환
+- PCB Input Register(IR) read → 디코딩 → Redis SET `sensor:*` + Pub/Sub publish (UI 실시간 표시)
 - 통신 오류: timeout → retry → 연속 N회 실패 → `alarm:comm_timeout` SET → PCB 무응답 → `alarm:comm_disconnected` SET + Polling 중단
 
 ### Modbus Write (제어)
@@ -101,13 +99,14 @@
 ### 알람 검사
 
 - 매 Polling 후 센서값 threshold 비교 → 초과 시 Redis SET `alarm:*`, 복귀 시 DEL
-- 비상정지 대상 센서 critical → 메인 루프가 mode=Emergency SET
 - 알람 검사는 제어 명령을 생성하지 않음 (감지·알람만)
+- 비상정지 연동: TODO (시스템 안정화 후 설계)
+- threshold 상세: [threshold.md](threshold.md) 참고
 
 ### Auto 알고리즘
 
-- **입력**: 냉각수 inlet/outlet 온도, 유량
-- **출력**: Pump/Fan PWM duty (HR 0~11)
+- **입력**: 냉각수 inlet/outlet 온도, 유량, 현재 Pump/Fan PWM duty
+- **출력**: 새 Pump/Fan PWM duty → Modbus Write (HR 0~11)
 - **알고리즘**: 지정된 알고리즘에 의해 결정 (상세는 구현 시 정의)
 - **적용**: 양 루프(L1, L2) 독립 또는 대칭 (구현 시 결정)
 
