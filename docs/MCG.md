@@ -26,7 +26,7 @@
 | 쓰레드 | 역할 | 근거 |
 |---|---|---|
 | **UI 수신 쓰레드** | IPC/REST 소켓 listen → PWM 제어 요청은 큐에 적재, 모드 전환은 mode flag SET | R2: UI 요청은 언제든 올 수 있으므로 항상 listen 필요 |
-| **메인 루프 쓰레드** | mode 확인 → Polling(항상) → mode별 Write 분기 (Manual: 큐 요청 Write / Auto: 알고리즘 Write) | R1~R4 + Modbus 순차 제약 |
+| **메인 루프 쓰레드** | mode 확인 → 큐 확인(항상) → Polling(항상) → Auto면 알고리즘 Write | R1~R4 + Modbus 순차 제약 |
 
 ---
 
@@ -63,14 +63,16 @@
 
   2. if Emergency: TODO (시스템 안정화 후 설계)
 
-  3. Polling (항상 실행)
+  3. 큐 확인 (항상 실행)
+       → Manual: 요청 있으면 Modbus Write
+       → Auto: 요청 있으면 버림 (Auto 모드에서는 사람 제어 무효)
+
+  4. Polling (항상 실행)
        → Modbus Read (센서 레지스터)
        → 디코딩 → Redis SET + Pub/Sub
        → 알람 threshold 검사
 
-  4. mode별 Write 분기
-       → Manual: 큐에 사람 요청 있으면 Modbus Write
-       → Auto: 알고리즘 (센서값 → PWM duty 결정) → Modbus Write
+  5. if Auto: 알고리즘 (센서값 → PWM duty 결정) → Modbus Write
 ```
 
 > step 3의 Modbus Write와 step 5의 Modbus Write는 같은 시리얼 버스를 사용하므로 동일 cycle 내에서 순차 실행.
@@ -135,16 +137,22 @@ sequenceDiagram
     Note over Main: 메인 루프 cycle
     Main->>Main: mode 확인
 
+    alt 큐에 요청 있음
+        alt Manual
+            Main->>Queue: dequeue
+            Main->>PCB: Modbus Write (사람 PWM)
+            PCB-->>Main: ACK
+        else Auto
+            Main->>Queue: dequeue → 버림
+        end
+    end
+
     Main->>PCB: Modbus Read (Polling)
     PCB-->>Main: 센서값
     Main->>Main: 디코딩 + 알람 검사
     Main-)Redis: SET sensor:* + Pub/Sub
 
-    alt Manual
-        Main->>Queue: 큐에 요청 있으면 dequeue
-        Main->>PCB: Modbus Write (사람이 설정한 PWM)
-        PCB-->>Main: ACK
-    else Auto
+    alt Auto
         Main->>Main: 알고리즘 → PWM 결정
         Main->>PCB: Modbus Write (알고리즘 PWM)
         PCB-->>Main: ACK
