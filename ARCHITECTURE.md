@@ -105,10 +105,10 @@
 - 2 쓰레드: UI 수신 쓰레드 (항상 listen) + 메인 루프 쓰레드 (mode 확인 → 큐 → Polling → Auto write 순차)
 - 큐: 사람의 PWM 제어 요청 전용. 모드 전환은 메인 루프에 직접 전달. Auto write와 비상정지는 큐 미경유.
 - **제어 모드 (Manual / Auto)**:
-  - **Manual** (기본값): 사람이 UI에서 Pump/Fan PWM을 직접 설정. 시스템은 감지·알람만 담당.
-  - **Auto**: MCG가 냉각수온·유량 기반으로 지정된 알고리즘에 의해 Pump/Fan PWM을 자동 계산 → Modbus write. 사람은 모드 전환·모니터링 담당.
+  - **Manual**: 사람이 UI에서 Pump/Fan PWM을 직접 설정. 시스템은 감지·알람만 담당.
+  - **Auto** (기본값): MCG가 냉각수온·유량 기반으로 지정된 알고리즘에 의해 Pump/Fan PWM을 자동 계산 → Modbus write. 사람은 모드 전환·모니터링 담당.
   - 모드 전환은 UI 요청으로만 발생
-  - 현재 모드는 Redis `control:mode` 키로 관리 (`manual` / `auto` / `emergency`)
+  - 현재 모드는 Redis `control:mode` 키로 관리 (`manual` / `auto` / `emergency`). 쓰기 주체는 UI 서비스 (최초 기동 시 `auto`로 SETNX, 이후 토글 시 직접 SET). MCG는 읽기만 함.
   - MCG가 제어 주체. PCB는 단순 R/W Slave (OP_MODE/Watchdog 미구현 — 향후 펌웨어 업데이트 필요)
   - Auto 모드에서 Pump/Fan 수동 제어 UI는 비활성화 (Manual 전환 시 재활성화)
   - Emergency 모드: TODO — 시스템 안정화 후 설계

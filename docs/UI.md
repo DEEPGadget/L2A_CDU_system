@@ -40,7 +40,9 @@
 
 **BE (PySide6)**
 - MCG와 IPC 기반 통신 (PWM 제어 요청 전달)
-- 모드 전환: UI가 Redis `control:mode` 직접 SET (`manual` / `auto`) — MCG 경유 없음
+- 모드 관리 (UI 독점): UI가 Redis `control:mode`의 쓰기 주체. MCG는 읽기만 함
+  - 서비스 최초 기동 시 `control:mode` key가 비어있으면 `auto`로 SETNX (기본값 초기화)
+  - Manual/Auto 토글: UI가 Redis `control:mode` 직접 SET (`manual` / `auto`) — MCG 경유 없음
 - Redis Pub/Sub 구독 (`sensor:*`, `comm:*`, `control:mode` — 변경 시 즉시 수신)
   - `comm:status` 수신 → Top bar Link 상태 갱신
   - `control:mode` 수신 → Top bar Mode 토글 갱신
