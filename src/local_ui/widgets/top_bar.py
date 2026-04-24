@@ -18,10 +18,12 @@ from __future__ import annotations
 
 import datetime
 import fcntl
+import logging
 import os
 import socket
 import struct
 
+import redis
 from PySide6.QtCore import QPropertyAnimation, QTimer, Qt, Signal, Property, QEasingCurve
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
@@ -32,8 +34,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+log = logging.getLogger(__name__)
+
 _SIOCGIFADDR = 0x8915
 _IP_REFRESH_INTERVAL_MS = 30_000
+
+REDIS_HOST = "localhost"
+REDIS_PORT = 6379
+REDIS_DB = 0
 
 # ── Status text colors ─────────────────────────────────────────────────────────
 _SYSTEM_COLORS: dict[str, str] = {
@@ -231,9 +239,22 @@ class TopBarWidget(QWidget):
         self._stacked = stacked_widget
         self._active_alarms: set[str] = set()
         self._link_status = "ok"
+        self._redis = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
         self.setStyleSheet("background:#ffffff;")
         self._build_ui()
+        self._sync_mode_from_redis()
         self._start_timers()
+
+    def _sync_mode_from_redis(self) -> None:
+        # main.py ran SETNX before widgets were built, so the key is expected
+        # to exist. Fall back to "auto" if Redis is unreachable.
+        try:
+            raw = self._redis.get("control:mode")
+            mode = raw.decode() if isinstance(raw, bytes) else (raw or "auto")
+        except Exception as e:
+            log.warning("Could not read control:mode from Redis: %s", e)
+            mode = "auto"
+        self.on_mode_updated(mode)
 
     # ------------------------------------------------------------------
     # UI construction
@@ -373,10 +394,18 @@ class TopBarWidget(QWidget):
     # Mode button
 
     def _on_mode_toggled(self, checked: bool) -> None:
-        """Handle toggle switch change. TODO: send mode switch request to MCG."""
-        # TODO: In real mode, send IPC request to MCG for mode switch.
-        # TODO: In fake mode, write control:mode directly to Redis.
-        self._current_mode = "auto" if checked else "manual"
+        # UI owns control:mode: write directly to Redis and publish so other
+        # subscribers (and this process's own subscriber) see the change.
+        mode = "auto" if checked else "manual"
+        self._current_mode = mode
+        try:
+            pipe = self._redis.pipeline()
+            pipe.set("control:mode", mode)
+            pipe.publish("control:mode", mode)
+            pipe.execute()
+            log.info("control:mode → %s", mode)
+        except Exception as e:
+            log.warning("Could not write control:mode to Redis: %s", e)
 
     def on_mode_updated(self, mode: str) -> None:
         """Update toggle switch display. Called when control:mode changes."""

@@ -1,7 +1,9 @@
 """Redis subscriber thread.
 
 Subscribes to:
-  - Pub/Sub channels  : sensor:*, comm:*  (simulator publishes on SET)
+  - Pub/Sub channels  : sensor:*, comm:*, control:mode
+                        (simulator publishes sensor:*/comm:*;
+                         top_bar publishes control:mode on toggle)
   - Keyspace events   : __keyevent@0__:set, __keyevent@0__:del
                         (used to detect alarm:* key creation / deletion)
 
@@ -32,6 +34,7 @@ class RedisSubscriber(QThread):
 
     sensor_updated = Signal(str, str)   # (key, value)
     comm_updated = Signal(str, str)     # (key, value)
+    mode_updated = Signal(str)          # control:mode value (manual/auto/emergency)
     alarm_set = Signal(str)             # alarm key
     alarm_deleted = Signal(str)         # alarm key
 
@@ -46,6 +49,7 @@ class RedisSubscriber(QThread):
         pubsub.psubscribe(
             "sensor:*",
             "comm:*",
+            "control:mode",
             "__keyevent@0__:set",
             "__keyevent@0__:del",
         )
@@ -87,12 +91,14 @@ class RedisSubscriber(QThread):
                 self.alarm_deleted.emit(data)
             return
 
-        # Pub/Sub channels: channel = sensor:xxx or comm:xxx
+        # Pub/Sub channels: channel = sensor:xxx or comm:xxx or control:mode
         #                   data    = the new value
         if channel.startswith("sensor:"):
             self.sensor_updated.emit(channel, data)
         elif channel.startswith("comm:"):
             self.comm_updated.emit(channel, data)
+        elif channel == "control:mode":
+            self.mode_updated.emit(data)
 
     def stop(self) -> None:
         self._running = False

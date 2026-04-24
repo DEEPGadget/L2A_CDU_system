@@ -3,11 +3,13 @@
 Startup sequence:
   1. Load config/config.yaml → confirm mode
   2. Enable Redis keyspace notifications (required for alarm:* events)
-  3. Start RedisSubscriber thread
-  4. Build MainWindow (TopBar + QStackedWidget[Monitoring, History])
-  5. Wire signals from RedisSubscriber → widgets
-  6. Show window (fullscreen on RPi, normal window on desktop)
-  7. On exit: stop subscriber thread
+  3. Initialise control:mode to "auto" via SETNX (UI owns mode key; preserves
+     user's prior manual/auto selection across restarts)
+  4. Start RedisSubscriber thread
+  5. Build MainWindow (TopBar + QStackedWidget[Monitoring, History])
+  6. Wire signals from RedisSubscriber → widgets
+  7. Show window (fullscreen on RPi, normal window on desktop)
+  8. On exit: stop subscriber thread
 
 Run:
     python src/local_ui/main.py
@@ -69,6 +71,20 @@ def _enable_keyspace_notifications(r: redis.Redis) -> None:
         log.warning("Could not enable keyspace notifications: %s", e)
 
 
+def _init_control_mode(r: redis.Redis) -> None:
+    # SETNX: first-ever boot → "auto"; subsequent restarts preserve user choice.
+    try:
+        created = r.set("control:mode", "auto", nx=True)
+        current = r.get("control:mode")
+        current = current.decode() if isinstance(current, bytes) else current
+        if created:
+            log.info("control:mode initialised to 'auto' (key was absent).")
+        else:
+            log.info("control:mode already set to '%s' — preserved.", current)
+    except Exception as e:
+        log.warning("Could not initialise control:mode: %s", e)
+
+
 class MainWindow(QMainWindow):
     def __init__(self, subscriber: RedisSubscriber) -> None:
         super().__init__()
@@ -106,6 +122,9 @@ class MainWindow(QMainWindow):
         # Comm updates → top bar
         sub.comm_updated.connect(self._top_bar.on_comm_updated)
 
+        # Mode updates → top bar (reflect external changes to control:mode)
+        sub.mode_updated.connect(self._top_bar.on_mode_updated)
+
         # Alarm signals → top bar + monitoring page
         sub.alarm_set.connect(self._top_bar.on_alarm_set)
         sub.alarm_set.connect(self._monitoring_page.on_alarm_set)
@@ -127,6 +146,7 @@ def main() -> None:
 
     r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
     _enable_keyspace_notifications(r)
+    _init_control_mode(r)
     _phase("redis ready")
 
     app = QApplication(sys.argv)
