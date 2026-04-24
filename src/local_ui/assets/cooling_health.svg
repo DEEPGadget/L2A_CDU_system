@@ -148,12 +148,12 @@
   <line x1="1050" y1="390" x2="1066" y2="390" stroke="#d94a4a" stroke-width="1" marker-end="url(#arr-red)"/>
 
   <!-- Return pipe — top loop (Fan+Rad → top → Reservoir, blue) -->
-  <line x1="1175" y1="88"  x2="1175" y2="72"  stroke="#4a90d9" stroke-width="1" marker-end="url(#arr-blue)"/>
+  <line x1="1175" y1="48"  x2="1175" y2="32"  stroke="#4a90d9" stroke-width="1" marker-end="url(#arr-blue)"/>
   <line x1="648"  y1="16"  x2="632"  y2="16"  stroke="#4a90d9" stroke-width="1" marker-end="url(#arr-blue)"/>
   <line x1="95"   y1="62"  x2="95"   y2="78"  stroke="#4a90d9" stroke-width="1" marker-end="url(#arr-blue)"/>
 
   <!-- Return pipe — bottom loop (Fan+Rad → bottom → Reservoir, blue) -->
-  <line x1="1175" y1="508" x2="1175" y2="524" stroke="#4a90d9" stroke-width="1" marker-end="url(#arr-blue)"/>
+  <line x1="1175" y1="552" x2="1175" y2="568" stroke="#4a90d9" stroke-width="1" marker-end="url(#arr-blue)"/>
   <line x1="648"  y1="580" x2="632"  y2="580" stroke="#4a90d9" stroke-width="1" marker-end="url(#arr-blue)"/>
   <line x1="95"   y1="524" x2="95"   y2="508" stroke="#4a90d9" stroke-width="1" marker-end="url(#arr-blue)"/>
 
@@ -186,17 +186,17 @@
   <!-- ── Pump L1 (cx=285, box y=115-265, pipe_y=190) ── -->
   <text x="285" y="170" text-anchor="middle"
     font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Pump</text>
-  <text x="285" y="210" text-anchor="middle"
+  <text x="285" y="220" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="#000000">{PUMP_DUTY_1}<tspan dx="8" font-size="18">%</tspan></text>
-  <text x="285" y="250" text-anchor="middle"
+  <text x="285" y="260" text-anchor="middle"
     font-family="sans-serif" font-size="38" fill="#2980b9">{GEAR}</text>
 
   <!-- ── Pump L2 (box y=295-445) ── -->
   <text x="285" y="350" text-anchor="middle"
     font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Pump</text>
-  <text x="285" y="390" text-anchor="middle"
+  <text x="285" y="400" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="#000000">{PUMP_DUTY_2}<tspan dx="8" font-size="18">%</tspan></text>
-  <text x="285" y="430" text-anchor="middle"
+  <text x="285" y="440" text-anchor="middle"
     font-family="sans-serif" font-size="38" fill="#2980b9">{GEAR}</text>
 
   <!-- ── Flow L1 (cx=445, 테두리 없는 센서) ── -->
@@ -255,14 +255,14 @@
   <text x="970" y="420" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="{OUTLET_2_C}">{OUTLET_2}<tspan dx="8" font-size="18">°C</tspan></text>
 
-  <!-- ── Fan+Radiator L1 (cx=1175, box x=1095-1255, y=60-280) — pipe y=210 passes between Duty and Gear ── -->
+  <!-- ── Fan+Radiator L1 (cx=1175, box x=1095-1255, y=60-280) — pipe y=210 passes between Duty and Gear. Baseline gaps matched to L2: 25/45/45/48 ── -->
   <text x="1175" y="95" text-anchor="middle"
     font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Fan +</text>
   <text x="1175" y="120" text-anchor="middle"
     font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Radiator</text>
-  <text x="1175" y="160" text-anchor="middle"
+  <text x="1175" y="165" text-anchor="middle"
     font-family="sans-serif" font-size="30" fill="#000000">{FAN_RPM_1}<tspan dx="6" font-size="18"> RPM</tspan></text>
-  <text x="1175" y="198" text-anchor="middle"
+  <text x="1175" y="210" text-anchor="middle"
     font-family="sans-serif" font-size="38" fill="#000000">{FAN_DUTY_1}<tspan dx="6" font-size="20"> %</tspan></text>
   <text x="1175" y="258" text-anchor="middle"
     font-family="sans-serif" font-size="40" fill="#2980b9">{GEAR}</text>
