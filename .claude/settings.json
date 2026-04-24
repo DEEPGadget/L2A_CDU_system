@@ -42,7 +42,17 @@
       "Bash(curl -sL \"https://www.vertiv.com/4aaecd/globalassets/shared/vertiv-coolchip-cdu100-installation-and-commissioning-guide-sl-71337.pdf\" -o vertiv-cdu100.pdf)",
       "Bash(pdftotext /tmp/vertiv-cdu100.pdf /tmp/vertiv-cdu100.txt)",
       "WebFetch(domain:www.grundfos.com)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(grep -oE \"\\\\`\\(sensor|alarm|comm|control\\):[a-z_0-9]+\\\\`\" /home/gadgetini/L2A_CDU_system/docs/MCG.md)",
+      "Bash(grep -oE \"\\\\`\\(sensor|alarm|comm|control\\):[a-z_0-9*]+\\\\`\" /home/gadgetini/L2A_CDU_system/docs/UI.md)",
+      "Bash(grep -oE \"\\\\`\\(sensor|alarm|comm|control\\):[a-z_0-9*]+\\\\`\" /home/gadgetini/L2A_CDU_system/docs/UI_Design.md)",
+      "Bash(grep -oE \"\\\\`\\(sensor|alarm|comm|control\\):[a-z_0-9*]+\\\\`\" /home/gadgetini/L2A_CDU_system/docs/threshold.md)",
+      "Bash(grep -oE \"\\\\`\\(sensor|alarm|comm|control\\):[a-z_0-9*]+\\\\`\" /home/gadgetini/L2A_CDU_system/docs/auto_control.md)",
+      "Read(//home/gadgetini/L2A_CDU_system/**)",
+      "Read(//home/gadgetini/L2A_CDU_system/=== active_alarms /**)",
+      "Bash(journalctl -u cdu-local-ui.service -u cdu-fake-simulator.service --since \"20 seconds ago\" --no-pager)",
+      "Bash(redis-cli get *)",
+      "Bash(journalctl -u cdu-local-ui.service --since \"10 seconds ago\" --no-pager)"
     ],
     "additionalDirectories": [
       "/tmp"

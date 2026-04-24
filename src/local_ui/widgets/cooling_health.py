@@ -59,13 +59,13 @@ _C_NO_DATA  = "#000000"  # no-data renders as black; value shown as "--" to dist
 # ── Overlay button relative positions (x, y, w, h) as fractions of widget size ─
 # Calibrated to cooling_health.svg layout (SVG canvas: 1280×608).
 # Pump:    rect x=225, y=135, w=120, h=150  → rx=225/1280, ry=135/608, rw=120/1280, rh=150/608
-# Fan+Rad: rect x=1095, y=135, w=160, h=150 → rx=1095/1280, ry=135/608, rw=160/1280, rh=150/608
-# Loop2 y offset: y=315 → ry=315/608
+# Fan+Rad: rect x=1095, y=60, w=160, h=220 (L1) / y=320 (L2) — L1 위로 L2 아래로 분리
+# Loop2 y offset: y=320 → ry=320/608
 _OVERLAY_POSITIONS: dict[str, tuple[float, float, float, float]] = {
     "pump1": (0.176, 0.222, 0.094, 0.247),  # Pump Loop1    (x=225, y=135, w=120, h=150)
     "pump2": (0.176, 0.518, 0.094, 0.247),  # Pump Loop2    (x=225, y=315, w=120, h=150)
-    "fan1":  (0.855, 0.222, 0.125, 0.247),  # Fan+Rad Loop1 (x=1095,y=135, w=160, h=150)
-    "fan2":  (0.855, 0.518, 0.125, 0.247),  # Fan+Rad Loop2 (x=1095,y=315, w=160, h=150)
+    "fan1":  (0.855, 0.099, 0.125, 0.362),  # Fan+Rad Loop1 (x=1095,y=60,  w=160, h=220)
+    "fan2":  (0.855, 0.526, 0.125, 0.362),  # Fan+Rad Loop2 (x=1095,y=320, w=160, h=220)
 }
 # Note: Server box positions for reference (not overlay buttons)
 # Server1: x=771-871, y=20-75  / Server2: x=771-871, y=523-578
@@ -179,6 +179,7 @@ _DEFAULT_VALUES: dict[str, str] = {
     "OUTLET_1": "--", "OUTLET_2": "--",
     "PUMP_DUTY_1": "--", "PUMP_DUTY_2": "--",
     "FAN_DUTY_1": "--", "FAN_DUTY_2": "--",
+    "FAN_RPM_1": "--", "FAN_RPM_2": "--",
     "FLOW_1": "--", "FLOW_2": "--",
     "WATER_LEVEL": "--",
     "PH": "--", "CONDUCTIVITY": "--",
@@ -210,6 +211,8 @@ _KEY_TO_PLACEHOLDER: dict[str, str] = {
     "sensor:pump_pwm_duty_2":       "PUMP_DUTY_2",
     "sensor:fan_pwm_duty_1":        "FAN_DUTY_1",
     "sensor:fan_pwm_duty_2":        "FAN_DUTY_2",
+    "sensor:fan_rpm_1":             "FAN_RPM_1",
+    "sensor:fan_rpm_2":             "FAN_RPM_2",
     "sensor:flow_rate_1":           "FLOW_1",
     "sensor:flow_rate_2":           "FLOW_2",
     "sensor:water_level":           "WATER_LEVEL",
@@ -272,6 +275,11 @@ class CoolingHealthWidget(QWidget):
                                 self._current_duty[slot] = int(float(value))
                             except ValueError:
                                 pass
+                    try:
+                        self._values[placeholder] = str(int(float(value)))
+                    except ValueError:
+                        self._values[placeholder] = value
+                elif key in ("sensor:fan_rpm_1", "sensor:fan_rpm_2"):
                     try:
                         self._values[placeholder] = str(int(float(value)))
                     except ValueError:
@@ -405,8 +413,8 @@ class CoolingHealthWidget(QWidget):
             self._values["LEAK"] = "None" if value == "NORMAL" else "Detected"
         elif key == "sensor:water_level":
             self._values["WATER_LEVEL"] = _WATER_LEVEL_MAP.get(value, "LOW")
-        # Pump/Fan duty: integer only (no decimal)
-        elif key in _DUTY_KEYS.values():
+        # Pump/Fan duty, Fan RPM: integer only (no decimal)
+        elif key in _DUTY_KEYS.values() or key in ("sensor:fan_rpm_1", "sensor:fan_rpm_2"):
             try:
                 self._values[placeholder] = str(int(float(value)))
             except ValueError:

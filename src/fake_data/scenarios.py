@@ -41,6 +41,9 @@ _NORMAL_BASE: dict[str, _Value] = {
     "sensor:ambient_temp":          (25.0, 18.0,                    T.AMBIENT_TEMP_WARN_HI),
     "sensor:ambient_humidity":      (45.0, T.AMBIENT_HUM_NORMAL_LO,  T.AMBIENT_HUM_WARN_HI),
     "sensor:pressure":              (1.2,  0.8,  1.8),
+    # Fan RPM (read-only tachometer feedback; independent drift in fake mode)
+    "sensor:fan_rpm_1":             (2500.0, 2400.0, 2600.0),
+    "sensor:fan_rpm_2":             (2480.0, 2400.0, 2600.0),
     # Duty: initialised once by simulator, never overwritten afterwards
     "sensor:pump_pwm_duty_1":       "60",
     "sensor:pump_pwm_duty_2":       "60",

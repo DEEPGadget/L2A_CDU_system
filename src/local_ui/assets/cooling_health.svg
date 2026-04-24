@@ -30,9 +30,9 @@
   -->
 
   <!-- ═══ RETURN PIPES ═══ -->
-  <polyline points="1175,135 1175,16 95,16 95,135"
+  <polyline points="1175,60 1175,16 95,16 95,135"
     fill="none" stroke="#4a90d9" stroke-width="3" stroke-linejoin="round" opacity="0.7"/>
-  <polyline points="1175,445 1175,580 95,580 95,445"
+  <polyline points="1175,540 1175,580 95,580 95,445"
     fill="none" stroke="#4a90d9" stroke-width="3" stroke-linejoin="round" opacity="0.7"/>
 
   <!-- ═══ COLD PIPES — Lane 1 (pipe_y=190) ═══ -->
@@ -91,10 +91,10 @@
   <rect x="905" y="315" width="130" height="150" rx="6"
     fill="#ffffff" stroke="#d94a4a" stroke-width="2"/>
 
-  <!-- Fan+Radiator L1/L2 (gray, h=150) -->
-  <rect x="1095" y="135" width="160" height="150" rx="6"
+  <!-- Fan+Radiator L1/L2 (gray, h=220 — vertically enlarged, L1 위로 L2 아래로 더 분리) -->
+  <rect x="1095" y="60" width="160" height="220" rx="6"
     fill="#ffffff" stroke="#9e9e9e" stroke-width="2"/>
-  <rect x="1095" y="315" width="160" height="150" rx="6"
+  <rect x="1095" y="320" width="160" height="220" rx="6"
     fill="#ffffff" stroke="#9e9e9e" stroke-width="2"/>
 
   <!-- Server horizontal connectors -->
@@ -255,24 +255,28 @@
   <text x="970" y="420" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="{OUTLET_2_C}">{OUTLET_2}<tspan dx="8" font-size="18">°C</tspan></text>
 
-  <!-- ── Fan+Radiator L1 (cx=1175, box y=115-265) ── -->
-  <text x="1175" y="170" text-anchor="middle"
-    font-family="sans-serif" font-size="20" font-weight="bold" fill="#000000">Fan +</text>
-  <text x="1175" y="192" text-anchor="middle"
-    font-family="sans-serif" font-size="20" font-weight="bold" fill="#000000">Radiator</text>
-  <text x="1175" y="228" text-anchor="middle"
-    font-family="sans-serif" font-size="32" fill="#000000">{FAN_DUTY_1}<tspan dx="8" font-size="18"> %</tspan></text>
-  <text x="1175" y="264" text-anchor="middle"
-    font-family="sans-serif" font-size="38" fill="#2980b9">{GEAR}</text>
+  <!-- ── Fan+Radiator L1 (cx=1175, box x=1095-1255, y=60-280) — pipe y=210 passes between Duty and Gear ── -->
+  <text x="1175" y="95" text-anchor="middle"
+    font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Fan +</text>
+  <text x="1175" y="120" text-anchor="middle"
+    font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Radiator</text>
+  <text x="1175" y="160" text-anchor="middle"
+    font-family="sans-serif" font-size="30" fill="#000000">{FAN_RPM_1}<tspan dx="6" font-size="18"> RPM</tspan></text>
+  <text x="1175" y="198" text-anchor="middle"
+    font-family="sans-serif" font-size="38" fill="#000000">{FAN_DUTY_1}<tspan dx="6" font-size="20"> %</tspan></text>
+  <text x="1175" y="258" text-anchor="middle"
+    font-family="sans-serif" font-size="40" fill="#2980b9">{GEAR}</text>
 
-  <!-- ── Fan+Radiator L2 (box y=295-445) ── -->
-  <text x="1175" y="350" text-anchor="middle"
-    font-family="sans-serif" font-size="20" font-weight="bold" fill="#000000">Fan +</text>
-  <text x="1175" y="372" text-anchor="middle"
-    font-family="sans-serif" font-size="20" font-weight="bold" fill="#000000">Radiator</text>
-  <text x="1175" y="408" text-anchor="middle"
-    font-family="sans-serif" font-size="32" fill="#000000">{FAN_DUTY_2}<tspan dx="8" font-size="18"> %</tspan></text>
-  <text x="1175" y="444" text-anchor="middle"
-    font-family="sans-serif" font-size="38" fill="#2980b9">{GEAR}</text>
+  <!-- ── Fan+Radiator L2 (box x=1095-1255, y=320-540) — pipe y=390 passes between Radiator title and RPM ── -->
+  <text x="1175" y="355" text-anchor="middle"
+    font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Fan +</text>
+  <text x="1175" y="380" text-anchor="middle"
+    font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Radiator</text>
+  <text x="1175" y="425" text-anchor="middle"
+    font-family="sans-serif" font-size="30" fill="#000000">{FAN_RPM_2}<tspan dx="6" font-size="18"> RPM</tspan></text>
+  <text x="1175" y="470" text-anchor="middle"
+    font-family="sans-serif" font-size="38" fill="#000000">{FAN_DUTY_2}<tspan dx="6" font-size="20"> %</tspan></text>
+  <text x="1175" y="518" text-anchor="middle"
+    font-family="sans-serif" font-size="40" fill="#2980b9">{GEAR}</text>
 
 </svg>

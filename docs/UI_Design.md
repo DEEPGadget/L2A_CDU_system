@@ -117,28 +117,31 @@
 | 레인 | 구성 요소 | 표시 데이터 | Redis key |
 |---|---|---|---|
 | 공유 (좌단) | Reservoir (Water Tank) | Coolant Level (레벨 바 + HIGH/MID/LOW 텍스트), pH, 전도도 (µS/cm) | `sensor:water_level`, `sensor:ph`, `sensor:conductivity` |
-| Loop 1 → | Pump Loop1 (P1·P2 직렬) | PWM duty (0–100 %) ✎ | `sensor:pump_pwm_duty_1` |
+| Loop 1 → | Pump Loop1 (P1·P2 직렬) | PWM duty (0–100 %) + `⚙` (Manual만) | `sensor:pump_pwm_duty_1` |
 | Loop 1 → | Flow Loop1 | 유량 (L/min) | `sensor:flow_rate_1` |
 | Loop 1 → | Coolant Inlet Manifold L1 | 입수 온도 (°C) | `sensor:coolant_temp_inlet_1` |
 | Loop 1 ↑ 분기 | Server 1 | (열원 표시, 센서 없음, CDU 외부 — 위로 분기) | — |
 | Loop 1 → | Coolant Outlet Manifold L1 | 출수 온도 (°C) | `sensor:coolant_temp_outlet_1` |
-| Loop 1 → | Fan1 + Radiator | PWM duty (0–100 %) ✎ | `sensor:fan_pwm_duty_1` |
-| Loop 2 → | Pump Loop2 (P3·P4 직렬) | PWM duty (0–100 %) ✎ | `sensor:pump_pwm_duty_2` |
+| Loop 1 → | Fan1 + Radiator | RPM (상단, read-only) + PWM duty (0–100 %, 하단) + `⚙` (Manual만) | `sensor:fan_rpm_1`, `sensor:fan_pwm_duty_1` |
+| Loop 2 → | Pump Loop2 (P3·P4 직렬) | PWM duty (0–100 %) + `⚙` (Manual만) | `sensor:pump_pwm_duty_2` |
 | Loop 2 → | Flow Loop2 | 유량 (L/min) | `sensor:flow_rate_2` |
 | Loop 2 → | Coolant Inlet Manifold L2 | 입수 온도 (°C) | `sensor:coolant_temp_inlet_2` |
 | Loop 2 ↓ 분기 | Server 2 | (열원 표시, 센서 없음, CDU 외부 — 아래로 분기) | — |
 | Loop 2 → | Coolant Outlet Manifold L2 | 출수 온도 (°C) | `sensor:coolant_temp_outlet_2` |
-| Loop 2 → | Fan2 + Radiator | PWM duty (0–100 %) ✎ | `sensor:fan_pwm_duty_2` |
+| Loop 2 → | Fan2 + Radiator | RPM (상단, read-only) + PWM duty (0–100 %, 하단) + `⚙` (Manual만) | `sensor:fan_rpm_2`, `sensor:fan_pwm_duty_2` |
+
+> **Fan+Radiator 박스 레이아웃**: 이름 (상단) → RPM (read-only 피드백) → PWM duty % (편집 대상) → `⚙` (Manual만). RPM은 타코미터 피드백이라 사용자 편집 불가이므로 시각적으로 편집 값(%)과 분리해서 위에 배치.
 
 **Status strip 항목 (SVG 아래 별도 QWidget)**
 
 | 항목 | 표시 데이터 | Redis key |
 |---|---|---|
 | Coolant ΔT1 / ΔT2 | outlet − inlet 계산값 (°C), 색상 코딩 적용 — ≤15°C=green / 15–20°C=orange / >20°C=red | (계산) |
-| Fan RPM L1 / L2 | 팬 실측 회전수 (RPM) — 타코미터 피드백 | `sensor:fan_rpm_1`, `sensor:fan_rpm_2` |
 | Leak Detection | `None` (green) / `Detected` (red) | `sensor:leak` |
 | Ambient Temp / Humidity | 장치 내부 온·습도 (°C / % RH) — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
 | Pressure | 유압 (bar, 부착 여부 미확정) | `sensor:pressure` |
+
+> Fan RPM은 status strip이 아니라 Fan+Radiator 박스 내부에 표시 (위 Cooling Health 다이어그램 표 참고).
 
 **페이지 전환**: Top bar 탭 (`Monitoring` / `History`) 선택
 
