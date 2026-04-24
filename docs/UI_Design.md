@@ -67,12 +67,13 @@
 
 | 상태 | 텍스트 | 스타일 |
 |---|---|---|
-| Manual (기본) | `Manual` | 흰 배경 + `#2c3e50` 테두리/글자 (20px bold) |
-| Auto (활성) | `Auto` | `#3498db` 파랑 배경 + 흰 글자 (20px bold) |
+| Manual | `Manual` | 흰 배경 + `#2c3e50` 테두리/글자 (20px bold) |
+| Auto (기본) | `Auto` | `#3498db` 파랑 배경 + 흰 글자 (20px bold) |
 | Emergency | `Emergency` | `#e74c3c` 빨강 배경 + 흰 글자 (20px bold) — 읽기 전용, 탭 불가 |
 
 | 동작 | 설명 |
 |---|---|
+| 서비스 최초 기동 시 | UI가 Redis `control:mode`에 `auto`로 SETNX. 이미 값이 있으면 그대로 유지 (사용자가 수동 전환한 상태 보존). |
 | Manual/Auto 탭 시 | UI가 Redis `control:mode` 직접 SET (`manual` 또는 `auto`). MCG는 다음 cycle에서 읽어서 반영. |
 | Emergency 진입 | TODO — 시스템 안정화 후 설계. |
 | Emergency 복귀 | TODO |

@@ -36,9 +36,11 @@ UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서
 
 | 모드 | 동작 | 진입 |
 |---|---|---|
-| **Manual** (기본값) | 큐에서 사람의 PWM 요청 꺼내서 Write + Polling | UI 요청 (모드 전환) |
-| **Auto** | Polling 후 알고리즘으로 PWM 결정 → Write | UI 요청 (모드 전환) |
+| **Manual** | 큐에서 사람의 PWM 요청 꺼내서 Write + Polling | UI 요청 (모드 전환) |
+| **Auto** (기본값) | Polling 후 알고리즘으로 PWM 결정 → Write | UI 요청 (모드 전환) |
 | **Emergency** | TODO — 시스템 안정화 후 설계 | TODO |
+
+> `control:mode` key 초기화는 **UI 서비스 담당**. UI 최초 기동 시 key가 비어있으면 `auto`로 SETNX. MCG는 mode key에 쓰지 않고 읽기만 함 (mode 관리 주체 = UI).
 
 ### 전환 규칙
 
