@@ -48,6 +48,9 @@ UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서
 |---|---|
 | Manual ↔ Auto | UI가 Redis `control:mode` 직접 SET → 메인 루프가 다음 cycle에서 읽어서 반영 |
 
+- **Auto → Manual**: PCB는 마지막 Auto PWM을 유지 (MCG Manual은 큐 입력이 있을 때만 Write). 사용자가 첫 수동 입력을 넣을 때까지 duty 불변.
+- **Manual → Auto**: PI 내부 상태를 현재 실제 duty로 초기화(bumpless transfer). [auto_control.md](auto_control.md#bumpless-transfer-manual--auto-전환-시) 참고.
+
 ### 비상정지 (TODO)
 
 > 비상정지 모드는 특정 센서(예: 누수, 수위 위험)가 critical일 때 전체 PWM=0, DOUT=0을 강제하는 모드.
@@ -184,6 +187,7 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 |---|---|---|---|
 | 수온 경고 (L1/L2) | Warning | `alarm:coolant_temp_l1_warning` / `l2_warning` | 임계치 이하 |
 | 수온 위험 (L1/L2) | Critical | `alarm:coolant_temp_l1_critical` / `l2_critical` | 임계치 이하 |
+| ΔT 이상 (L1/L2) | Warning | `alarm:delta_temp_l1_warning` / `l2_warning` | 10–14 °C 복귀 (ASHRAE TC 9.9) |
 | 누수 감지 | Critical | `alarm:leak_detected` | 누수 비트 해제 |
 | 수위 부족 | Warning | `alarm:water_level_warning` | `water_level`≥2 |
 | 수위 위험 | Critical | `alarm:water_level_critical` | `water_level`≥1 |
@@ -275,6 +279,8 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 | `alarm:coolant_temp_l1_critical` | 수온 위험 — L1 |
 | `alarm:coolant_temp_l2_warning` | 수온 경고 — L2 |
 | `alarm:coolant_temp_l2_critical` | 수온 위험 — L2 |
+| `alarm:delta_temp_l1_warning` | ΔT 이상 — L1 (10–14 °C 이탈) |
+| `alarm:delta_temp_l2_warning` | ΔT 이상 — L2 (10–14 °C 이탈) |
 | `alarm:leak_detected` | 누수 감지 |
 | `alarm:water_level_warning` | 수위 부족 |
 | `alarm:water_level_critical` | 수위 위험 |
