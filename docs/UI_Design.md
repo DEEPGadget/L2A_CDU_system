@@ -92,15 +92,17 @@
 
 | 항목 | SVG 내 표시 (Manual) | SVG 내 표시 (Auto) | 동작 (Manual) | 동작 (Auto) |
 |---|---|---|---|---|
-| Pump Loop1 | PWM duty `XX% ✎` | PWM duty `XX%` (✎ 숨김) | 탭 → 숫자 키패드 팝업 → **Apply** | **비활성** — 탭 무반응 |
+| Pump Loop1 | PWM duty `XX%` + `⚙` | PWM duty `XX%` (`⚙` 숨김) | 탭 → 숫자 키패드 팝업 → **Apply** | **비활성** — 탭 무반응 |
 | Pump Loop2 | 〃 | 〃 | 〃 | 〃 |
 | Fan Loop1 | 〃 | 〃 | 〃 | 〃 |
 | Fan Loop2 | 〃 | 〃 | 〃 | 〃 |
 
-> **Manual 모드 조작 흐름**: 다이어그램 내 Pump/Fan 노드 탭 (✎ 표시로 편집 가능 인지) → 숫자 키패드 팝업 (0–100, Range validation) → 입력 후 **Apply** → MCG 전송 (real mode) / Redis 직접 쓰기 (fake mode) → SVG 값 갱신.
+> **Manual 모드 조작 흐름**: 다이어그램 내 Pump/Fan 노드 탭 (`⚙` 표시로 편집 가능 인지) → 숫자 키패드 팝업 (0–100, Range validation) → 입력 후 **Apply** → MCG 전송 (real mode) / Redis 직접 쓰기 (fake mode) → SVG 값 갱신.
 > PySide6 구현: `QSvgWidget` 위에 투명 `QPushButton` 오버레이 (절대 위치), 팝업은 `QDialog` + `QGridLayout` 키패드.
 >
-> **Auto 모드**: 오버레이 버튼 비활성 (투명도 50%, 커서 기본), ✎ 아이콘 숨김. PWM 값은 MCG가 자동 계산한 값이 실시간 표시됨 (읽기 전용). 수동 제어하려면 Manual 모드로 전환 필요.
+> **Auto 모드**: 오버레이 버튼 비활성 (`setEnabled(False)`), `⚙` 아이콘 숨김 (SVG 템플릿의 `{GEAR}` 플레이스홀더가 `""`로 치환). `_apply_duty()` 진입부에 mode guard를 두어 혹시 탭 이벤트가 들어와도 Redis write 차단. PWM 값은 MCG가 자동 계산한 값이 실시간 표시됨 (읽기 전용).
+>
+> **모드 시그널 연결**: `redis_subscriber`의 `mode_updated` 시그널을 `CoolingHealthWidget.on_mode_updated()`에 연결([main.py](../src/local_ui/main.py)). 기동 시 `control:mode` Redis GET으로 초기 상태 반영.
 
 **Cooling Health 구성 요소**
 

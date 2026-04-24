@@ -189,7 +189,7 @@
   <text x="285" y="210" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="#000000">{PUMP_DUTY_1}<tspan dx="8" font-size="18">%</tspan></text>
   <text x="285" y="250" text-anchor="middle"
-    font-family="sans-serif" font-size="38" fill="#2980b9">⚙</text>
+    font-family="sans-serif" font-size="38" fill="#2980b9">{GEAR}</text>
 
   <!-- ── Pump L2 (box y=295-445) ── -->
   <text x="285" y="350" text-anchor="middle"
@@ -197,7 +197,7 @@
   <text x="285" y="390" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="#000000">{PUMP_DUTY_2}<tspan dx="8" font-size="18">%</tspan></text>
   <text x="285" y="430" text-anchor="middle"
-    font-family="sans-serif" font-size="38" fill="#2980b9">⚙</text>
+    font-family="sans-serif" font-size="38" fill="#2980b9">{GEAR}</text>
 
   <!-- ── Flow L1 (cx=445, 테두리 없는 센서) ── -->
   <text x="445" y="163" text-anchor="middle"
@@ -263,7 +263,7 @@
   <text x="1175" y="228" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="#000000">{FAN_DUTY_1}<tspan dx="8" font-size="18"> %</tspan></text>
   <text x="1175" y="264" text-anchor="middle"
-    font-family="sans-serif" font-size="38" fill="#2980b9">⚙</text>
+    font-family="sans-serif" font-size="38" fill="#2980b9">{GEAR}</text>
 
   <!-- ── Fan+Radiator L2 (box y=295-445) ── -->
   <text x="1175" y="350" text-anchor="middle"
@@ -273,6 +273,6 @@
   <text x="1175" y="408" text-anchor="middle"
     font-family="sans-serif" font-size="32" fill="#000000">{FAN_DUTY_2}<tspan dx="8" font-size="18"> %</tspan></text>
   <text x="1175" y="444" text-anchor="middle"
-    font-family="sans-serif" font-size="38" fill="#2980b9">⚙</text>
+    font-family="sans-serif" font-size="38" fill="#2980b9">{GEAR}</text>
 
 </svg>

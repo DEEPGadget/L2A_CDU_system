@@ -41,7 +41,8 @@
       "WebFetch(domain:www.vertiv.com)",
       "Bash(curl -sL \"https://www.vertiv.com/4aaecd/globalassets/shared/vertiv-coolchip-cdu100-installation-and-commissioning-guide-sl-71337.pdf\" -o vertiv-cdu100.pdf)",
       "Bash(pdftotext /tmp/vertiv-cdu100.pdf /tmp/vertiv-cdu100.txt)",
-      "WebFetch(domain:www.grundfos.com)"
+      "WebFetch(domain:www.grundfos.com)",
+      "Bash(python -c ' *)"
     ],
     "additionalDirectories": [
       "/tmp"
