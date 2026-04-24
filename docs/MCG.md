@@ -166,12 +166,12 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 | 대상 | HR 주소 | 비고 |
 |---|---|---|
-| Fan L1 PWM | Holding Register 0 | CH1, TIM1 25KHz |
-| Fan L2 PWM | Holding Register 1 | CH2, TIM1 25KHz |
-| Pump L1 PWM | Holding Register 4 | CH5, TIM2 1KHz |
-| Pump L2 PWM | Holding Register 5 | CH6, TIM2 1KHz |
-| PWM Freq (TIM1) | Holding Register 12 | 25000 Hz (팬) |
-| PWM Freq (TIM2) | Holding Register 13 | 1000 Hz (펌프) |
+| Fan L1 PWM | Holding Register 0 | CH1, TIM1 (25 kHz 운용) |
+| Fan L2 PWM | Holding Register 1 | CH2, TIM1 (25 kHz 운용) |
+| Pump L1 PWM | Holding Register 4 | CH5, TIM2 (1 kHz 운용) |
+| Pump L2 PWM | Holding Register 5 | CH6, TIM2 (1 kHz 운용) |
+| PWM Freq (TIM1) | Holding Register 12 | 팬: **1~25 kHz 조절 가능**, 현재 25 kHz 운용 (Cooltron 팬 스펙 정격) |
+| PWM Freq (TIM2) | Holding Register 13 | 펌프: **1~25 kHz 조절 가능**, 현재 1 kHz 운용 (Johnson eModule 600~3000 Hz 중 typical) |
 
 > 전원 재인가 시 MCG 재시작(systemd Restart=always)으로 초기값 자동 적용.
 
@@ -234,16 +234,16 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 **팬/펌프 PWM duty — Read/Write**
 
-| Key | 설명 | Register | 제어 대상 |
+| Key | 설명 | Register | 제어 대상 (L2A 기준) |
 |---|---|---|---|
-| `sensor:fan_pwm_duty_1` | 팬 PWM L1 (0–100%) | Holding Register 0 (CH1, TIM1 25KHz) | COOLTRON FD8038B12W7, L1 최대 60개 |
-| `sensor:fan_pwm_duty_2` | 팬 PWM L2 (0–100%) | Holding Register 1 (CH2, TIM1 25KHz) | COOLTRON FD8038B12W7, L2 최대 60개 |
-| `sensor:pump_pwm_duty_1` | 펌프 PWM L1 (0–100%) | Holding Register 4 (CH5, TIM2 1KHz) | Johnson Electric eModule, L1 2개 |
-| `sensor:pump_pwm_duty_2` | 펌프 PWM L2 (0–100%) | Holding Register 5 (CH6, TIM2 1KHz) | Johnson Electric eModule, L2 2개 |
+| `sensor:fan_pwm_duty_1` | 팬 PWM L1 (0–100%) | Holding Register 0 (CH1, TIM1) | COOLTRON FD8038B12W7 (최대 수량 §10 참고) |
+| `sensor:fan_pwm_duty_2` | 팬 PWM L2 (0–100%) | Holding Register 1 (CH2, TIM1) | COOLTRON FD8038B12W7 (최대 수량 §10 참고) |
+| `sensor:pump_pwm_duty_1` | 펌프 PWM L1 (0–100%) | Holding Register 4 (CH5, TIM2) | Johnson Electric eModule 300W, L1 2개 |
+| `sensor:pump_pwm_duty_2` | 펌프 PWM L2 (0–100%) | Holding Register 5 (CH6, TIM2) | Johnson Electric eModule 300W, L2 2개 |
 
 > TIM1 CH3~4 (Holding Register 2~3): 미사용 예비.
 > TIM2 CH7~8 (Holding Register 6~7): 미사용 예비.
-> TIM8 (Holding Register 8~11): 전압제어 펌프용 (Koolance PMP-500, dg5R용). L2A CDU에서는 미사용.
+> TIM8 (Holding Register 8~11): 전압제어 펌프용 (Koolance PMP-500, dg5r용). L2A CDU에서는 미사용. 제품/변형별 매핑 상세: §10 참고.
 
 **팬 RPM 피드백 (Pulse Freq — Input Register 13~24)**
 
@@ -319,7 +319,62 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 ---
 
-## 10. 미구현 — PCB Watchdog
+## 10. PCB 액추에이터 사양
+
+같은 제어 보드(RealSYS MCS Con BD 기반)로 **L2A · dg5r · dg5w** 세 CDU 변형을 모두 지원. 보드는 PWM 8채널(TIM1·TIM2) + 전압 제어 4채널(TIM8) 구성.
+
+### 10.1 PWM 신호 규격
+
+| 항목 | Fan (Intel 4-wire) | Pump (PWM, Johnson eModule) | Pump (전압 제어, dg5r 전용) |
+|---|---|---|---|
+| 신호 | Intel 4-wire PWM 전용 (2/3선 미지원, **완전 OFF 불가** — 최소 5%) | Johnson eModule PWM 입력 (open-drain 호환) | PWM 입력 → DC 출력 (싱크 벅 컨버터) |
+| 주파수 범위 | **1~25 kHz 조절 가능** (HR 12) — 현재 **25 kHz** 운용 (Cooltron/Intel 4-wire 정격) | **1~25 kHz 조절 가능** (HR 13) — Johnson 허용 600 Hz~3 kHz 중 typical **1 kHz** 운용 | 제어 입력 PWM은 1 kHz 운용 |
+| High / Low 레벨 | **5.0 V / 0.4 V** (Intel 규격) | **High 2.8~15 V / Low −0.8~0.4 V** (Johnson 허용, 보드 pull-up 전압에 따라 결정) | 5%~100% PWM → 6~12 V DC 출력 |
+| Duty 범위 | 5~100% | 5~100% (Johnson: 0~8% → Nmax, 13~17% → Nmin, 17~85% 선형, 85~95% → Nmax — 운용 범위는 5~85%로 제한) | — |
+| 채널당 최대 전력 | Fan 타입별 (§10.3) | Pump 타입별 (§10.3) | 32 W / ch (싱크 벅) |
+
+> Fan·Pump 각각 허용 전기 레벨이 다르므로 보드의 PWM 출력 pull-up 전압은 채널별로 구성됨 (Fan 채널: 5 V pull-up, Pump 채널: 12 V pull-up 등). 보드 HW 매핑 상세는 MCS_BE_user_manual 참조.
+
+### 10.2 CDU 변형별 액추에이터 매핑
+
+| 변형 | Fan 모델 | Fan 최대 수 | Fan 채널 | Pump 모델 | Pump 수 | Pump 채널 |
+|---|---|---|---|---|---|---|
+| **L2A** (본 프로젝트) | COOLTRON FD8038B12W7-63-4J | **112** (L1/L2 **비대칭 독립 관리**) | HR 0~1 (TIM1 PWM) | Johnson Electric eModule 300W | 4 (L1 2, L2 2) | HR 4~5 (TIM2 PWM) |
+| dg5r | COOLTRON FD8038B12W7-63-4J | 41 | HR 0~1 (TIM1 PWM) | Koolance PMP-500 | 4 | HR 8~11 (TIM8 전압 제어) |
+| dg5w | SUNON PF80381B2-Q050-S99-4P | 16 | HR 0~1 (TIM1 PWM) | Barrow LRC2.0 PLUS | 2 | HR 4~5 (TIM2 PWM) |
+
+> 한 채널 당 Fan은 최대 60개까지 병렬 구동 (보드 드라이버 정격). L2A의 112개는 **L1/L2 비대칭 분할**로 실제 수량이 다르며, 각 루프를 독립 관리(독립 PID·알람·제어).
+
+### 10.3 속도 / 상태 피드백
+
+| 변형 | Fan 피드백 | Pump 피드백 |
+|---|---|---|
+| L2A / dg5r (Cooltron) | FG wire, 2 pulses/rotation, 7500 RPM ± 10% (rated), 10~9990 RPM 측정 범위 (Pulse CH1~2 = IR 13~14) | Johnson: PWM 패턴 에러 코드 (Dry run / Stall / Over temp / Over-under voltage — 펄스 폭으로 구분). 디코더 TBD |
+| dg5w (Sunon) | FG wire, 2 pulses/rotation, 7500 RPM ± 10% (rated) | Barrow: 피드백 명세 TBD |
+| 공통 | 표시 단위: ×10 RPM (2-pole 기준) | — |
+
+### 10.4 보호 기능 (PCB 펌웨어)
+
+- **OCP** (과전류 보호) — 채널별 전류 한계 초과 시 차단
+- **SCP** (단락 보호) — 단락 검출 시 즉시 차단
+- **OTP** (과열 보호) — 드라이버 IC 온도 상한 초과 시 차단
+- 보호 이벤트 발생 → 해당 채널만 OFF. 자동 재시도 정책은 펌웨어 사양 TBD.
+- MCG는 Polling으로 duty feedback과 상태 확인 (전용 fault 레지스터 매핑은 펌웨어 확정 후 추가).
+
+### 10.5 전력 예산 (변형별 최대 소비)
+
+| 변형 | Fan 최대 | Pump 최대 | 액추에이터 합계 |
+|---|---|---|---|
+| **L2A** | 22.32 W × 112 = **2,499.8 W** | 300 W × 4 = **1,200 W** | **3,699.8 W** |
+| dg5r | 22.32 W × 41 = 915.1 W | 32 W × 4 = 128 W | 1,043.1 W |
+| dg5w | 8.58 W × 16 = 137.3 W | 20 W × 2 = 40 W | 177.3 W |
+
+> 제어부 (RPi 4 + PCB + 보조 보드) 소비전력은 TBD. 전원 공급기 정격은 위 수치 + 제어부 + 여유 마진으로 산정.
+> 전체 냉각계 최대 공급 전력 (PSU 정격) 및 PFC 조건은 L2A 기준 별도 정의 예정.
+
+---
+
+## 11. 미구현 — PCB Watchdog
 
 MCG 다운 시 PCB가 자체적으로 안전 모드로 전환하는 기능. MCG로 대체 불가 — 펌웨어 업데이트 필요.
 
