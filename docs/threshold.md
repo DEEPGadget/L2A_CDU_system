@@ -17,10 +17,12 @@
 
 ## Delta Temperature (outlet − inlet)
 
+ASHRAE TC 9.9 Liquid Cooling 권장 ΔT 범위 **10–14 °C** 기준. 범위 이탈은 유량-열부하 불일치 신호(ΔT↓: 유량 과다/저부하, ΔT↑: 유량 부족/과부하/배관 저항).
+
 | 센서 | Redis Key | Normal | Warning | Critical |
 |---|---|---|---|---|
-| ΔT1 | (계산값) | 정보 표시용 | — | — |
-| ΔT2 | (계산값) | 정보 표시용 | — | — |
+| ΔT1 | (계산값) | 10–14 °C | < 10 °C or > 14 °C | — |
+| ΔT2 | (계산값) | 10–14 °C | < 10 °C or > 14 °C | — |
 
 ## Coolant Level
 
