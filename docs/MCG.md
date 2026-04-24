@@ -168,10 +168,10 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 |---|---|---|---|
 | Fan L1 PWM | Holding Register 0 | **15 %** (저속 기동, PID 수렴 대기) | CH1, TIM1 (25 kHz 운용) |
 | Fan L2 PWM | Holding Register 1 | **15 %** | CH2, TIM1 (25 kHz 운용) |
-| Pump L1A PWM | Holding Register 4 | **60 %** (Johnson eModule 선형 구간, DGX A100 최소 40 % + 기동 여유 20 %) | CH5, TIM2 (1 kHz 운용) |
-| Pump L1B PWM | Holding Register 5 | **60 %** | CH6, TIM2 (1 kHz 운용) |
-| Pump L2A PWM | Holding Register 6 | **60 %** | CH7, TIM2 (1 kHz 운용) |
-| Pump L2B PWM | Holding Register 7 | **60 %** | CH8, TIM2 (1 kHz 운용) |
+| Pump L1 PWM (P1) | Holding Register 4 | **60 %** (Johnson eModule 선형 구간, DGX A100 최소 40 % + 기동 여유 20 %) | CH5, TIM2 (1 kHz 운용), L1 직렬 1번째 |
+| Pump L1 PWM (P2) | Holding Register 5 | **60 %** (L1과 동일 값) | CH6, TIM2 (1 kHz 운용), L1 직렬 2번째 |
+| Pump L2 PWM (P3) | Holding Register 6 | **60 %** | CH7, TIM2 (1 kHz 운용), L2 직렬 1번째 |
+| Pump L2 PWM (P4) | Holding Register 7 | **60 %** (L2와 동일 값) | CH8, TIM2 (1 kHz 운용), L2 직렬 2번째 |
 | PWM Freq (TIM1) | Holding Register 12 | **25 (kHz)** | 팬: **1~25 kHz 조절 가능**, Cooltron 팬 스펙 정격 |
 | PWM Freq (TIM2) | Holding Register 13 | **1 (kHz)** | 펌프: **1~25 kHz 조절 가능**, Johnson eModule 600~3000 Hz 중 typical |
 
@@ -242,13 +242,11 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 |---|---|---|---|
 | `sensor:fan_pwm_duty_1` | 팬 PWM L1 (0–100%) | Holding Register 0 (CH1, TIM1) | COOLTRON FD8038B12W7 (최대 수량 §10 참고) |
 | `sensor:fan_pwm_duty_2` | 팬 PWM L2 (0–100%) | Holding Register 1 (CH2, TIM1) | COOLTRON FD8038B12W7 (최대 수량 §10 참고) |
-| `sensor:pump_pwm_duty_1a` | 펌프 PWM L1A (0–100%) | Holding Register 4 (CH5, TIM2) | Johnson Electric eModule 300W, L1 직렬 1번째 (P1) |
-| `sensor:pump_pwm_duty_1b` | 펌프 PWM L1B (0–100%) | Holding Register 5 (CH6, TIM2) | Johnson Electric eModule 300W, L1 직렬 2번째 (P2) |
-| `sensor:pump_pwm_duty_2a` | 펌프 PWM L2A (0–100%) | Holding Register 6 (CH7, TIM2) | Johnson Electric eModule 300W, L2 직렬 1번째 (P3) |
-| `sensor:pump_pwm_duty_2b` | 펌프 PWM L2B (0–100%) | Holding Register 7 (CH8, TIM2) | Johnson Electric eModule 300W, L2 직렬 2번째 (P4) |
+| `sensor:pump_pwm_duty_1` | 펌프 PWM L1 (0–100%) | **HR 4, 5** (CH5+CH6, TIM2) | Johnson Electric eModule 300W × 2 (L1 직렬 P1→P2, 두 채널 동일 duty) |
+| `sensor:pump_pwm_duty_2` | 펌프 PWM L2 (0–100%) | **HR 6, 7** (CH7+CH8, TIM2) | Johnson Electric eModule 300W × 2 (L2 직렬 P3→P4, 두 채널 동일 duty) |
 
 > TIM1 CH3~4 (Holding Register 2~3): 미사용 예비.
-> TIM2 CH5~8 (HR 4~7): L2A는 펌프 4개 독립 채널 전부 사용 (**2 병렬 루프 × 루프당 2개 직렬** 구성, L1=P1→P2, L2=P3→P4). dg5w(펌프 2개)는 CH5~6만 사용, CH7~8 예비.
+> TIM2 CH5~8 (HR 4~7): L2A는 펌프 4개 독립 채널 전부 사용 (**2 병렬 루프 × 루프당 2개 직렬** 구성, L1=P1→P2, L2=P3→P4). Redis 키는 루프 레벨 2개 유지 (`pump_pwm_duty_1`, `_2`)이며, MCG가 쓸 때 같은 duty를 같은 루프의 두 HR에 동시에 Write. dg5w(펌프 2개)는 CH5~6만 사용, CH7~8 예비.
 > TIM8 (Holding Register 8~11): 전압제어 펌프용 (Koolance PMP-500, dg5r용). L2A CDU에서는 미사용. 제품/변형별 매핑 상세: §10 참고.
 
 **팬 RPM 피드백 (Pulse Freq — Input Register 13~24)**
@@ -351,7 +349,7 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 > 한 채널 당 Fan은 최대 60개까지 병렬 구동 (보드 드라이버 정격). L2A의 112개는 **L1/L2 비대칭 분할**로 실제 수량이 다르며, 각 루프를 독립 관리(독립 PID·알람·제어).
 > L2A Pump 플러밍: **2 병렬 루프 × 루프당 2 직렬** (L1: P1→P2, L2: P3→P4). 직렬 구성은 높은 head 요구(Johnson 단일 130 kPa × 2 ≈ 260 kPa)에 대응.
-> 제어 단위는 **루프** — Auto 모드에서는 같은 루프 내 두 펌프(예: P1, P2)에 동일 duty를 전송. 4개 독립 채널 할당은 (1) 개별 fault feedback 구분, (2) 한 펌프 장애 시 나머지 한 대 duty 상향으로 부분 운전 허용 — 두 가지 유연성 확보 목적.
+> 제어 단위는 **루프**. Redis 키(`sensor:pump_pwm_duty_1`, `_2`)와 UI는 루프 레벨 유지 — 같은 루프 내 두 펌프는 항상 동일 duty. 4개 독립 HW 채널 할당은 (1) 개별 fault feedback 구분(Johnson eModule PWM 에러 패턴 per-pump 수신), (2) 한 펌프 장애 시 나머지 한 대 duty 상향으로 부분 운전 허용 — 두 가지 유연성 확보 목적. 평상시 제어/표시는 루프 레벨 단일 값으로 충분.
 
 ### 10.3 속도 / 상태 피드백
 
