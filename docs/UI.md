@@ -35,8 +35,8 @@
 > Module structure and file-level descriptions: [`src/local_ui/STRUCTURE.md`](../src/local_ui/STRUCTURE.md)
 
 **FE (PySide6)**
-- 모니터링 페이지: 실시간 센서·제어·통신 상태 조회 및 표시, 펌프·팬 제어 요청
-- 기록 확인 페이지: Prometheus에서 센서 이력 및 제어 명령 이력 조회 및 표시
+- 모니터링 페이지: 실시간 센서·제어·통신 상태 표시, Manual 모드에서 펌프·팬 PWM 제어, Mode 토글(Manual↔Auto)
+- 기록 확인 페이지: Prometheus에서 센서 이력 및 Manual 제어 명령 이력 조회
 
 **BE (PySide6)**
 - MCG와 IPC 기반 통신 (PWM 제어 요청 전달)
