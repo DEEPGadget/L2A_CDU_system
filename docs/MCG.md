@@ -110,8 +110,8 @@ UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서
 
 - **입력**: 냉각수 inlet/outlet 온도, 유량, 현재 Pump/Fan PWM duty
 - **출력**: 새 Pump/Fan PWM duty → Modbus Write
-- **알고리즘**: 지정된 알고리즘에 의해 결정 (상세는 구현 시 정의)
-- **적용**: 양 루프(L1, L2) 독립 또는 대칭 (구현 시 결정)
+- **적용**: L1/L2 독립 + 동일 알고리즘 대칭 (초기), 실측 후 재검토
+- **알고리즘 설계·참고자료**: [auto_control.md](auto_control.md) 참고 (Stage 1 fan curve → Stage 2 PI → Stage 3 cascade 로드맵, rate limit/hysteresis/anti-windup/bumpless transfer 등 공통 가드레일 포함)
 
 ---
 
