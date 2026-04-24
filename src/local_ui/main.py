@@ -122,8 +122,9 @@ class MainWindow(QMainWindow):
         # Comm updates → top bar
         sub.comm_updated.connect(self._top_bar.on_comm_updated)
 
-        # Mode updates → top bar (reflect external changes to control:mode)
+        # Mode updates → top bar + cooling health (gear icon / overlay enable)
         sub.mode_updated.connect(self._top_bar.on_mode_updated)
+        sub.mode_updated.connect(self._monitoring_page.cooling_health.on_mode_updated)
 
         # Alarm signals → top bar + monitoring page
         sub.alarm_set.connect(self._top_bar.on_alarm_set)

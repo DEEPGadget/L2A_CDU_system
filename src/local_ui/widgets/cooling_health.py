@@ -12,6 +12,11 @@ Pump/Fan inline control:
   Transparent QPushButton overlays are positioned over the SVG.
   Tapping opens NumpadDialog → Apply sends to Redis (fake) or MCG (real).
 
+  Mode gating (docs/UI_Design.md §1-1):
+    - Manual mode: overlays enabled, {GEAR} placeholder → "⚙"
+    - Auto mode:   overlays disabled, {GEAR} → "" (icon hidden),
+                   _apply_duty blocked as a defensive guard.
+
   NOTE: Overlay positions (_OVERLAY_POSITIONS) are defined as fractions of
   widget size and must be calibrated after cooling_health.svg is finalized.
 """
@@ -182,6 +187,8 @@ _DEFAULT_VALUES: dict[str, str] = {
     "CONDUCTIVITY_C":  _C_NO_DATA,
     "AMBIENT_TEMP": "--", "AMBIENT_HUM": "--",
     "PRESSURE": "--",
+    # Mode-driven gear icon (empty until on_mode_updated fires)
+    "GEAR": "",
     # Color placeholders
     "INLET_1_C":      _C_NO_DATA,
     "INLET_2_C":      _C_NO_DATA,
@@ -220,6 +227,7 @@ class CoolingHealthWidget(QWidget):
         super().__init__(parent)
         self._values: dict[str, str] = dict(_DEFAULT_VALUES)
         self._current_duty: dict[str, int] = {k: 0 for k in _DUTY_KEYS}
+        self._current_mode: str = "auto"
         self._redis = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
         self._overlay_btns: dict[str, QPushButton] = {}
 
@@ -232,6 +240,7 @@ class CoolingHealthWidget(QWidget):
         self._build_ui()
         self._build_overlays()
         self._load_initial_values()
+        self._load_initial_mode()
 
     def _load_initial_values(self) -> None:
         """Read current sensor values from Redis on startup.
@@ -328,6 +337,10 @@ class CoolingHealthWidget(QWidget):
     # Overlay tap handler
 
     def _on_overlay_tap(self, slot: str) -> None:
+        # Defensive: buttons should already be disabled in non-manual modes,
+        # but guard anyway in case a tap races a mode change.
+        if self._current_mode != "manual":
+            return
         current = self._current_duty.get(slot, 0)
         dlg = NumpadDialog(current, parent=self)
         if dlg.exec() == QDialog.Accepted:
@@ -335,6 +348,9 @@ class CoolingHealthWidget(QWidget):
             self._apply_duty(slot, new_val)
 
     def _apply_duty(self, slot: str, value: int) -> None:
+        if self._current_mode != "manual":
+            log.warning("Ignoring duty write for %s: mode is %s", slot, self._current_mode)
+            return
         redis_key = _DUTY_KEYS[slot]
         try:
             pipe = self._redis.pipeline()
@@ -345,6 +361,27 @@ class CoolingHealthWidget(QWidget):
             log.info("Set %s = %d%%", redis_key, value)
         except Exception as exc:
             log.error("Redis write failed for %s: %s", redis_key, exc)
+
+    # ------------------------------------------------------------------
+    # Mode gating
+
+    def _load_initial_mode(self) -> None:
+        try:
+            raw = self._redis.get("control:mode")
+            mode = raw.decode() if isinstance(raw, bytes) else (raw or "auto")
+        except Exception as exc:
+            log.warning("Failed to read control:mode: %s", exc)
+            mode = "auto"
+        self.on_mode_updated(mode)
+
+    def on_mode_updated(self, mode: str) -> None:
+        """Update overlay enable state and gear icon visibility per mode."""
+        self._current_mode = mode
+        editable = (mode == "manual")
+        for btn in self._overlay_btns.values():
+            btn.setEnabled(editable)
+        self._values["GEAR"] = "⚙" if editable else ""
+        self._reload_svg()
 
     # ------------------------------------------------------------------
     # Signal handlers
