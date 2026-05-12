@@ -8,8 +8,13 @@
 set -euo pipefail
 
 DEST="${1:-}"
-if [[ -z "$DEST" || "$DEST" != sd* ]]; then
-    echo "Usage: sudo $0 sdX (e.g., sdb)" >&2
+# 디스크명만 허용 (sda, sdb, ...). sdb1 같은 파티션명은 거부.
+if [[ -z "$DEST" || ! "$DEST" =~ ^sd[a-z]+$ ]]; then
+    if [[ "$DEST" =~ ^sd[a-z]+[0-9]+$ ]]; then
+        echo "ERROR: '$DEST' is a partition name. Use the whole disk (e.g., ${DEST%%[0-9]*})." >&2
+    else
+        echo "Usage: sudo $0 sdX (e.g., sdb)" >&2
+    fi
     exit 1
 fi
 if [[ $EUID -ne 0 ]]; then
