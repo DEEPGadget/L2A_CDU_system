@@ -1,6 +1,6 @@
 """Status strip widget — fixed bottom bar.
 
-Displays: ΔT1, ΔT2, Leak, Ambient Temp/Humidity, Pressure.
+Displays: ΔT1, ΔT2, Total Flow, Ambient Temp/Humidity, (Leak 자리 — D1 활성화 예정).
 Placed below the Cooling Health SVG as a separate QWidget.
 Updated via on_sensor_updated() signal from main window.
 """
@@ -53,8 +53,11 @@ class StatusStripWidget(QWidget):
             s.setAlignment(Qt.AlignVCenter)
             return s
 
-        items = [("ΔT1:", "_dt1_val"), ("ΔT2:", "_dt2_val"), ("Leak:", "_leak_val"),
-                 ("Ambient:", "_amb_val"), ("Pressure:", "_pres_val")]
+        items = [("ΔT1:", "_dt1_val"),
+                 ("ΔT2:", "_dt2_val"),
+                 ("Total Flow:", "_flow_val"),
+                 ("Ambient:", "_amb_val"),
+                 ("", "_leak_val")]  # 향후 Leak (D1)
 
         layout.addStretch(1)
 
@@ -64,7 +67,7 @@ class StatusStripWidget(QWidget):
             lbl.setStyleSheet(f"color:{_C_BLACK}; padding-right:6px;")
             lbl.setAlignment(Qt.AlignVCenter)
 
-            val = QLabel("--")
+            val = QLabel("--" if label else "")
             val.setFont(val_font)
             val.setStyleSheet(f"color:{_C_BLACK};")
             val.setAlignment(Qt.AlignVCenter)
@@ -73,7 +76,7 @@ class StatusStripWidget(QWidget):
             layout.addWidget(val)
             setattr(self, attr, val)
 
-            if i < len(items) - 1:
+            if i < len(items) - 1 and items[i + 1][0]:
                 layout.addWidget(_sep())
 
         layout.addStretch(1)
@@ -94,13 +97,6 @@ class StatusStripWidget(QWidget):
         elif key == "sensor:coolant_temp_outlet_2":
             self._outlet2 = value
             self._refresh_delta(2)
-        elif key == "sensor:leak":
-            if value == "NORMAL":
-                self._leak_val.setText("None")
-                self._leak_val.setStyleSheet(f"color:{_C_NORMAL};")
-            else:
-                self._leak_val.setText("Detected")
-                self._leak_val.setStyleSheet(f"color:{_C_CRITICAL};")
         elif key == "sensor:ambient_temp":
             try:
                 self._amb_temp = f"{float(value):.1f}°C"
@@ -113,11 +109,11 @@ class StatusStripWidget(QWidget):
             except ValueError:
                 self._amb_hum = "--"
             self._refresh_ambient()
-        elif key == "sensor:pressure":
+        elif key == "sensor:total_flow":
             try:
-                self._pres_val.setText(f"{float(value):.2f} bar")
+                self._flow_val.setText(f"{float(value):.1f} L/min")
             except ValueError:
-                self._pres_val.setText("--")
+                self._flow_val.setText("--")
 
     # ------------------------------------------------------------------
     # Internal helpers

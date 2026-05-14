@@ -187,7 +187,6 @@ _DEFAULT_VALUES: dict[str, str] = {
     "PH_C":            _C_NO_DATA,
     "CONDUCTIVITY_C":  _C_NO_DATA,
     "AMBIENT_TEMP": "--", "AMBIENT_HUM": "--",
-    "PRESSURE": "--",
     # Mode-driven gear icon (empty until on_mode_updated fires)
     "GEAR": "",
     # Color placeholders
@@ -221,7 +220,6 @@ _KEY_TO_PLACEHOLDER: dict[str, str] = {
     "sensor:leak":                  "LEAK",
     "sensor:ambient_temp":          "AMBIENT_TEMP",
     "sensor:ambient_humidity":      "AMBIENT_HUM",
-    "sensor:pressure":              "PRESSURE",
 }
 
 

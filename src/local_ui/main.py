@@ -6,7 +6,7 @@ Startup sequence:
   3. Initialise control:mode to "auto" via SETNX (UI owns mode key; preserves
      user's prior manual/auto selection across restarts)
   4. Start RedisSubscriber thread
-  5. Build MainWindow (TopBar + QStackedWidget[Monitoring, History])
+  5. Build MainWindow (TopBar + QStackedWidget[Monitoring, History, Settings])
   6. Wire signals from RedisSubscriber → widgets
   7. Show window (fullscreen on RPi, normal window on desktop)
   8. On exit: stop subscriber thread
@@ -39,6 +39,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from src.config import get_config
 from src.local_ui.pages.history_page import HistoryPage
 from src.local_ui.pages.monitoring_page import MonitoringPage
+from src.local_ui.pages.settings_page import SettingsPage
 from src.local_ui.redis_subscriber import RedisSubscriber
 from src.local_ui.widgets.top_bar import TopBarWidget
 
@@ -104,8 +105,10 @@ class MainWindow(QMainWindow):
         self._stack = QStackedWidget()
         self._monitoring_page = MonitoringPage()
         self._history_page    = HistoryPage()
+        self._settings_page   = SettingsPage()
         self._stack.addWidget(self._monitoring_page)   # index 0
         self._stack.addWidget(self._history_page)      # index 1
+        self._stack.addWidget(self._settings_page)     # index 2
 
         self._top_bar = TopBarWidget(self._stack)
         self._top_bar.setFixedHeight(64)
@@ -122,9 +125,10 @@ class MainWindow(QMainWindow):
         # Comm updates → top bar
         sub.comm_updated.connect(self._top_bar.on_comm_updated)
 
-        # Mode updates → top bar + cooling health (gear icon / overlay enable)
+        # Mode updates → top bar + cooling health (gear icon / overlay enable) + settings
         sub.mode_updated.connect(self._top_bar.on_mode_updated)
         sub.mode_updated.connect(self._monitoring_page.cooling_health.on_mode_updated)
+        sub.mode_updated.connect(self._settings_page.on_mode_updated)
 
         # Alarm signals → top bar + monitoring page
         sub.alarm_set.connect(self._top_bar.on_alarm_set)

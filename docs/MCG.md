@@ -249,6 +249,13 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 > TIM2 CH5~8 (HR 4~7): L2A는 펌프 4개 독립 채널 전부 사용 (**2 병렬 루프 × 루프당 2개 직렬** 구성, L1=P1→P2, L2=P3→P4). Redis 키는 루프 레벨 2개 유지 (`pump_pwm_duty_1`, `_2`)이며, MCG가 쓸 때 같은 duty를 같은 루프의 두 HR에 동시에 Write. dg5w(펌프 2개)는 CH5~6만 사용, CH7~8 예비.
 > TIM8 (Holding Register 8~11): 전압제어 펌프용 (Koolance PMP-500, dg5r용). L2A CDU에서는 미사용. 제품/변형별 매핑 상세: §10 참고.
 
+> **펌프 ui_duty → 펌프 입력 PWM 변환 (Pump spec 4.2.1 선형 구간 보호)**
+> Redis 키 `sensor:pump_pwm_duty_x` 는 UI 도메인 (0~100%). MCG 가 PCB Holding Register 로 write 할 때 **17~85% 선형 매핑** 후 HR 값(0~1000) 로 변환:
+> ```
+> hr_value = round((17 + ui_duty / 100 × (85 - 17)) × 10)
+> ```
+> Pump spec 4.2.1: 0~8% Nmax(안전 풀가동), 8~13% 정지, 13~17% Nmin, 17~85% Nmin~Nmax 선형, 85~95% Nmax 포화, **95~100% no use**. 변환은 마지막 두 위험 구간(포화/no use)을 회피하기 위함.
+
 **팬 RPM 피드백 (Pulse Freq — Input Register 13~24)**
 
 | Key | 설명 | Register | 비고 |
@@ -274,6 +281,16 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 | `sensor:ph` | pH | TODO |
 | `sensor:conductivity` | 전도도 | TODO |
 | `sensor:pressure` | 유압 | TODO |
+
+**유량 추정 (sensor:total_flow)**
+
+PCB 에 유량 센서 미장착. MCG 가 펌프 PWM duty 기반 선형 추정. 자세한 공식은 [PCB.md "유량 추정"](PCB.md) 참고.
+
+| Key | 설명 | 산정 |
+|---|---|---|
+| `sensor:total_flow` | 시스템 총 유량 (L/min) | `flow_L1 + flow_L2`, 루프당 `35 × (ui_duty / 100)` LPM (max 70 LPM) |
+
+publish 주기: 폴링 주기와 동일. `SET` + `PUBLISH` 모두 수행.
 
 ### Redis Key — 알람 (MCG 내부 생성)
 
@@ -301,12 +318,20 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 ### Redis Key — 상태
 
-| Key | 설명 |
-|---|---|
-| `comm:status` | 통신 상태 (ok / timeout / disconnected) |
-| `comm:consecutive_failures` | 연속 실패 횟수 |
-| `comm:last_error` | 마지막 오류 |
-| `control:mode` | 제어 모드 (manual / auto / emergency) |
+| Key | Type | 설명 |
+|---|---|---|
+| `comm:status` | string | 통신 상태 (ok / timeout / disconnected) |
+| `comm:consecutive_failures` | string | 연속 실패 횟수 |
+| `comm:last_error` | string | 마지막 오류 |
+| `control:mode` | string | 제어 모드 (manual / auto / emergency) |
+| `control:fan_curve` | hash | Auto 모드 staging 곡선 (idle/warning 2-point). fields: `min_temp`, `max_temp`, `min_duty`, `max_duty` (duty는 0~1000 = 0.0~100.0%). UI Settings 페이지 + (D3 통합 시) gadgetini-web settings.js 공통 사용. |
+
+**Pub/Sub 채널 (제어 갱신)**
+
+| Channel | 발행자 | 구독자 | 트리거 |
+|---|---|---|---|
+| `control:mode` | UI 모드 토글 | MCG controller | 모드 전환 시 |
+| `control:fan_curve:update` | UI Settings 페이지 Save | MCG controller | Fan Curve 4개 필드 저장 직후. MCG 는 수신 시 `control:fan_curve` hash 를 다시 읽어 in-memory 갱신. |
 
 ### Prometheus (이력)
 
