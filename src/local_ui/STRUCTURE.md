@@ -20,7 +20,7 @@ src/local_ui/
 ├── widgets/                  # Reusable UI components
 │   ├── top_bar.py            # Top navigation bar (tabs, alarm badge, status, clock)
 │   ├── cooling_health.py     # Cooling circuit SVG diagram + pump/fan overlay controls
-│   ├── status_strip.py       # Bottom status bar (ΔT, Leak, Ambient, Pressure)
+│   ├── status_strip.py       # Bottom status bar (ΔT1, ΔT2, Total Flow, Ambient, (Leak placeholder))
 │   ├── alarm_overlay.py      # Floating alarm list panel
 │   └── control_panel.py      # NumpadDialog — PWM duty input popup (0–100)
 │
@@ -61,9 +61,9 @@ src/local_ui/
 
 | File | Description |
 |---|---|
-| `widgets/top_bar.py` | Fixed 52px bar across the top. Left: `Monitoring` / `History` tab buttons. Centre: alarm badge (`🔔 N`, hidden when no alarms), IP address, `System:` status (bold, colour-coded), `Link:` status (bold, colour-coded). Right: `HH:MM:SS` clock (1 s tick). |
+| `widgets/top_bar.py` | Fixed 52px bar across the top. Left: `Monitoring` / `History` / `Settings` tab buttons. Centre: alarm badge (`🔔 N`, hidden when no alarms), IP address, `System:` status (bold, colour-coded), `Link:` status (bold, colour-coded), `Manual/Auto` mode toggle. Right: `HH:MM:SS` clock (1 s tick). |
 | `widgets/cooling_health.py` | Loads `cooling_health.svg` as a string template, substitutes `{PLACEHOLDER}` values and `{PLACEHOLDER_C}` colour tokens on every sensor update, then reloads into `QSvgWidget`. Transparent `QPushButton` overlays sit on top of the Pump and Fan+Radiator boxes; tapping opens `NumpadDialog`. On startup, reads current Redis values directly (GET) to avoid missing the initial Pub/Sub publish. Threshold colours sourced from `src/thresholds.py`. |
-| `widgets/status_strip.py` | Fixed 60px bottom bar. Displays ΔT1, ΔT2 (computed outlet − inlet), Leak status, Ambient Temp/Humidity, Pressure. Updated via `on_sensor_updated()`. |
+| `widgets/status_strip.py` | Fixed 76px bottom bar. Displays ΔT1, ΔT2 (computed outlet − inlet), Total Flow, Ambient Temp/Humidity, and a 5th placeholder slot reserved for Leak (D1). Updated via `on_sensor_updated()`. |
 | `widgets/alarm_overlay.py` | Floating panel, child of `MonitoringPage` but outside the layout. Shows active alarm list. Appears when alarm badge is tapped; auto-closes when all alarms clear. |
 | `widgets/control_panel.py` | `NumpadDialog` — modal `QDialog` with a 3×4 numpad grid (0–9, ⌫, C), value display, and Apply / Cancel buttons. Validates 0–100 range on Apply. Used by `CoolingHealthWidget` overlay taps. |
 

@@ -1,7 +1,7 @@
 """Top bar widget.
 
 Layout (left → center → right):
-  Left  : [Monitoring] [History] tab buttons
+  Left  : [Monitoring] [History] [Settings] tab buttons
   Center: [🔔 N]  IP: x.x.x.x  System: <bold colored>  Link: <bold colored>  [Manual/Auto/Emergency]
   Right : HH:MM:SS
 
@@ -267,13 +267,16 @@ class TopBarWidget(QWidget):
         # ── Left: tab buttons ──────────────────────────────────────────
         self._btn_monitoring = QPushButton("Monitoring")
         self._btn_history    = QPushButton("History")
-        for btn in (self._btn_monitoring, self._btn_history):
+        self._btn_settings   = QPushButton("Settings")
+        for btn in (self._btn_monitoring, self._btn_history, self._btn_settings):
             btn.setMinimumHeight(52)
             btn.setCursor(Qt.PointingHandCursor)
         self._btn_monitoring.clicked.connect(lambda: self._switch_tab(0))
         self._btn_history.clicked.connect(lambda: self._switch_tab(1))
+        self._btn_settings.clicked.connect(lambda: self._switch_tab(2))
         layout.addWidget(self._btn_monitoring)
         layout.addWidget(self._btn_history)
+        layout.addWidget(self._btn_settings)
 
         # ── Center: expanding area ─────────────────────────────────────
         center = QWidget()
@@ -367,6 +370,9 @@ class TopBarWidget(QWidget):
         )
         self._btn_history.setStyleSheet(
             _TAB_ACTIVE_STYLE if index == 1 else _TAB_INACTIVE_STYLE
+        )
+        self._btn_settings.setStyleSheet(
+            _TAB_ACTIVE_STYLE if index == 2 else _TAB_INACTIVE_STYLE
         )
 
     # ------------------------------------------------------------------

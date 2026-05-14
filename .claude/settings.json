@@ -85,7 +85,13 @@
       "Bash(sudo du *)",
       "Bash(sudo rmdir *)",
       "Bash(chmod +x /home/gadgetini/L2A_CDU_system/scripts/clone-sd.sh)",
-      "Bash(bash -n /home/gadgetini/L2A_CDU_system/scripts/clone-sd.sh)"
+      "Bash(bash -n /home/gadgetini/L2A_CDU_system/scripts/clone-sd.sh)",
+      "Bash(lsblk /dev/sdb)",
+      "Bash(pdfinfo \"/home/gadgetini/L2A_CDU_system/docs/Pump spec.pdf\")",
+      "Bash(grep -E \"\\\\.\\(md|py\\)$\")",
+      "Bash(grep -E \"\\\\.\\(py|md\\)$\")",
+      "Bash(python3 -c \"import PySide6; print\\(PySide6.__file__\\)\")",
+      "Bash(/home/gadgetini/venv/bin/python -c ' *)"
     ],
     "additionalDirectories": [
       "/tmp"

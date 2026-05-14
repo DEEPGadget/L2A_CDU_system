@@ -54,10 +54,11 @@
 
 | 주소 | 기능 | 설명 | 범위 |
 |---|---|---|---|
-| 0~11 | PWM Duty | CH1~12 듀티비 | 0~1000 (0.0~100.0%) |
-| 12 | PWM Freq (TIM1) | CH1~4 주파수 | 1000~25000 Hz |
-| 13 | PWM Freq (TIM2) | CH5~8 주파수 | 1000~25000 Hz |
-| 14 | PWM Freq (TIM8) | CH9~12 주파수 | 1000~25000 Hz |
+| 0~3 | PWM Duty | **펌프** CH1~4 듀티비 (직렬 2 × 병렬 2 루프) | 0~1000 (0.0~100.0%) |
+| 4~11 | PWM Duty | **팬** CH5~12 듀티비 | 0~1000 (0.0~100.0%) |
+| 12 | PWM Freq (TIM1) | 펌프 CH1~4 주파수 (운용 기본 **1000 Hz**) | 1000~25000 Hz |
+| 13 | PWM Freq (TIM2) | 팬 CH5~8 주파수 (운용 기본 **25000 Hz**) | 1000~25000 Hz |
+| 14 | PWM Freq (TIM8) | 팬 CH9~12 주파수 (운용 기본 **25000 Hz**) | 1000~25000 Hz |
 | 15 | Digital Output | DOUT1~6 비트패킹 | bit0=DOUT1 ~ bit5=DOUT6 |
 | 16 | PWM Polarity | 극성 설정 (1=반전) | bit0~11 (CH1~12) |
 | 17 | Config Command | 설정 저장/로드 | 0x01=Save, 0x02=Load |
@@ -70,12 +71,17 @@
 |---|---|---|---|
 | 0 | System Timer | 시스템 가동 시간 | 0~9999 초 |
 | 1~12 | ADC Raw Data | ADC 12채널 원시값 | 0~4095 (12-bit) |
-| 13~24 | Pulse Freq | 펄스 주파수 12채널 | 0~65535 Hz |
+| 13~24 | Pulse Freq | 펄스 주파수 12채널 (팬 RPM 피드백; **RPM = Hz × 30**, 2 pulse/rev) | 0~65535 Hz |
 | 25 | DIN Status | 디지털 입력 DIN1~6 | bit0~5 |
 | 26 | Pulse State | 펄스 핀 H/L 상태 | bit0~11 |
 | 27 | DIP Switch | DIP 스위치 1~6 | bit0~5 |
-| 28~31 | NTC Temp | NTC 온도 (CH13~16) | 0.1°C (253=25.3°C) |
-| 32~39 | Voltage | 전압 (CH1~8) | 0.01V (900=9.00V) |
+| 28 | NTC Temp | **Inlet  L1** (NTC CH13) | 0.1°C (253=25.3°C) |
+| 29 | NTC Temp | **Inlet  L2** (NTC CH14) | 0.1°C |
+| 30 | NTC Temp | **Outlet L1** (NTC CH15) | 0.1°C |
+| 31 | NTC Temp | **Outlet L2** (NTC CH16) | 0.1°C |
+| 32~39 | Voltage | 전압 (CH1~8) — 현재 전부 미사용(예약) | 0.01V (900=9.00V) |
+
+> ΔT 계산: `ΔT_Lx = outlet_Lx − inlet_Lx`
 
 ### Coils (FC 01/05/0F) — R/W
 
@@ -125,6 +131,45 @@ Config Command(HR 17)에 0x01을 쓰거나, BT2 Factory Reset 시 자동 저장.
 - 결과: 채널별 게인 (0.8x~1.2x) 자동 계산 → Flash 저장
 - 유효 범위: 입력 전압 8.5V ~ 9.5V
 - 게인 수동 설정: HR 19~26에 직접 값 쓰기 가능 (1000 = 1.0x)
+
+---
+
+## 유량 추정
+
+본 PCB 에 **유량 센서는 미장착**. MCG 가 펌프 PWM duty 기반으로 선형 추정하여 `sensor:total_flow` redis 키로 publish.
+
+### 펌프 배치
+
+- 직렬 2개씩 × 병렬 2 루프 = 총 4 펌프 (HR 0~3 = 펌프 CH1~4)
+- 한 루프 = 직렬 2펌프 → 루프 유량 = 단일 펌프 유량 (압력만 2배)
+- 병렬 2 루프 → Total Flow = flow_L1 + flow_L2
+
+### UI/MCG duty 매핑
+
+Pump spec (Johnson Electric 300W) 의 PWM 선형 구간(17~85%) 보호를 위해 MCG 에서 변환:
+
+```
+ui_duty 0~100%  →  pump_input_pwm 17~85% (선형)
+```
+
+Pump spec 4.2.1 동작 구간:
+- 0~8% : Nmax (안전 풀가동)
+- 8~13% : 정지
+- 13~17% : Nmin
+- **17~85% : Nmin ~ Nmax 선형** ← 운용 구간
+- 85~95% : Nmax 포화
+- 95~100% : no use
+
+### 유량 산정
+
+시스템 손실 마진 포함:
+
+```
+flow_loop_lpm  = 35 × (ui_duty / 100)        # 루프당 max 35 LPM
+total_flow_lpm = flow_L1 + flow_L2           # max 70 LPM (2 루프 합)
+```
+
+Pump spec 정격점은 45 LPM (단독, 12V PWM 100%). 시스템 저항 고려해 35 LPM 채택.
 
 ---
 

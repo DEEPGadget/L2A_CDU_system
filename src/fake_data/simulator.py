@@ -136,6 +136,14 @@ class FakeDataSimulator:
             pipe.set(key, str_val)
             pipe.publish(key, str_val)
 
+        # Derived: Total Flow = flow_L1 + flow_L2 (MCG 측과 동일 정의)
+        f1 = self._current.get("sensor:flow_rate_1")
+        f2 = self._current.get("sensor:flow_rate_2")
+        if f1 is not None and f2 is not None:
+            total_str = f"{(f1 + f2):.2f}"
+            pipe.set("sensor:total_flow", total_str)
+            pipe.publish("sensor:total_flow", total_str)
+
         pipe.execute()
 
     def _drift(self, key: str, spec: tuple[float, float, float]) -> float:
