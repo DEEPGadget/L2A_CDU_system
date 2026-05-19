@@ -58,28 +58,32 @@ _LINK_COLORS: dict[str, str] = {
 }
 
 # ── Alarm badge colors ─────────────────────────────────────────────────────────
+# NOTE: 1280x720 landscape screen - top_bar total width must fit within 1280
+# (see docs/UI.md "Layout verification checklist"). Padding/font sizes below
+# are tuned from headless sizeHint measurements after adding the Settings tab
+# (target range: 1138-1230 px).
 _BADGE_NORMAL_STYLE = (
     "QPushButton { background:#ffffff; color:#000000; border-radius:14px;"
-    " padding:4px 14px; font-size:15pt; font-weight:bold;"
+    " padding:4px 12px; font-size:14pt; font-weight:bold;"
     " border:2px solid #000000; }"
 )
 _BADGE_WARNING_STYLE  = (
     "QPushButton { background:#e67e22; color:white; border-radius:14px;"
-    " padding:4px 14px; font-size:15pt; font-weight:bold; border:none; }"
+    " padding:4px 12px; font-size:14pt; font-weight:bold; border:none; }"
 )
 _BADGE_CRITICAL_STYLE = (
     "QPushButton { background:#e74c3c; color:white; border-radius:14px;"
-    " padding:4px 14px; font-size:15pt; font-weight:bold; border:none; }"
+    " padding:4px 12px; font-size:14pt; font-weight:bold; border:none; }"
 )
 
 # ── Tab button styles ──────────────────────────────────────────────────────────
 _TAB_ACTIVE_STYLE = (
     "QPushButton { background:#2c3e50; color:white; border:2px solid transparent;"
-    " padding:6px 16px; font-size:15pt; font-weight:bold; border-radius:4px; }"
+    " padding:5px 12px; font-size:14pt; font-weight:bold; border-radius:4px; }"
 )
 _TAB_INACTIVE_STYLE = (
     "QPushButton { background:#ecf0f1; color:#2c3e50; border:2px solid transparent;"
-    " padding:6px 16px; font-size:15pt; font-weight:bold; border-radius:4px; }"
+    " padding:5px 12px; font-size:14pt; font-weight:bold; border-radius:4px; }"
     "QPushButton:hover { background:#d5dbdb; }"
 )
 
@@ -90,9 +94,10 @@ class ToggleSwitch(QWidget):
 
     toggled = Signal(bool)
 
-    _TRACK_W = 140
-    _TRACK_H = 36
-    _KNOB_R = 14
+    # NOTE: tuned for top_bar width budget (target <= 1280 px).
+    _TRACK_W = 120
+    _TRACK_H = 34
+    _KNOB_R = 13
     _KNOB_MARGIN = 4
 
     _COLOR_ON = QColor("#27ae60")
@@ -181,7 +186,7 @@ class ToggleSwitch(QWidget):
 
         # Label
         label_font = QFont()
-        label_font.setPointSize(15)
+        label_font.setPointSize(13)
         label_font.setBold(True)
         p.setFont(label_font)
         p.setPen(QPen(self._COLOR_KNOB))
@@ -269,7 +274,7 @@ class TopBarWidget(QWidget):
         self._btn_history    = QPushButton("History")
         self._btn_settings   = QPushButton("Settings")
         for btn in (self._btn_monitoring, self._btn_history, self._btn_settings):
-            btn.setMinimumHeight(52)
+            btn.setMinimumHeight(48)
             btn.setCursor(Qt.PointingHandCursor)
         self._btn_monitoring.clicked.connect(lambda: self._switch_tab(0))
         self._btn_history.clicked.connect(lambda: self._switch_tab(1))
@@ -288,13 +293,13 @@ class TopBarWidget(QWidget):
 
         def _sep() -> QLabel:
             s = QLabel("|")
-            s.setStyleSheet("color:#9e9e9e; font-size:15pt; padding:0 6px;")
+            s.setStyleSheet("color:#9e9e9e; font-size:14pt; padding:0 5px;")
             s.setAlignment(Qt.AlignVCenter)
             return s
 
         # Alarm badge
         self._alarm_badge = QPushButton("🔔 -")
-        self._alarm_badge.setMinimumSize(90, 44)
+        self._alarm_badge.setMinimumSize(80, 40)
         self._alarm_badge.setCursor(Qt.PointingHandCursor)
         self._alarm_badge.setStyleSheet(_BADGE_NORMAL_STYLE)
         self._alarm_badge.clicked.connect(self.bell_tapped)
@@ -304,7 +309,7 @@ class TopBarWidget(QWidget):
 
         # IP
         ip_font = QFont()
-        ip_font.setPointSize(15)
+        ip_font.setPointSize(14)
         self._ip_label = QLabel("IP: --")
         self._ip_label.setFont(ip_font)
         self._ip_label.setStyleSheet("color:#000000;")
@@ -334,11 +339,11 @@ class TopBarWidget(QWidget):
 
         # ── Right: clock ───────────────────────────────────────────────
         clock_font = QFont()
-        clock_font.setPointSize(17)
+        clock_font.setPointSize(15)
         self._clock_label = QLabel()
         self._clock_label.setFont(clock_font)
         self._clock_label.setAlignment(Qt.AlignVCenter | Qt.AlignRight)
-        self._clock_label.setStyleSheet("color:#000000; padding:0 16px;")
+        self._clock_label.setStyleSheet("color:#000000; padding:0 12px;")
         layout.addWidget(self._clock_label)
 
         self._switch_tab(0)
@@ -349,15 +354,15 @@ class TopBarWidget(QWidget):
         lbl = QLabel()
         lbl.setTextFormat(Qt.RichText)
         lbl.setText(
-            f'<span style="color:#000000; font-size:15pt;">{prefix} </span>'
-            f'<span style="color:{color}; font-size:15pt; font-weight:bold;">{value}</span>'
+            f'<span style="color:#000000; font-size:14pt;">{prefix} </span>'
+            f'<span style="color:{color}; font-size:14pt; font-weight:bold;">{value}</span>'
         )
         return lbl
 
     def _set_status_text(self, label: QLabel, prefix: str, value: str, color: str) -> None:
         label.setText(
-            f'<span style="color:#000000; font-size:15pt;">{prefix} </span>'
-            f'<span style="color:{color}; font-size:15pt; font-weight:bold;">{value}</span>'
+            f'<span style="color:#000000; font-size:14pt;">{prefix} </span>'
+            f'<span style="color:{color}; font-size:14pt; font-weight:bold;">{value}</span>'
         )
 
     # ------------------------------------------------------------------

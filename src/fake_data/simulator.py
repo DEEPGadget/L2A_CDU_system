@@ -136,11 +136,11 @@ class FakeDataSimulator:
             pipe.set(key, str_val)
             pipe.publish(key, str_val)
 
-        # Derived: per-loop flow + total flow (A5 공식, PCB.md "유량 추정" 참고)
-        #   flow_loop_lpm  = 35 × (ui_duty / 100)
+        # Derived: per-loop flow + total flow (A5 formula, see PCB.md "Flow estimation")
+        #   flow_loop_lpm  = 35 * (ui_duty / 100)
         #   total_flow_lpm = flow_L1 + flow_L2  (max 70 LPM)
-        # 실제 운용에서는 MCG 가 동일 공식으로 publish 함 — fake 모드에서도
-        # 펌프 duty 변경에 즉시 반응해야 SVG/StatusStrip 표시가 일관됨.
+        # In real operation MCG publishes with the same formula. Fake mode
+        # must react to pump duty immediately so SVG/StatusStrip stays consistent.
         for loop, duty_key, flow_key in (
             (1, "sensor:pump_pwm_duty_1", "sensor:flow_rate_1"),
             (2, "sensor:pump_pwm_duty_2", "sensor:flow_rate_2"),
@@ -154,7 +154,7 @@ class FakeDataSimulator:
             flow_str = f"{flow_lpm:.1f}"
             pipe.set(flow_key, flow_str)
             pipe.publish(flow_key, flow_str)
-            self._current[flow_key] = flow_lpm  # alarm logic 이 참조
+            self._current[flow_key] = flow_lpm  # referenced by alarm logic
 
         total_str = f"{(self._current['sensor:flow_rate_1'] + self._current['sensor:flow_rate_2']):.1f}"
         pipe.set("sensor:total_flow", total_str)

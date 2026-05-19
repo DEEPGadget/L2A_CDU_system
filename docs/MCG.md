@@ -349,14 +349,16 @@ publish 주기: 폴링 주기와 동일. `SET` + `PUBLISH` 모두 수행.
 | `comm:consecutive_failures` | string | 연속 실패 횟수 |
 | `comm:last_error` | string | 마지막 오류 |
 | `control:mode` | string | 제어 모드 (manual / auto / emergency) |
-| `control:auto` | hash | Auto 모드 제어 파라미터. Fan 측은 outlet 온도 기반 PI ([auto_control.md](auto_control.md) Stage 2). Pump 측은 고정 duty. UI Settings 페이지에서 편집. fields: `fan.setpoint` (°C), `fan.base_duty` (0~1000), `fan.kp` (float, ×100 정수 저장), `fan.ki` (float, ×100 정수 저장), `fan.out_min` (0~1000, ≥100 = ≥10% 권장 하한), `fan.out_max` (0~1000), `pump.duty` (0~1000, ≥200 = ≥20% 강제 하한, UI=Pump 매핑 참고). |
+| `control:fan_curve` | hash | Auto 모드 fan 제어 곡선 (2-point linear). UI Settings 페이지에서 편집. fields: `min_temp` (°C), `max_temp` (°C), `min_duty` (0~1000, ≥100 = ≥10% UI 하한), `max_duty` (0~1000). 동작: outlet 온도 ≤ min_temp → min_duty, ≥ max_temp → max_duty, 사이는 선형 보간. settings.js Fan Curve editor 와 동일 schema (별도 시스템이지만 의도적 정합). |
+| `control:pump_duty` | string | Auto 모드 pump 고정 duty (Stage 1 정책 — auto_control.md §2). 값: 0~1000 (×10 정수, ≥200 = ≥20% UI 하한). UI Settings 페이지에서 편집. MCG 는 Auto 모드에서 매 cycle 이 값을 HR 0~3 으로 write (pump 4채널 동일 duty, 0.85× 매핑 적용 후). |
 
 **Pub/Sub 채널 (제어 갱신)**
 
 | Channel | 발행자 | 구독자 | 트리거 |
 |---|---|---|---|
 | `control:mode` | UI 모드 토글 | MCG controller | 모드 전환 시 |
-| `control:auto:update` | UI Settings 페이지 Save | MCG controller | Auto 파라미터 저장 직후. MCG 는 수신 시 `control:auto` hash 를 다시 읽어 in-memory 갱신. |
+| `control:fan_curve:update` | UI Settings 페이지 Save | MCG controller | Fan curve 저장 직후. MCG 는 수신 시 `control:fan_curve` hash 를 다시 읽어 in-memory 갱신. |
+| `control:pump_duty:update` | UI Settings 페이지 Save | MCG controller | Pump fixed duty 저장 직후. publish payload 는 새 duty 값. |
 
 ### Prometheus (이력)
 

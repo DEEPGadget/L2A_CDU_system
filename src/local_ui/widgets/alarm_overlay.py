@@ -28,8 +28,8 @@ _ALARM_LABELS: dict[str, str] = {
     "alarm:coolant_temp_l2_warning":   "Coolant Temp L2 — Warning",
     "alarm:coolant_temp_l2_critical":  "Coolant Temp L2 — Critical",
     # Delta temperature (ASHRAE TC 9.9: 10–14 °C)
-    "alarm:delta_temp_l1_warning":     "ΔT L1 — Warning (10–14 °C 이탈)",
-    "alarm:delta_temp_l2_warning":     "ΔT L2 — Warning (10–14 °C 이탈)",
+    "alarm:delta_temp_l1_warning":     "dT L1 - Warning (out of 10-14 C)",
+    "alarm:delta_temp_l2_warning":     "dT L2 - Warning (out of 10-14 C)",
     # Water level
     "alarm:water_level_warning":       "Coolant Level — Warning",
     "alarm:water_level_critical":      "Coolant Level — Critical",

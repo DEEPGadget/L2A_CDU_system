@@ -32,10 +32,11 @@ _NORMAL_BASE: dict[str, _Value] = {
     "sensor:coolant_temp_inlet_2":  (29.5, T.INLET_TEMP_NORMAL_LO,  T.INLET_TEMP_NORMAL_HI),
     "sensor:coolant_temp_outlet_1": (44.0, T.OUTLET_TEMP_WARN_LO,   T.OUTLET_TEMP_NORMAL_HI),
     "sensor:coolant_temp_outlet_2": (43.5, T.OUTLET_TEMP_WARN_LO,   T.OUTLET_TEMP_NORMAL_HI),
-    # NOTE: sensor:flow_rate_1, sensor:flow_rate_2, sensor:total_flow 는
-    # simulator.py 가 매 cycle pump_pwm_duty 로부터 A5 공식
-    # (`35 × ui_duty/100` LPM per loop, max 70 LPM total) 으로 derive 한다.
-    # 여기에 base tuple 로 두면 duty 변경에 반응하지 않아 PCB.md/MCG.md 와 어긋난다.
+    # NOTE: sensor:flow_rate_1, sensor:flow_rate_2, sensor:total_flow are
+    # derived in simulator.py each cycle from pump_pwm_duty using A5 formula
+    # (`35 * ui_duty / 100` LPM per loop, max 70 LPM total).
+    # Do not define them as base tuples here, otherwise they would not react
+    # to duty changes and would diverge from PCB.md / MCG.md.
     "sensor:water_level":            "2",
     "sensor:ph":                    (9.0,   T.PH_NORMAL_LO,  T.PH_NORMAL_HI),
     "sensor:conductivity":          (5500.0, T.CONDUCTIVITY_WARN_LO, 6500.0),

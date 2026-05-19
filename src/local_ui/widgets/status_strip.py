@@ -1,6 +1,6 @@
 """Status strip widget — fixed bottom bar.
 
-Displays: ΔT1, ΔT2, Total Flow, Ambient Temp/Humidity, (Leak 자리 — D1 활성화 예정).
+Displays: dT1, dT2, Total Flow, Ambient Temp/Humidity, (Leak placeholder - D1 to activate).
 Placed below the Cooling Health SVG as a separate QWidget.
 Updated via on_sensor_updated() signal from main window.
 """
@@ -57,7 +57,7 @@ class StatusStripWidget(QWidget):
                  ("ΔT2:", "_dt2_val"),
                  ("Total Flow:", "_flow_val"),
                  ("Ambient:", "_amb_val"),
-                 ("", "_leak_val")]  # 향후 Leak (D1)
+                 ("", "_leak_val")]  # reserved for future Leak (D1)
 
         layout.addStretch(1)
 

@@ -27,11 +27,11 @@ OUTLET_TEMP_WARN_LO:   float = 22.0   # < 22  → warning
 
 # ── Delta Temperature (outlet − inlet) ────────────────────────────────────────
 # docs/threshold.md § Delta Temperature
-# ASHRAE TC 9.9 Liquid Cooling 권장 ΔT 10–14 °C. Warning only (critical 없음).
+# ASHRAE TC 9.9 Liquid Cooling recommended dT 10-14 C. Warning only (no critical).
 DELTA_TEMP_NORMAL_LO: float = 10.0
 DELTA_TEMP_NORMAL_HI: float = 14.0
-DELTA_TEMP_WARN_LO:   float = 10.0    # < 10 → warning (유량 과다 / 저부하)
-DELTA_TEMP_WARN_HI:   float = 14.0    # > 14 → warning (유량 부족 / 과부하 / 배관 저항)
+DELTA_TEMP_WARN_LO:   float = 10.0    # < 10 -> warning (excess flow / low load)
+DELTA_TEMP_WARN_HI:   float = 14.0    # > 14 -> warning (low flow / overload / pipe resistance)
 
 
 # ── Ambient (Chassis) ─────────────────────────────────────────────────────────

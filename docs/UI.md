@@ -28,7 +28,24 @@
 | 제품 링크 | https://www.adafruit.com/product/6079 |
 | 크기 | 7-inch |
 | 패널 치수 | 154.56 mm × 86.94 mm |
-| 해상도 | 720 × 1280 px (portrait) / 1280 × 720 px (landscape) |
+| 해상도 | 720 × 1280 px (portrait) / **1280 × 720 px (landscape) — 운용 화면** |
+| 회전 설정 | cmdline.txt `video=DSI-1:720x1280M@60,rotate=90` |
+
+### ⚠ Layout 검증 체크리스트 (PySide6 신규/수정 시 필수)
+
+**과거 반복 실수**: 신규 페이지 / 새 위젯 / 기존 위젯 항목 추가 시 1280×720 한계를 무시한 채 가로 overflow (오른쪽 넘침) 가 반복 발생함. 사용자가 직접 확인 시점에 발견. 아래 4단계 검증을 반드시 통과한 뒤에만 사용자에게 보고할 것.
+
+1. **본 표 다시 확인**: 운용 화면 폭 **1280 px**, 높이 **720 px**, top_bar 64 px 고정 → 페이지 영역 = **1280 × 656 px**
+2. **명시적 크기 강제**: 최상위 페이지/오버레이는 `setFixedSize` 또는 `setMaximumWidth(1280)`. status_strip 같은 고정 높이 위젯은 `setFixedHeight` 만 두고 가로는 부모 layout 에 위임 (단, contentsMargins + spacing + 라벨 폭 합 ≤ 1280 보장).
+3. **가로 위젯 합산**: 같은 행에 들어가는 모든 위젯 → `contentsMargins.left + Σ(widget.minSizeHint() + spacing) + contentsMargins.right ≤ 1280` 을 종이/headless 로 계산. 긴 라벨(예: "Total Flow: 42.0 L/min" 23자) 추가 시 폰트 포인트 ↓ 또는 padding ↓ 로 보정.
+4. **사용자 화면 확인**: smoke test (AST + 인스턴스화) 만으로 OK 처리 금지. `sudo systemctl restart cdu-local-ui.service` 후 **사용자에게 실제 화면 확인 요청**.
+
+| 화면 영역 | 픽셀 | 고정 위젯 |
+|---|---|---|
+| Top bar | 1280 × 64 | `TopBarWidget.setFixedHeight(64)` ([main.py](../src/local_ui/main.py)) |
+| Page area (Monitoring / History / Settings) | 1280 × 656 | `QStackedWidget` 자동 |
+| Cooling Health SVG (Monitoring 내부) | 1280 × 580 ≈ | `CoolingHealthWidget` stretch=1 |
+| Status strip (Monitoring 내부) | 1280 × 76 | `StatusStripWidget._STRIP_HEIGHT = 76` |
 
 ## Local UI (PySide6)
 

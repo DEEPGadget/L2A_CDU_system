@@ -59,7 +59,7 @@ _C_NO_DATA  = "#000000"  # no-data renders as black; value shown as "--" to dist
 # ── Overlay button relative positions (x, y, w, h) as fractions of widget size ─
 # Calibrated to cooling_health.svg layout (SVG canvas: 1280×608).
 # Pump:    rect x=225, y=135, w=120, h=150  → rx=225/1280, ry=135/608, rw=120/1280, rh=150/608
-# Fan+Rad: rect x=1095, y=60, w=160, h=220 (L1) / y=320 (L2) — L1 위로 L2 아래로 분리
+# Fan+Rad: rect x=1095, y=60, w=160, h=220 (L1) / y=320 (L2) - L1 on top, L2 below
 # Loop2 y offset: y=320 → ry=320/608
 _OVERLAY_POSITIONS: dict[str, tuple[float, float, float, float]] = {
     "pump1": (0.176, 0.222, 0.094, 0.247),  # Pump Loop1    (x=225, y=135, w=120, h=150)
@@ -348,12 +348,13 @@ class CoolingHealthWidget(QWidget):
         if self._current_mode != "manual":
             return
         current = self._current_duty.get(slot, 0)
-        # Operational lower bound per actuator (PCB.md "유량 추정" + Fan spec 확인 결과):
-        #   pump: 20% (= pump_input 17% Nmin, MCG maps with 0.85× factor)
-        #   fan:  10% (spec 0~100% 전 구간 가능, 운용 권장만)
+        # Operational lower bound per actuator (see PCB.md "Flow estimation" +
+        # Fan spec review):
+        #   pump: 20% (= pump_input 17% Nmin, MCG maps with 0.85x factor)
+        #   fan:  10% (spec allows 0-100%, operational guideline only)
         is_pump = slot.startswith("pump")
         min_value = 20 if is_pump else 10
-        title_suffix = " — Pump (≥20%)" if is_pump else " — Fan (≥10%)"
+        title_suffix = " - Pump (>=20%)" if is_pump else " - Fan (>=10%)"
         dlg = NumpadDialog(current, parent=self,
                            min_value=min_value, max_value=100,
                            title_suffix=title_suffix)
@@ -365,16 +366,28 @@ class CoolingHealthWidget(QWidget):
         if self._current_mode != "manual":
             log.warning("Ignoring duty write for %s: mode is %s", slot, self._current_mode)
             return
-        redis_key = _DUTY_KEYS[slot]
+        # L1/L2 mirror: pump1<->pump2 and fan1<->fan2 must stay in lock-step.
+        # Two physical loops share the same target duty -- editing one slot
+        # writes both Redis keys + updates both cached slot values.
+        if slot.startswith("pump"):
+            slots = ("pump1", "pump2")
+        elif slot.startswith("fan"):
+            slots = ("fan1", "fan2")
+        else:
+            slots = (slot,)
         try:
             pipe = self._redis.pipeline()
-            pipe.set(redis_key, str(value))
-            pipe.publish(redis_key, str(value))
+            for s in slots:
+                k = _DUTY_KEYS[s]
+                pipe.set(k, str(value))
+                pipe.publish(k, str(value))
             pipe.execute()
-            self._current_duty[slot] = value
-            log.info("Set %s = %d%%", redis_key, value)
+            for s in slots:
+                self._current_duty[s] = value
+            log.info("Set %s = %d%% (mirrored slots: %s)",
+                     _DUTY_KEYS[slot], value, ",".join(slots))
         except Exception as exc:
-            log.error("Redis write failed for %s: %s", redis_key, exc)
+            log.error("Redis write failed for slot %s (mirrored): %s", slot, exc)
 
     # ------------------------------------------------------------------
     # Mode gating
