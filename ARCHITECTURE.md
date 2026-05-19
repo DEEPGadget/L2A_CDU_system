@@ -36,8 +36,8 @@
 |---|---|
 | Raspberry Pi | MCG, UI, DB를 탑재하는 하드웨어 플랫폼 (IP: DHCP 할당 — Local UI Top bar에서 확인). 온/습도 센서를 I2C/GPIO로 직접 연결하여 읽음 (예외적 직접 수집 — Modbus 미경유) |
 | Web UI (Svelte + FastAPI) | WEB 기반 유저 인터페이스. http 기반으로 파이썬 기반의 제어모듈(MCG - modbus control gateway)과 통신. 모니터링 및 제어 화면, 과거 기록 확인 화면 |
-| Touch Display UI (PySide6) | 로컬 기반 유저 인터페이스. IPC 기반으로 파이썬 기반의 제어모듈(MCG - modbus control gateway)과 통신. 모니터링 및 제어, 과거 기록 확인 화면 |
-| Redis DB | Monitoring 페이지 실시간 상태 전용 DB (`sensor:*`, `comm:*`, `alarm:*`, `control:mode`) — 이력 저장 없음 |
+| Touch Display UI (PySide6) | 로컬 기반 유저 인터페이스. Redis (Pub/Sub + Hash) 매개로 MCG 와 통신. 모니터링 및 제어, 과거 기록 확인 화면 |
+| Redis DB | Monitoring 페이지 실시간 상태 전용 DB (`sensor:*`, `comm:*`, `alarm:*`, `control:mode`, `control:auto` hash) + UI ↔ MCG Pub/Sub 매개체 — 이력 저장 없음 |
 | Prometheus + Exporter | 과거 이력 DB. Exporter가 Redis `sensor:*` + `alarm:*` 를 주기적으로 pull → 시계열 적재 |
 | Prometheus Pushgateway | 이벤트성 이력 수신 (제어 명령·통신 장애). MCG가 이벤트 발생 시 직접 push |
 | Modbus Control Gateway (MCG) | 실질적 Modbus Master (읽기/쓰기). 읽기: pcb 로부터 polling → redis에 전송. 쓰기: UI 로부터 요청받음 → PCB 로 write 명령 |
@@ -75,8 +75,8 @@
 | 구간 | 방식 |
 |---|---|
 | MCG ↔ PCB | Modbus RTU (Master / Slave) |
-| Touch Display UI ↔ MCG | IPC (Unix Domain Socket) |
-| Web UI ↔ MCG | REST API |
+| Touch Display UI ↔ MCG | **Redis** (Pub/Sub + Hash) — UI 는 `control:mode`/`control:auto`/duty 키를 SET, MCG 는 매 cycle Pub/Sub drain 으로 픽업 |
+| Web UI ↔ MCG | REST API (FastAPI) |
 | RPi ↔ 온/습도 센서 | I2C / GPIO (직접 연결 — Modbus 미경유) |
 
 ### 3.3 Modbus 동작
@@ -102,8 +102,8 @@
 ### 4.2 Modbus Control Gateway (MCG)
 
 - 시스템 내 중앙 제어 및 통신 허브 (Modbus Master)
-- 2 쓰레드: UI 수신 쓰레드 (항상 listen) + 메인 루프 쓰레드 (mode 확인 → 큐 → Polling → Auto write 순차)
-- 큐: 사람의 PWM 제어 요청 전용. 모드 전환은 메인 루프에 직접 전달. Auto write와 비상정지는 큐 미경유.
+- **단일 쓰레드 메인 루프** + Redis Pub/Sub 비차단 drain. Modbus 가 단일 시리얼 버스(순차 제약)라 쓰레드 분리 이득이 작음. 참고 구현: `gadgetini/src/control_board/main_loop.py` (동일 사상, 매개체만 `config.yaml` mtime polling).
+- UI 명령은 Redis 키에 SET (예: `sensor:pump_pwm_duty_x`, `control:mode`, `control:auto`) → 메인 루프가 다음 cycle 에서 변경분 픽업 후 Modbus Write. 별도 큐/IPC 소켓 없음.
 - **제어 모드 (Manual / Auto)**:
   - **Manual**: 사람이 UI에서 Pump/Fan PWM을 직접 설정. 시스템은 감지·알람만 담당.
   - **Auto** (기본값): MCG가 냉각수온·유량 기반으로 지정된 알고리즘에 의해 Pump/Fan PWM을 자동 계산 → Modbus write. 사람은 모드 전환·모니터링 담당.
@@ -117,7 +117,7 @@
 
 ### 4.3 UI
 
-- Local UI (PySide6): 터치 디스플레이 기반, IPC로 MCG와 통신
+- Local UI (PySide6): 터치 디스플레이 기반, Redis (Pub/Sub + Hash)로 MCG와 통신
 - WEB UI (Svelte + FastAPI): 브라우저 기반, REST API로 MCG와 통신
 - 양쪽 모두 모니터링 페이지 / 기록 확인 페이지로 구성
 - DB: Redis (실시간), Prometheus (이력)
