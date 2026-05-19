@@ -41,7 +41,7 @@
 
 | outlet 온도 | Fan duty | 근거 |
 |---|---|---|
-| < 30 °C | **20 %** | idle floor. 베어링 상시 회전, load spike 즉응성, waku-ctl 하한과 정합 |
+| < 30 °C | **10 %** | idle floor. L2A UI 운용 하한과 일치. 베어링 상시 회전, load spike 즉응성 확보 |
 | 30 – 40 °C | **40 %** | Stage 2 `base_duty`와 일치, 정상 열부하 냉각 |
 | 40 – 50 °C | **65 %** | Stage 2 setpoint(40 °C) 초과분에 대한 램프 |
 | 50 – 60 °C | **85 %** | Outlet warning(60–65 °C) 진입 직전 여력 확보 |
@@ -50,7 +50,8 @@
 - 구간 전이 **hysteresis ±1 °C** — 예: 40 °C 상향은 40.0에서, 하향은 39.0에서. ping-pong 방지.
 - Hysteresis 상태는 루프별로 독립 보관 (L1의 구간 전이가 L2에 영향 없음).
 - 제어 임계치와 [threshold.md](threshold.md)의 알람 임계치는 별도 (제어 vs 알람은 책임 분리). 제어 테이블 상한(100% 도달점)은 알람 warning 경계와 정합시킴.
-- Fan 완전 정지는 안 함. Idle 상태에서도 20% 하한 유지 ([§3 Minimum duty floor](#minimum-duty-floor)).
+- Fan 완전 정지는 안 함. Idle 상태에서도 하한 유지 ([§3 Minimum duty floor](#minimum-duty-floor)).
+- **L2A UI 운용 하한**: Fan ≥ 10 %, Pump ≥ 20 % ([PCB.md "유량 추정"](PCB.md) 참고). Fan 10 % 는 Fan spec 무근거 운용 권장값(spec 자체는 PWM 0–100 % 전 구간 허용). Pump 20 % 는 spec 4.2.1 Nmin(17 %) ÷ 매핑계수(0.85) 산출값. waku-ctl 의 20 % 관성은 L2A 와 무관 — 본 lookup table 도 10 % 로 정합.
 
 **초기 구현 우선순위**: Stage 1만으로 Auto 모드 MVP 확보.
 
@@ -66,21 +67,21 @@
 
 ```
 error    = outlet_temp − setpoint
-fan_pwm  = clamp(base_duty + Kp·error + Ki·∫error, 20, 100)
+fan_pwm  = clamp(base_duty + Kp·error + Ki·∫error, 10, 100)
 ```
 
 | 변수 | 초기값 | 비고 |
 |---|---|---|
 | `setpoint` | 40 °C | Stage 1 lookup의 정상 구간 상한과 정합. 현장 튜닝 |
 | `base_duty` | 40 % | 제어 작용 없을 때 정상 냉각 유지 듀티 (Stage 1 lookup 30–40 °C 구간과 일치) |
-| `output_limits` | `(20, 100)` | 하한 20% = idle floor (Stage 1과 동일 정책). 0% 허용 안 함 |
+| `output_limits` | `(10, 100)` | 하한 10% = L2A UI 운용 하한 (Stage 1 lookup table 의 idle 행과 정합). 0% 허용 안 함 |
 | `Kp` | 5.0 | 1 °C 초과 시 +5 %P |
 | `Ki` | 0.5 | 1 Hz 기준 — 현장 튜닝 |
 
 **Pump**: 여전히 고정 60 %. (ΔT 기반 trim은 Stage 3로 이월.)
 
 **라이브러리**: `simple-pid` (MIT, [m-lundberg/simple-pid](https://github.com/m-lundberg/simple-pid))
-- `output_limits=(20, 100)` 설정 시 anti-windup 자동 + 하한 floor.
+- `output_limits=(10, 100)` 설정 시 anti-windup 자동 + 하한 floor.
 - `sample_time` 지원 — 호출 주기 흔들림에 강함.
 
 ---
@@ -110,7 +111,7 @@ fan_pwm  = clamp(base_duty + Kp·error + Ki·∫error, 20, 100)
 - 구현: `new_duty = clamp(target, prev_duty − 5, prev_duty + 5)` (1 Hz 호출 기준).
 
 ### Minimum duty floor
-- **Fan 하한 20%**, **Pump 하한 30%** (Stage 3 기준, Stage 1·2는 pump 60% 고정이라 자연 충족).
+- **Fan 하한 10 %**, **Pump 하한 20 %** (L2A UI 운용 하한 — [PCB.md "유량 추정"](PCB.md) 참고). Stage 1·2 는 pump 60 % 고정이라 자연 충족, Stage 3 cascade 도입 시 Pump out_min 도 동일 하한.
 - Lookup/PI 출력 위에 **하드 clamp**를 한 번 더 적용 — 제어 로직 버그로 floor 아래로 내려가도 HW 측 방어.
 - 근거: 모터 자가냉각(TEFC), 유량/dP 센서 feedback 유지, stagnation·응결·바이오필름 방지, 재기동 kick-start 회피, load spike 즉응성.
 - **예외**: Emergency(비상정지) 시 duty = 0 강제 ([§Emergency 우선](#emergency-우선)).

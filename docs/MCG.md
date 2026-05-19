@@ -21,12 +21,13 @@
 - **R4 비상정지** → 모니터링 결과에서 특정 센서 critical → 전체 PWM=0, DOUT=0 Write.
 - **공통** → Modbus는 단일 시리얼 버스. Read와 Write를 동시에 할 수 없음. 모든 Modbus 통신은 순차 실행.
 
-### 2 쓰레드
+### 단일 쓰레드
 
 | 쓰레드 | 역할 | 근거 |
 |---|---|---|
-| **UI 수신 쓰레드** | IPC/REST 소켓 listen → PWM 제어 요청을 큐에 적재 | R2: UI 요청은 언제든 올 수 있으므로 항상 listen 필요 |
-| **메인 루프 쓰레드** | Redis에서 mode 읽기 → 큐 확인 → Polling → Auto면 알고리즘으로 PWM 결정 후 Modbus Write | R1~R4 + Modbus 순차 제약 |
+| **메인 루프 (단일)** | Pub/Sub 비차단 drain → mode 분기 → Manual 명령 적용 / Polling / Auto 알고리즘 → Modbus Write | Modbus 가 단일 시리얼 버스(순차 제약)라 쓰레드를 나눠도 이득이 작음. UI 갱신은 **Redis Pub/Sub 메시지 매 cycle drain** 으로 픽업. |
+
+> **참고 사례** — `gadgetini/src/control_board` 는 동일 사상으로 단일 쓰레드 + `config.yaml` mtime polling 으로 web UI 갱신을 픽업한다 (`main_loop.py:run()` 무한 while 루프 안에서 모든 작업 순차 실행). L2A 는 Redis 가 이미 표준 인프라이므로 file mtime 대신 **Redis Pub/Sub drain** 또는 **Redis GET 폴링** 으로 동일 효과.
 
 ---
 
@@ -36,7 +37,7 @@ UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서
 
 | 모드 | 동작 | 진입 |
 |---|---|---|
-| **Manual** | 큐에서 사람의 PWM 요청 꺼내서 Write + Polling | UI 요청 (모드 전환) |
+| **Manual** | UI 가 Redis duty 키 (`sensor:pump_pwm_duty_x`, `sensor:fan_pwm_duty_x`) 에 직접 SET → 메인 루프가 다음 cycle 에서 직전 cycle 값과 비교 후 변경분만 Modbus Write + Polling | UI 요청 (모드 전환) |
 | **Auto** (기본값) | Polling 후 알고리즘으로 PWM 결정 → Write | UI 요청 (모드 전환) |
 | **Emergency** | TODO — 시스템 안정화 후 설계 | TODO |
 
@@ -62,26 +63,37 @@ UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서
 ## 4. 메인 루프
 
 ```
-매 cycle:
+매 cycle (단일 쓰레드):
 
-  1. Redis에서 `control:mode` 읽기
+  0. Pub/Sub 비차단 drain (timeout=0)
+       → control:mode 수신 → in-memory mode 갱신
+       → control:auto:update 수신 → HGETALL control:auto → in-memory PI 파라미터 갱신
+       (수신 메시지 없으면 바로 통과)
+
+  1. 현재 mode 확인
 
   2. if Emergency: TODO (시스템 안정화 후 설계)
 
-  3. 큐 확인 (항상 실행)
-       → Manual: 요청 있으면 Modbus Write
-       → Auto: 요청 있으면 버림 (Auto 모드에서는 사람 제어 무효)
+  3. Manual 명령 적용 (Manual 모드일 때만):
+       → sensor:pump_pwm_duty_x, sensor:fan_pwm_duty_x Redis GET
+       → 직전 cycle 값과 다른 채널만 Modbus Write
+         (pump 측은 PCB.md A5 의 0.85× 매핑 적용 후 HR 0~3 write,
+          fan 측은 직접 매핑 후 HR 4~11 write)
 
   4. Polling (항상 실행)
        → Modbus Read (센서 레지스터)
        → 디코딩 → Redis SET + Pub/Sub
        → 알람 threshold 검사
+       → 펌프 duty 기반 유량 derive → sensor:flow_rate_*, sensor:total_flow publish
 
-  5. if Auto: 알고리즘 (센서값 → PWM duty 결정) → Modbus Write
+  5. if Auto: Stage 2 PI 알고리즘 (control:auto 파라미터 사용) → Modbus Write
+
+  6. sleep(max(0, cycle - elapsed))
 ```
 
-> step 3의 Modbus Write와 step 5의 Modbus Write는 같은 시리얼 버스를 사용하므로 동일 cycle 내에서 순차 실행.
+> step 3 의 Modbus Write 와 step 5 의 Modbus Write 는 같은 시리얼 버스를 사용하므로 동일 cycle 내에서 순차 실행.
 > S-Curve 1초 적용 (보드 사양 — [PCB.md](PCB.md) 참고).
+> Pub/Sub drain 패턴은 큐/쓰레드를 만들지 않고도 UI 변경을 다음 cycle (~1 s) 안에 반영. 같은 cycle 안에 여러 메시지가 와도 한 번에 drain 후 마지막 상태로 수렴.
 
 ---
 
@@ -94,9 +106,9 @@ UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서
 
 ### 제어 (Modbus Write)
 
-- Manual: 사람이 UI에서 설정한 값 Write → Pushgateway POST (이력)
+- Manual: UI 가 Redis `sensor:*_duty_x` 키에 SET → 메인 루프가 직전 cycle 값과 비교 후 변경분만 Modbus Write → Pushgateway POST (이력)
 - Auto: 알고리즘이 결정한 값 Write → POST 없음 (Exporter가 `sensor:*`로 수집)
-- 레지스터 매핑 상세: §9 Redis Key 참고
+- 레지스터 매핑 상세: §9 Redis Key 참고. 펌프 측은 ui_duty → pump_input PWM 0.85× 매핑 필수 ([PCB.md "유량 추정"](PCB.md) 참고).
 
 ### 모드 전환
 
@@ -124,34 +136,42 @@ UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서
 
 ```mermaid
 sequenceDiagram
-    participant Queue as 큐
-    participant Main as 메인 루프
-    participant PCB as PCB
+    participant UI as UI
     participant Redis as Redis
+    participant Main as 메인 루프 (단일)
+    participant PCB as PCB
 
-    Note over Main: 메인 루프 cycle 시작
-    Main->>Redis: control:mode 읽기
+    Note over Main: cycle 시작
+    Main->>Redis: Pub/Sub drain (timeout=0)
+    alt control:mode 수신
+        Redis-->>Main: mode 갱신
+    end
+    alt control:auto:update 수신
+        Main->>Redis: HGETALL control:auto
+        Redis-->>Main: PI 파라미터 갱신
+    end
 
-    Main->>Queue: 큐 확인
-    alt 큐에 요청 있음
-        alt Manual
-            Main->>PCB: Modbus Write (사람 PWM)
+    alt Manual 모드
+        Main->>Redis: GET sensor:*_duty_x
+        Redis-->>Main: 현재 duty
+        opt 직전 cycle 과 다른 채널
+            Main->>PCB: Modbus Write (UI duty → pump 0.85× 매핑)
             PCB-->>Main: ACK
-        else Auto
-            Main->>Main: 버림
         end
     end
 
     Main->>PCB: Modbus Read (Polling)
     PCB-->>Main: 센서값
-    Main->>Main: 디코딩 + 알람 검사
-    Main-)Redis: SET sensor:* + Pub/Sub
+    Main->>Main: 디코딩 + 알람 검사 + 유량 derive
+    Main-)Redis: SET sensor:* + Pub/Sub (total_flow 포함)
 
-    alt Auto
-        Main->>Main: 알고리즘 → PWM 결정
-        Main->>PCB: Modbus Write (알고리즘 PWM)
+    alt Auto 모드
+        Main->>Main: Stage 2 PI → PWM 결정
+        Main->>PCB: Modbus Write
         PCB-->>Main: ACK
     end
+
+    Note over UI,Redis: UI → Redis SET / PUBLISH 는 cycle 과 무관하게 비동기
 ```
 
 ### 비상정지 진입 (TODO)
@@ -166,17 +186,18 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 | 대상 | HR 주소 | 초기값 | 비고 |
 |---|---|---|---|
-| Fan L1 PWM | Holding Register 0 | **15 %** (저속 기동, PID 수렴 대기) | CH1, TIM1 (25 kHz 운용) |
-| Fan L2 PWM | Holding Register 1 | **15 %** | CH2, TIM1 (25 kHz 운용) |
-| Pump L1 PWM (P1) | Holding Register 4 | **60 %** (Johnson eModule 선형 구간, DGX A100 최소 40 % + 기동 여유 20 %) | CH5, TIM2 (1 kHz 운용), L1 직렬 1번째 |
-| Pump L1 PWM (P2) | Holding Register 5 | **60 %** (L1과 동일 값) | CH6, TIM2 (1 kHz 운용), L1 직렬 2번째 |
-| Pump L2 PWM (P3) | Holding Register 6 | **60 %** | CH7, TIM2 (1 kHz 운용), L2 직렬 1번째 |
-| Pump L2 PWM (P4) | Holding Register 7 | **60 %** (L2와 동일 값) | CH8, TIM2 (1 kHz 운용), L2 직렬 2번째 |
-| PWM Freq (TIM1) | Holding Register 12 | **25 (kHz)** | 팬: **1~25 kHz 조절 가능**, Cooltron 팬 스펙 정격 |
-| PWM Freq (TIM2) | Holding Register 13 | **1 (kHz)** | 펌프: **1~25 kHz 조절 가능**, Johnson eModule 600~3000 Hz 중 typical |
+| Pump L1 PWM (P1) | Holding Register 0 | **60 %** (DGX A100 최소 40 % + 기동 여유 20 %) | CH1, TIM1 (1 kHz 운용), L1 직렬 1번째 |
+| Pump L1 PWM (P2) | Holding Register 1 | **60 %** (L1과 동일 값) | CH2, TIM1 (1 kHz 운용), L1 직렬 2번째 |
+| Pump L2 PWM (P3) | Holding Register 2 | **60 %** | CH3, TIM1 (1 kHz 운용), L2 직렬 1번째 |
+| Pump L2 PWM (P4) | Holding Register 3 | **60 %** (L2와 동일 값) | CH4, TIM1 (1 kHz 운용), L2 직렬 2번째 |
+| Fan L1 PWM | Holding Register 4 | **15 %** (저속 기동, PID 수렴 대기) | CH5, TIM2 (25 kHz 운용) |
+| Fan L2 PWM | Holding Register 5 | **15 %** | CH6, TIM2 (25 kHz 운용) |
+| PWM Freq (TIM1) | Holding Register 12 | **1 (kHz)** | 펌프: **1~25 kHz 조절 가능**, Johnson eModule 600~3000 Hz 중 typical |
+| PWM Freq (TIM2) | Holding Register 13 | **25 (kHz)** | 팬: **1~25 kHz 조절 가능**, Cooltron 팬 스펙 정격 |
 
 > 듀티 register 포맷: 0~1000 (0.1 % 단위, Active Low) — 예: 60 % = 600, 15 % = 150. 주파수 register 포맷은 kHz 정수 (MCS_BE 매뉴얼 확인 필요).
-> Fan 15 % 초기값은 Stage 1 lookup table의 idle floor(20 %)보다 낮지만, 기동 직후 Auto 루프 첫 cycle에서 즉시 lookup 값으로 덮어써짐. Manual 모드로 부팅해 오래 유지될 경우만 실제 floor 미만 가능 → 운영자 판단에 맡김.
+> 펌프 60 % 는 UI 도메인 값. MCG 가 PCB write 시 [PCB.md "유량 추정"](PCB.md) 의 `0.85 × ui_duty` 매핑 적용 → 실제 HR write 값 = 510 (51 %).
+> Fan 15 % 초기값은 L2A UI 운용 하한 10 % 위로 유효. 기동 직후 Auto 루프 첫 cycle 에서 PI 출력값으로 덮어써짐.
 > 전원 재인가 시 MCG 재시작(systemd Restart=always)으로 초기값 자동 적용. 초기값 자체는 `config.yaml`이 source of truth.
 
 ---
@@ -195,7 +216,6 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 | 누수 감지 | Critical | `alarm:leak_detected` | 누수 비트 해제 |
 | 수위 부족 | Warning | `alarm:water_level_warning` | `water_level`≥2 |
 | 수위 위험 | Critical | `alarm:water_level_critical` | `water_level`≥1 |
-| 유압 이상 | Warning | `alarm:pressure_warning` | 정상 범위 |
 | 유량 저하 | Warning | `alarm:flow_rate_warning` | 정상 유량 |
 | 장치 내부 온도 경고 | Warning | `alarm:ambient_temp_warning` | 임계치 이하 |
 | 장치 내부 온도 한계 초과 | Critical | `alarm:ambient_temp_critical` | 정상 범위 |
@@ -238,30 +258,37 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 **팬/펌프 PWM duty — Read/Write**
 
-| Key | 설명 | Register | 제어 대상 (L2A 기준) |
+| Key | 설명 | Register | 제어 대상 (L2A 기준, control_board 매핑) |
 |---|---|---|---|
-| `sensor:fan_pwm_duty_1` | 팬 PWM L1 (0–100%) | Holding Register 0 (CH1, TIM1) | COOLTRON FD8038B12W7 (최대 수량 §10 참고) |
-| `sensor:fan_pwm_duty_2` | 팬 PWM L2 (0–100%) | Holding Register 1 (CH2, TIM1) | COOLTRON FD8038B12W7 (최대 수량 §10 참고) |
-| `sensor:pump_pwm_duty_1` | 펌프 PWM L1 (0–100%) | **HR 4, 5** (CH5+CH6, TIM2) | Johnson Electric eModule 300W × 2 (L1 직렬 P1→P2, 두 채널 동일 duty) |
-| `sensor:pump_pwm_duty_2` | 펌프 PWM L2 (0–100%) | **HR 6, 7** (CH7+CH8, TIM2) | Johnson Electric eModule 300W × 2 (L2 직렬 P3→P4, 두 채널 동일 duty) |
+| `sensor:pump_pwm_duty_1` | 펌프 PWM L1 (0–100%) | **HR 0, 1** (CH1+CH2, TIM1) | Johnson Electric eModule 300W × 2 (L1 직렬 P1→P2, 두 채널 동일 duty) |
+| `sensor:pump_pwm_duty_2` | 펌프 PWM L2 (0–100%) | **HR 2, 3** (CH3+CH4, TIM1) | Johnson Electric eModule 300W × 2 (L2 직렬 P3→P4, 두 채널 동일 duty) |
+| `sensor:fan_pwm_duty_1` | 팬 PWM L1 (0–100%) | Holding Register 4 (CH5, TIM2) | COOLTRON FD8038B12W7 (최대 수량 §10 참고) |
+| `sensor:fan_pwm_duty_2` | 팬 PWM L2 (0–100%) | Holding Register 5 (CH6, TIM2) | COOLTRON FD8038B12W7 (최대 수량 §10 참고) |
 
-> TIM1 CH3~4 (Holding Register 2~3): 미사용 예비.
-> TIM2 CH5~8 (HR 4~7): L2A는 펌프 4개 독립 채널 전부 사용 (**2 병렬 루프 × 루프당 2개 직렬** 구성, L1=P1→P2, L2=P3→P4). Redis 키는 루프 레벨 2개 유지 (`pump_pwm_duty_1`, `_2`)이며, MCG가 쓸 때 같은 duty를 같은 루프의 두 HR에 동시에 Write. dg5w(펌프 2개)는 CH5~6만 사용, CH7~8 예비.
-> TIM8 (Holding Register 8~11): 전압제어 펌프용 (Koolance PMP-500, dg5r용). L2A CDU에서는 미사용. 제품/변형별 매핑 상세: §10 참고.
+> **PWM 채널 매핑 (control_board 기준)**: HR 0~3 = 펌프 4ch (TIM1, 1 kHz), HR 4~11 = 팬 8ch (TIM2/TIM8, 25 kHz). 자세한 표는 [PCB.md "Holding Registers"](PCB.md) 참고.
+> TIM1 펌프 4채널: L2A는 **2 병렬 루프 × 루프당 2개 직렬** 구성 (L1=P1→P2 = HR 0+1, L2=P3→P4 = HR 2+3). Redis 키는 루프 레벨 2개 유지 (`pump_pwm_duty_1`, `_2`)이며, MCG가 쓸 때 같은 duty를 같은 루프의 두 HR에 동시에 Write. dg5w(펌프 2개)는 HR 0~1만 사용.
+> TIM2 팬 4채널 (HR 4~7): L2A는 L1/L2 각 1개 (HR 4, 5)만 사용. 나머지(HR 6, 7) 예비.
+> TIM8 팬 4채널 (HR 8~11): L2A에서는 미사용. dg5r 의 전압제어 펌프(Koolance PMP-500) 가 이 영역을 점유. 제품/변형별 매핑 상세: §10.2 참고.
 
-> **펌프 ui_duty → 펌프 입력 PWM 변환 (Pump spec 4.2.1 선형 구간 보호)**
-> Redis 키 `sensor:pump_pwm_duty_x` 는 UI 도메인 (0~100%). MCG 가 PCB Holding Register 로 write 할 때 **17~85% 선형 매핑** 후 HR 값(0~1000) 로 변환:
+> **펌프 ui_duty → 펌프 입력 PWM 변환 (직접 비례 + 85% 캡)**
+> Redis 키 `sensor:pump_pwm_duty_x` 는 UI 도메인 (0~100%). MCG 가 PCB Holding Register 로 write 할 때 직접 비례 매핑 + 운용 상한 캡:
 > ```
-> hr_value = round((17 + ui_duty / 100 × (85 - 17)) × 10)
+> hr_value = round(0.85 × ui_duty × 10)        # 0~1000 스케일
 > ```
-> Pump spec 4.2.1: 0~8% Nmax(안전 풀가동), 8~13% 정지, 13~17% Nmin, 17~85% Nmin~Nmax 선형, 85~95% Nmax 포화, **95~100% no use**. 변환은 마지막 두 위험 구간(포화/no use)을 회피하기 위함.
+> 즉 UI 100% → pump_input 85% (Pump spec 4.2.1 의 운용 선형 구간 상한), UI 0% → pump 정지.
+>
+> **UI 입력 하한 = 20%** (pump_input 17% Nmin = `17 / 0.85`). UI 도메인 20% 미만 입력은 정지~Nmin 사이 회피 구간에 들어가므로 UI 단에서 거부. Auto PI 의 `out_min` 도 동일 하한을 강제.
+>
+> Pump spec 4.2.1 동작 구간 (참고): 0~8% Nmax 풀가동(위험), 8~13% 정지, 13~17% Nmin, 17~85% 선형, 85~95% 포화, 95~100% no use. 위 캡(85%) 이 마지막 세 위험 구간을 회피한다. 자세한 표는 [PCB.md "유량 추정 > UI/MCG duty 매핑"](PCB.md) 참고.
 
 **팬 RPM 피드백 (Pulse Freq — Input Register 13~24)**
 
 | Key | 설명 | Register | 비고 |
 |---|---|---|---|
-| `sensor:fan_rpm_1` | 팬 RPM L1 | Input Register 13 (Pulse CH1) | FG wire, 2 pulses/rotation → RPM 환산 |
-| `sensor:fan_rpm_2` | 팬 RPM L2 | Input Register 14 (Pulse CH2) | FG wire, 2 pulses/rotation → RPM 환산 |
+| `sensor:fan_rpm_1` | 팬 RPM L1 | Input Register 20 (Pulse CH8) | FG wire, 2 pulses/rotation → RPM = Hz × 30 |
+| `sensor:fan_rpm_2` | 팬 RPM L2 | Input Register 21 (Pulse CH9) | FG wire, 2 pulses/rotation → RPM = Hz × 30 |
+
+> Fan PWM 채널(HR 4, 5)과 Fan RPM 피드백 채널(Pulse CH 8, 9)이 다른 이유: control_board 의 PCB 배선에서 fan RPM 라인은 별도 pulse 채널에 묶여 있음 (`gadgetini/src/control_board/polling.py` 의 fan_ch_rpm 매핑 참고).
 
 > 펌프 Fault 피드백 (Johnson Electric PWM 에러 패턴): TODO — 구현 시 Pulse 채널 추가 할당.
 
@@ -276,11 +303,10 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 | Key | 설명 | Register |
 |---|---|---|
-| `sensor:flow_rate_1` | 유량 L1 | TODO — Input Register 32~39 (Voltage) 예상 |
-| `sensor:flow_rate_2` | 유량 L2 | TODO |
+| `sensor:flow_rate_1` | 유량 L1 (현재는 derived — sensor:total_flow 항목 참고) | TODO — 실제 4-20mA 센서 미장착 |
+| `sensor:flow_rate_2` | 유량 L2 (현재는 derived) | TODO |
 | `sensor:ph` | pH | TODO |
 | `sensor:conductivity` | 전도도 | TODO |
-| `sensor:pressure` | 유압 | TODO |
 
 **유량 추정 (sensor:total_flow)**
 
@@ -308,7 +334,6 @@ publish 주기: 폴링 주기와 동일. `SET` + `PUBLISH` 모두 수행.
 | `alarm:ph_warning` | pH 이상 |
 | `alarm:conductivity_warning` | 전도도 이상 |
 | `alarm:flow_rate_warning` | 유량 저하 |
-| `alarm:pressure_warning` | 유압 이상 |
 | `alarm:ambient_temp_warning` | 장치 내부 온도 경고 |
 | `alarm:ambient_temp_critical` | 장치 내부 온도 한계 초과 |
 | `alarm:ambient_humidity_warning` | 장치 내부 습도 경고 |
@@ -324,14 +349,14 @@ publish 주기: 폴링 주기와 동일. `SET` + `PUBLISH` 모두 수행.
 | `comm:consecutive_failures` | string | 연속 실패 횟수 |
 | `comm:last_error` | string | 마지막 오류 |
 | `control:mode` | string | 제어 모드 (manual / auto / emergency) |
-| `control:fan_curve` | hash | Auto 모드 staging 곡선 (idle/warning 2-point). fields: `min_temp`, `max_temp`, `min_duty`, `max_duty` (duty는 0~1000 = 0.0~100.0%). UI Settings 페이지 + (D3 통합 시) gadgetini-web settings.js 공통 사용. |
+| `control:auto` | hash | Auto 모드 제어 파라미터. Fan 측은 outlet 온도 기반 PI ([auto_control.md](auto_control.md) Stage 2). Pump 측은 고정 duty. UI Settings 페이지에서 편집. fields: `fan.setpoint` (°C), `fan.base_duty` (0~1000), `fan.kp` (float, ×100 정수 저장), `fan.ki` (float, ×100 정수 저장), `fan.out_min` (0~1000, ≥100 = ≥10% 권장 하한), `fan.out_max` (0~1000), `pump.duty` (0~1000, ≥200 = ≥20% 강제 하한, UI=Pump 매핑 참고). |
 
 **Pub/Sub 채널 (제어 갱신)**
 
 | Channel | 발행자 | 구독자 | 트리거 |
 |---|---|---|---|
 | `control:mode` | UI 모드 토글 | MCG controller | 모드 전환 시 |
-| `control:fan_curve:update` | UI Settings 페이지 Save | MCG controller | Fan Curve 4개 필드 저장 직후. MCG 는 수신 시 `control:fan_curve` hash 를 다시 읽어 in-memory 갱신. |
+| `control:auto:update` | UI Settings 페이지 Save | MCG controller | Auto 파라미터 저장 직후. MCG 는 수신 시 `control:auto` hash 를 다시 읽어 in-memory 갱신. |
 
 ### Prometheus (이력)
 
@@ -368,9 +393,9 @@ publish 주기: 폴링 주기와 동일. `SET` + `PUBLISH` 모두 수행.
 
 | 변형 | Fan 모델 | Fan 최대 수 | Fan 채널 | Pump 모델 | Pump 수 | Pump 채널 |
 |---|---|---|---|---|---|---|
-| **L2A** (본 프로젝트) | COOLTRON FD8038B12W7-63-4J | **112** (L1/L2 **비대칭 독립 관리**) | HR 0~1 (TIM1 PWM) | Johnson Electric eModule 300W | 4 (**2 병렬 루프 × 루프당 2 직렬**: L1=P1→P2, L2=P3→P4) | **HR 4~7 (TIM2 PWM, 4채널 독립)** |
-| dg5r | COOLTRON FD8038B12W7-63-4J | 41 | HR 0~1 (TIM1 PWM) | Koolance PMP-500 | 4 | HR 8~11 (TIM8 전압 제어) |
-| dg5w | SUNON PF80381B2-Q050-S99-4P | 16 | HR 0~1 (TIM1 PWM) | Barrow LRC2.0 PLUS | 2 | HR 4~5 (TIM2 PWM) |
+| **L2A** (본 프로젝트) | COOLTRON FD8038B12W7-63-4J | **112** (L1/L2 **비대칭 독립 관리**) | **HR 4~5 (TIM2 PWM)** | Johnson Electric eModule 300W | 4 (**2 병렬 루프 × 루프당 2 직렬**: L1=P1→P2, L2=P3→P4) | **HR 0~3 (TIM1 PWM, 4채널 독립)** |
+| dg5r | COOLTRON FD8038B12W7-63-4J | 41 | HR 4~5 (TIM2 PWM) | Koolance PMP-500 | 4 | HR 8~11 (TIM8 전압 제어) |
+| dg5w | SUNON PF80381B2-Q050-S99-4P | 16 | HR 4~5 (TIM2 PWM) | Barrow LRC2.0 PLUS | 2 | HR 0~1 (TIM1 PWM) |
 
 > 한 채널 당 Fan은 최대 60개까지 병렬 구동 (보드 드라이버 정격). L2A의 112개는 **L1/L2 비대칭 분할**로 실제 수량이 다르며, 각 루프를 독립 관리(독립 PID·알람·제어).
 > L2A Pump 플러밍: **2 병렬 루프 × 루프당 2 직렬** (L1: P1→P2, L2: P3→P4). 직렬 구성은 높은 head 요구(Johnson 단일 130 kPa × 2 ≈ 260 kPa)에 대응.

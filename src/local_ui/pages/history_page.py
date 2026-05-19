@@ -60,8 +60,8 @@ TIME_RANGES = [
 METRICS = [
     ("Coolant Temp Inlet",   "coolant_temp_inlet"),
     ("Coolant Temp Outlet",  "coolant_temp_outlet"),
-    ("Pressure",             "pressure"),
     ("Flow Rate",            "flow_rate"),
+    ("Total Flow",           "total_flow"),
     ("Pump PWM Duty",        "pump_pwm_duty"),
     ("Fan PWM Duty",         "fan_pwm_duty"),
     ("Control Command",      "control_cmd"),

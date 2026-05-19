@@ -2,13 +2,21 @@
 
 Layout (top → bottom):
   ┌─ Mode bar (current mode label + ToggleSwitch reused from top_bar)
-  └─ Detail stack (Auto panel / Manual panel)
+  └─ Detail stack (Auto PI panel / Manual minimal panel)
 
-AutoPanel:
-  Fan Curve editor — 4 fields, tap → NumpadDialog (0–100).
-  [Save] writes hash `control:fan_curve` + publishes `control:fan_curve:update`.
-  Hash duty fields are stored as 0–1000 (=0.0–100.0%); UI shows 0–100%.
-  Schema is identical to gadgetini-web settings.js for future D3 sync.
+AutoPIPanel (Stage 2 PI per docs/auto_control.md):
+  Fan group: setpoint, base_duty, Kp, Ki, out_min, out_max
+  Pump group: pump.duty (Stage 1 고정 duty; Stage 3 PI 진입 전까지)
+  [Save] writes hash `control:auto` + publishes `control:auto:update`.
+
+  Hash schema (all integers — UI uses NumpadDialog 0–99/0–100):
+    fan.setpoint   °C            (e.g. 40)
+    fan.base_duty  0–1000 (×10)  (e.g. 400 = 40.0%)
+    fan.kp         integer       (e.g. 5  — meaning Kp 5.0 %P/°C)
+    fan.ki         integer       (e.g. 1  — meaning Ki 1.0 %P/(°C·s))
+    fan.out_min    0–1000 (×10)  (e.g. 100 = 10.0% — FAN_MIN_UI_DUTY)
+    fan.out_max    0–1000 (×10)  (e.g. 1000 = 100.0%)
+    pump.duty      0–1000 (×10)  (e.g. 600 = 60.0%, ≥ 200 = ≥20% pump UI lower)
 
 ManualPanel:
   Minimal. Direct pump/fan duty entry is on the Monitoring page overlay.
@@ -41,14 +49,22 @@ REDIS_HOST = "localhost"
 REDIS_PORT = 6379
 REDIS_DB = 0
 
-_FAN_CURVE_KEY = "control:fan_curve"
-_FAN_CURVE_CHANNEL = "control:fan_curve:update"
+_AUTO_HASH_KEY = "control:auto"
+_AUTO_UPDATE_CHANNEL = "control:auto:update"
 
-_DEFAULT_FAN_CURVE = {
-    "min_temp": 25,
-    "max_temp": 60,
-    "min_duty": 100,   # 0–1000 scale → 10%
-    "max_duty": 1000,  # 100%
+# Operational lower bounds (mirror cooling_health.py)
+PUMP_MIN_UI_DUTY = 20   # %  — pump_input 17% Nmin via 0.85× mapping
+FAN_MIN_UI_DUTY  = 10   # %  — operational guideline (fan spec 0~100% 전 구간)
+
+# Default auto params (per docs/auto_control.md Stage 2)
+_DEFAULT_AUTO = {
+    "fan.setpoint":   40,    # °C
+    "fan.base_duty":  400,   # ×10 = 40.0%
+    "fan.kp":         5,     # ≈ 5.0 %P/°C
+    "fan.ki":         1,     # ≈ 1.0 %P/(°C·s)  (auto_control.md 0.5 → 정수 근사)
+    "fan.out_min":    FAN_MIN_UI_DUTY * 10,    # 100 = 10.0%
+    "fan.out_max":    1000,  # 100.0%
+    "pump.duty":      600,   # 60.0% (Stage 1 고정)
 }
 
 
@@ -56,13 +72,24 @@ def _redis_client() -> redis.Redis:
     return redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
 
 
-class _CurveField(QFrame):
-    """Tappable field that opens NumpadDialog and reports the new value."""
+class _ParamField(QFrame):
+    """Tappable parameter card — opens NumpadDialog and reports the new value."""
 
-    def __init__(self, label: str, suffix: str, value: int, parent=None) -> None:
+    def __init__(
+        self,
+        label: str,
+        suffix: str,
+        value: int,
+        min_value: int = 0,
+        max_value: int = 100,
+        parent=None,
+    ) -> None:
         super().__init__(parent)
         self._value = value
         self._suffix = suffix
+        self._label = label
+        self._min = min_value
+        self._max = max_value
         self._on_change = lambda v: None
 
         self.setFrameShape(QFrame.StyledPanel)
@@ -71,15 +98,16 @@ class _CurveField(QFrame):
         )
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 8, 12, 8)
-        layout.setSpacing(4)
+        layout.setContentsMargins(10, 6, 10, 6)
+        layout.setSpacing(2)
 
-        cap_font = QFont(); cap_font.setPointSize(10); cap_font.setBold(True)
+        cap_font = QFont(); cap_font.setPointSize(9); cap_font.setBold(True)
         self._caption = QLabel(label.upper())
         self._caption.setFont(cap_font)
         self._caption.setStyleSheet("color:#6c757d; border:none;")
+        self._caption.setWordWrap(True)
 
-        val_font = QFont(); val_font.setPointSize(22); val_font.setBold(True)
+        val_font = QFont(); val_font.setPointSize(20); val_font.setBold(True)
         self._value_lbl = QLabel(self._format(value))
         self._value_lbl.setFont(val_font)
         self._value_lbl.setStyleSheet("color:#212529; border:none;")
@@ -91,7 +119,7 @@ class _CurveField(QFrame):
         self.setCursor(Qt.PointingHandCursor)
 
     def _format(self, v: int) -> str:
-        return f"{v} {self._suffix}"
+        return f"{v} {self._suffix}" if self._suffix else str(v)
 
     def set_value(self, v: int) -> None:
         self._value = v
@@ -113,21 +141,29 @@ class _CurveField(QFrame):
     def mousePressEvent(self, event) -> None:
         if not self.isEnabled():
             return
-        dlg = NumpadDialog(self._value, parent=self)
+        dlg = NumpadDialog(self._value, parent=self,
+                           min_value=self._min, max_value=self._max,
+                           title_suffix=f" — {self._label}")
         if dlg.exec():
             new_val = dlg.value()
             self.set_value(new_val)
             self._on_change(new_val)
 
 
-class AutoFanCurvePanel(QWidget):
-    """Fan Curve editor — 2-point linear (idle/warning)."""
+class AutoPIPanel(QWidget):
+    """Stage 2 PI parameter editor (fan) + Stage 1 fixed pump duty.
+
+    See docs/auto_control.md "Stage 2" for the PI equation:
+        error    = outlet_temp - setpoint
+        fan_pwm  = clamp(base_duty + Kp*error + Ki*∫error, out_min, out_max)
+    """
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._redis = _redis_client()
         self._dirty = False
-        self._curve = dict(_DEFAULT_FAN_CURVE)
+        self._params = dict(_DEFAULT_AUTO)
+        self._fields: dict[str, _ParamField] = {}
         self._build_ui()
         self._load_from_redis()
 
@@ -135,16 +171,18 @@ class AutoFanCurvePanel(QWidget):
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 16, 20, 16)
-        layout.setSpacing(12)
+        layout.setSpacing(14)
 
         title_font = QFont(); title_font.setPointSize(14); title_font.setBold(True)
-        title = QLabel("Fan Curve — Coolant Temp Staging")
+        title = QLabel("Auto Control — Fan PI + Pump fixed")
         title.setFont(title_font)
         title.setStyleSheet("color:#212529;")
 
         desc = QLabel(
-            "T ≤ Idle Temp → Idle PWM, T ≥ Warning Temp → Max PWM, "
-            "사이는 선형 보간 (outlet 온도 기준)."
+            "Fan: outlet 온도 setpoint 기준 PI 제어 "
+            "(auto_control.md Stage 2). "
+            "Pump: 고정 duty (Stage 1). "
+            f"하한 Fan ≥ {FAN_MIN_UI_DUTY}% · Pump ≥ {PUMP_MIN_UI_DUTY}%."
         )
         desc.setStyleSheet("color:#6c757d; font-size:11pt;")
         desc.setWordWrap(True)
@@ -152,32 +190,55 @@ class AutoFanCurvePanel(QWidget):
         layout.addWidget(title)
         layout.addWidget(desc)
 
-        grid = QGridLayout()
-        grid.setSpacing(12)
+        # ── Fan PI group ─────────────────────────────────────────────
+        layout.addWidget(self._group_header("Fan PI", "#3498db"))
 
-        idle_header = self._group_header("Idle Group", "#27ae60")
-        warn_header = self._group_header("Warning Group", "#e74c3c")
-        grid.addWidget(idle_header, 0, 0, 1, 2)
-        grid.addWidget(warn_header, 0, 2, 1, 2)
+        fan_grid = QGridLayout()
+        fan_grid.setSpacing(10)
 
-        self._f_min_temp = _CurveField("Idle Temp", "°C", self._curve["min_temp"])
-        self._f_min_duty = _CurveField("Idle PWM", "%", self._curve["min_duty"] // 10)
-        self._f_max_temp = _CurveField("Warning Temp", "°C", self._curve["max_temp"])
-        self._f_max_duty = _CurveField("Max PWM", "%", self._curve["max_duty"] // 10)
+        # NOTE: Kp/Ki 는 정수 의미 그대로 (5 = Kp 5.0, 1 = Ki 1.0). 소수 입력 필요 시
+        # 추후 dedicated dialog 추가.
+        specs = [
+            # (hash_key,        label,         suffix,  min,             max, scale_to_ui)
+            ("fan.setpoint",    "Setpoint",    "°C",    20,              80,  lambda v: v),
+            ("fan.base_duty",   "Base Duty",   "%",     FAN_MIN_UI_DUTY, 100, lambda v: v // 10),
+            ("fan.kp",          "Kp",          "",      0,               99,  lambda v: v),
+            ("fan.ki",          "Ki",          "",      0,               99,  lambda v: v),
+            ("fan.out_min",     "Out Min",     "%",     FAN_MIN_UI_DUTY, 100, lambda v: v // 10),
+            ("fan.out_max",     "Out Max",     "%",     FAN_MIN_UI_DUTY, 100, lambda v: v // 10),
+        ]
+        for col, (key, label, sfx, mn, mx, to_ui) in enumerate(specs):
+            field = _ParamField(label, sfx, to_ui(self._params[key]),
+                                 min_value=mn, max_value=mx)
+            row = col // 3
+            col2 = col % 3
+            fan_grid.addWidget(field, row, col2)
+            self._fields[key] = field
 
-        grid.addWidget(self._f_min_temp, 1, 0)
-        grid.addWidget(self._f_min_duty, 1, 1)
-        grid.addWidget(self._f_max_temp, 1, 2)
-        grid.addWidget(self._f_max_duty, 1, 3)
+        # Bind change handlers (convert UI value → hash value)
+        self._fields["fan.setpoint"].on_changed(lambda v: self._mark_dirty("fan.setpoint", v))
+        self._fields["fan.base_duty"].on_changed(lambda v: self._mark_dirty("fan.base_duty", v * 10))
+        self._fields["fan.kp"].on_changed(lambda v: self._mark_dirty("fan.kp", v))
+        self._fields["fan.ki"].on_changed(lambda v: self._mark_dirty("fan.ki", v))
+        self._fields["fan.out_min"].on_changed(lambda v: self._mark_dirty("fan.out_min", v * 10))
+        self._fields["fan.out_max"].on_changed(lambda v: self._mark_dirty("fan.out_max", v * 10))
 
-        self._f_min_temp.on_changed(lambda v: self._mark_dirty("min_temp", v))
-        self._f_min_duty.on_changed(lambda v: self._mark_dirty("min_duty", v * 10))
-        self._f_max_temp.on_changed(lambda v: self._mark_dirty("max_temp", v))
-        self._f_max_duty.on_changed(lambda v: self._mark_dirty("max_duty", v * 10))
+        layout.addLayout(fan_grid)
 
-        layout.addLayout(grid)
+        # ── Pump fixed group ─────────────────────────────────────────
+        layout.addWidget(self._group_header("Pump (fixed duty)", "#27ae60"))
 
-        # Save bar
+        pump_row = QHBoxLayout()
+        pump_field = _ParamField("Pump Duty", "%",
+                                  self._params["pump.duty"] // 10,
+                                  min_value=PUMP_MIN_UI_DUTY, max_value=100)
+        pump_field.on_changed(lambda v: self._mark_dirty("pump.duty", v * 10))
+        self._fields["pump.duty"] = pump_field
+        pump_row.addWidget(pump_field)
+        pump_row.addStretch(1)
+        layout.addLayout(pump_row)
+
+        # ── Save bar ─────────────────────────────────────────────────
         save_row = QHBoxLayout()
         save_row.addStretch(1)
 
@@ -210,8 +271,8 @@ class AutoFanCurvePanel(QWidget):
         return lbl
 
     # ---- State -------------------------------------------------------
-    def _mark_dirty(self, field: str, value: int) -> None:
-        self._curve[field] = value
+    def _mark_dirty(self, hash_key: str, hash_value: int) -> None:
+        self._params[hash_key] = hash_value
         self._dirty = True
         self._refresh_save_state()
 
@@ -226,48 +287,56 @@ class AutoFanCurvePanel(QWidget):
             self._status_lbl.setStyleSheet("color:#27ae60; font-size:11pt;")
 
     def set_editable(self, editable: bool) -> None:
-        for f in (self._f_min_temp, self._f_min_duty,
-                  self._f_max_temp, self._f_max_duty):
+        for f in self._fields.values():
             f.set_enabled(editable)
         self._save_btn.setEnabled(editable and self._dirty)
 
     # ---- Redis I/O ---------------------------------------------------
     def _load_from_redis(self) -> None:
         try:
-            raw = self._redis.hgetall(_FAN_CURVE_KEY)
+            raw = self._redis.hgetall(_AUTO_HASH_KEY)
         except Exception as e:
-            log.warning("control:fan_curve hgetall failed: %s", e)
+            log.warning("control:auto hgetall failed: %s", e)
             raw = {}
 
-        for field in self._curve:
-            byte_key = field.encode()
+        for key in self._params:
+            byte_key = key.encode()
             if byte_key in raw:
                 try:
-                    self._curve[field] = int(raw[byte_key])
+                    self._params[key] = int(raw[byte_key])
                 except ValueError:
                     pass
 
-        self._f_min_temp.set_value(self._curve["min_temp"])
-        self._f_max_temp.set_value(self._curve["max_temp"])
-        self._f_min_duty.set_value(self._curve["min_duty"] // 10)
-        self._f_max_duty.set_value(self._curve["max_duty"] // 10)
+        # Repopulate UI (apply scale)
+        self._fields["fan.setpoint"].set_value(self._params["fan.setpoint"])
+        self._fields["fan.base_duty"].set_value(self._params["fan.base_duty"] // 10)
+        self._fields["fan.kp"].set_value(self._params["fan.kp"])
+        self._fields["fan.ki"].set_value(self._params["fan.ki"])
+        self._fields["fan.out_min"].set_value(self._params["fan.out_min"] // 10)
+        self._fields["fan.out_max"].set_value(self._params["fan.out_max"] // 10)
+        self._fields["pump.duty"].set_value(self._params["pump.duty"] // 10)
 
         self._dirty = False
         self._refresh_save_state()
 
     def _on_save(self) -> None:
+        # Cross-field guard: out_min < out_max
+        if self._params["fan.out_min"] >= self._params["fan.out_max"]:
+            self._status_lbl.setText("out_min must be < out_max")
+            self._status_lbl.setStyleSheet("color:#e74c3c; font-size:11pt;")
+            return
         try:
             pipe = self._redis.pipeline()
-            pipe.hset(_FAN_CURVE_KEY, mapping={
-                k: str(v) for k, v in self._curve.items()
+            pipe.hset(_AUTO_HASH_KEY, mapping={
+                k: str(v) for k, v in self._params.items()
             })
-            pipe.publish(_FAN_CURVE_CHANNEL, "1")
+            pipe.publish(_AUTO_UPDATE_CHANNEL, "1")
             pipe.execute()
-            log.info("control:fan_curve saved %s", self._curve)
+            log.info("control:auto saved %s", self._params)
             self._dirty = False
             self._refresh_save_state()
         except Exception as e:
-            log.warning("Could not save control:fan_curve: %s", e)
+            log.warning("Could not save control:auto: %s", e)
             self._status_lbl.setText(f"save failed: {e}")
             self._status_lbl.setStyleSheet("color:#e74c3c; font-size:11pt;")
 
@@ -287,7 +356,10 @@ class ManualPanel(QWidget):
         title.setStyleSheet("color:#212529;")
         layout.addWidget(title)
 
-        hint = QLabel("펌프/팬 duty 직접 설정은 Monitoring 페이지에서 수행하세요.")
+        hint = QLabel(
+            "펌프/팬 duty 직접 설정은 Monitoring 페이지에서 수행하세요. "
+            f"입력 하한: Pump ≥ {PUMP_MIN_UI_DUTY}%, Fan ≥ {FAN_MIN_UI_DUTY}%."
+        )
         hint.setStyleSheet("color:#6c757d; font-size:12pt;")
         hint.setWordWrap(True)
         layout.addWidget(hint)
@@ -344,7 +416,7 @@ class SettingsPage(QWidget):
 
         # ── Detail stack ────────────────────────────────────────────
         self._stack = QStackedWidget()
-        self.auto_panel = AutoFanCurvePanel()
+        self.auto_panel = AutoPIPanel()
         self.manual_panel = ManualPanel()
         self._stack.addWidget(self.auto_panel)    # index 0
         self._stack.addWidget(self.manual_panel)  # index 1

@@ -35,9 +35,8 @@ _ALARM_LABELS: dict[str, str] = {
     "alarm:water_level_critical":      "Coolant Level — Critical",
     # Leak
     "alarm:leak_detected":             "Leak — Detected",
-    # Flow & pressure
+    # Flow
     "alarm:flow_rate_warning":         "Flow Rate — Warning",
-    "alarm:pressure_warning":          "Pressure — Warning",
     # Chemistry
     "alarm:ph_warning":                "pH — Warning",
     "alarm:conductivity_warning":      "Conductivity — Warning",

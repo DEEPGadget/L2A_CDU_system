@@ -24,7 +24,7 @@
 | 8 | **컴포넌트 이름 배치** — 모든 컴포넌트 이름은 박스 내부 상단에 표시 (bold). 박스 내부 구성: 이름(상단) → 값(중앙) → 단위(하단). 레인 좌측에 "L1" / "L2" 행 레이블로 루프 구분. |
 | 9 | **Server 외부 분기 표현** — Inlet Manifold에서 차가운 냉각수가 서버로 나갔다가 뜨거워져 Outlet Manifold로 돌아오는 흐름을 수직 분기로 표현. Loop 1의 서버는 레인 위쪽으로, Loop 2의 서버는 레인 아래쪽으로 분기. Inlet→Server→Outlet 은 하나의 연결된 유로. |
 | 10 | **Reservoir 구조** — Reservoir 박스는 두 레인(Loop 1·2) 높이 전체를 커버하는 단일 박스. 박스 상단→Loop 1 배관, 박스 하단→Loop 2 배관으로 분기. 내부에 이름·레벨 바·상태 텍스트 표시. |
-| 11 | **Status strip** — ΔT1·ΔT2·Leak·Ambient·Pressure는 SVG 아래 별도 QWidget으로 배치. SVG는 다이어그램만 담당, status strip은 Python에서 직접 갱신. |
+| 11 | **Status strip** — ΔT1·ΔT2·Total Flow·Ambient·(Leak 자리)는 SVG 아래 별도 QWidget으로 배치. SVG는 다이어그램만 담당, status strip은 Python에서 직접 갱신. Leak 슬롯은 비어있고 D1 후속 작업에서 활성화 예정. |
 | 12 | **최소 글자 크기** — 모든 텍스트(다이어그램·팝업·버튼·차트 axis/tick/legend·Table 셀 포함)는 최소 20px. 값(센서·PWM)은 24px 이상. 그 이하 크기 사용 금지. **근거**: 1) 터치 대상 영역은 손가락 조작이 편해야 함 2) 정보 표시도 1m 거리에서 읽혀야 함. pyqtgraph/QTableWidget 기본 폰트(9~11pt)는 명시적으로 재설정 필요. |
 
 ---
@@ -41,7 +41,7 @@
 |---|---|---|
 | Top bar | 상단 전체 | 탭 네비 (`Monitoring` / `History`), **알람 배지** (`🔔 N` — 알람 없을 때 숨김, 탭 시 floating overlay), `IP: x.x.x.x`, `System: Normal/Warning/Critical/-`, `Link: ok/timeout/disconnected`, 현재 시각 `HH:MM:SS` |
 | Cooling Health | top bar 아래 ~ status strip 위 | CDU 냉각수 흐름 SVG 다이어그램 **전체 폭 (1280px)** — Pub/Sub(`sensor:*`, `comm:*`) 수신 시 즉시 갱신, Pump·Fan 노드는 탭으로 직접 제어 가능, 부품 목록 아래 참고 |
-| Status strip | 최하단 고정 (별도 QWidget) | ΔT1·ΔT2·Leak·Ambient Temp/Humidity·Pressure — 텍스트 나열, 1초 갱신 |
+| Status strip | 최하단 고정 (별도 QWidget) | ΔT1·ΔT2·Total Flow·Ambient Temp/Humidity·(Leak 자리, 비어있음) — 텍스트 나열, 1초 갱신. Total Flow = `sensor:total_flow` (펌프 duty 기반 derive — [PCB.md "유량 추정"](PCB.md) 참고). |
 
 **Top bar 레이아웃**
 
@@ -137,10 +137,11 @@
 | 항목 | 표시 데이터 | Redis key |
 |---|---|---|
 | Coolant ΔT1 / ΔT2 | outlet − inlet 계산값 (°C), 색상 코딩 적용 — ≤15°C=green / 15–20°C=orange / >20°C=red | (계산) |
-| Leak Detection | `None` (green) / `Detected` (red) | `sensor:leak` |
+| Total Flow | 시스템 총 유량 (L/min, 1소수점) — 펌프 duty 기반 derive (`flow_L1 + flow_L2`, max 70 LPM) | `sensor:total_flow` |
 | Ambient Temp / Humidity | 장치 내부 온·습도 (°C / % RH) — RPi I2C/GPIO 직접 수집 (Modbus 미경유) | `sensor:ambient_temp`, `sensor:ambient_humidity` |
-| Pressure | 유압 (bar, 부착 여부 미확정) | `sensor:pressure` |
+| (Leak 자리) | 슬롯만 확보, 라벨/값 모두 비어있음. D1 후속 작업에서 누수 입력 채널 확정 후 활성화 예정 | (TBD) |
 
+> 5칸 슬롯 순서: `ΔT1 | ΔT2 | Total Flow | Ambient | (Leak placeholder)`. Leak 자리는 separator 없이 비어있어 레이아웃만 차지.
 > Fan RPM은 status strip이 아니라 Fan+Radiator 박스 내부에 표시 (위 Cooling Health 다이어그램 표 참고).
 
 **페이지 전환**: Top bar 탭 (`Monitoring` / `History`) 선택
@@ -203,7 +204,7 @@
 │ Time Range [5m▼] │
 ├──────────────────┤
 │ [Coolant Temp  ] │  ← 토글 버튼 (활성=강조, 비활성=일반)
-│ [Flow & Pressure]│
+│ [Flow         ] │
 │ [Coolant Quality]│
 │ [Coolant Level ] │
 │ [Ambient       ] │
@@ -253,7 +254,7 @@
 | 그룹 | 기본 선택 | Graph Form 토글 | 시리즈 라디오 |
 |---|---|---|---|
 | **Coolant Temp** | All | `[Line]` `[Table]` | `○ All  ○ L1  ○ L2` |
-| **Flow & Pressure** | All | `[Line]` `[Table]` | `○ All  ○ Flow Rate  ○ Pressure` |
+| **Flow** | All | `[Line]` `[Table]` | `○ All  ○ Loop  ○ Total` |
 | **Coolant Quality** | All | `[Line]` `[Table]` | `○ All  ○ pH  ○ Conductivity` |
 | **Coolant Level** | (단일) | `[Timeline]` `[Table]` | (없음) |
 | **Ambient** | All | `[Line]` `[Table]` | `○ All  ○ Temp  ○ Humidity` |
@@ -272,7 +273,7 @@
 | L1 계열 색상 | `#1f77b4` (파랑) |
 | L2 계열 색상 | `#9467bd` (보라) |
 | 같은 루프 내 항목 구분 | Inlet / Pump / Flow = 실선, Outlet / Fan = 점선 |
-| 독립 물리량 (Pressure) | `#8c564b` (갈색) |
+| 합산값 (Total Flow) | `#8c564b` (갈색) |
 | Ambient Temp | `#e377c2` (핑크) |
 | Ambient Humidity | `#17becf` (시안) |
 
@@ -317,7 +318,9 @@
 
 ---
 
-#### Flow & Pressure
+#### Flow
+
+> Pressure 는 시스템에서 제거됨. 본 그룹은 펌프 duty 기반 derive 유량만 표시한다 ([PCB.md "유량 추정"](PCB.md) 참고). 실제 유량 센서 미장착.
 
 **시리즈**
 
@@ -325,22 +328,22 @@
 |---|---|---|---|
 | Flow Rate L1 | `sensor_flow_rate{loop="1"}` | `sensor:flow_rate_1` | L/min |
 | Flow Rate L2 | `sensor_flow_rate{loop="2"}` | `sensor:flow_rate_2` | L/min |
-| Pressure | `sensor_pressure` | `sensor:pressure` | bar |
+| Total Flow | `sensor_total_flow` | `sensor:total_flow` | L/min |
 
 **시리즈 선택**
 
 | 라디오 | 표시 시리즈 | Y축 |
 |---|---|---|
-| All | Flow Rate L1 · Flow Rate L2 · Pressure (3선) | 좌: L/min (Flow), 우: bar (Pressure) — Dual Y-Axis |
-| Flow Rate | Flow Rate L1 · Flow Rate L2 (2선) | 단일 (L/min) |
-| Pressure | Pressure (1선) | 단일 (bar) |
+| All | Flow Rate L1 · Flow Rate L2 · Total Flow (3선) | 단일 (L/min) |
+| Loop | Flow Rate L1 · Flow Rate L2 (2선) | 단일 (L/min) |
+| Total | Total Flow (1선) | 단일 (L/min) |
 
 **Graph Form**
 
 | Form | 렌더러 | 비고 |
 |---|---|---|
-| Line | pyqtgraph `PlotWidget` | "All" 선택 시 dual Y-axis (좌=L/min, 우=bar). 개별 선택 시 단일 축. |
-| Table | `QTableWidget` | All: Timestamp \| Flow L1 \| Flow L2 \| Pressure. Flow Rate: Timestamp \| L1 \| L2. Pressure: Timestamp \| Value |
+| Line | pyqtgraph `PlotWidget` | 단일 Y축 (L/min) — 모든 시리즈 단위 동일 |
+| Table | `QTableWidget` | All: Timestamp \| L1 \| L2 \| Total. Loop: Timestamp \| L1 \| L2. Total: Timestamp \| Value |
 
 **라인 스타일**
 
@@ -348,7 +351,7 @@
 |---|---|---|
 | Flow Rate L1 | `#1f77b4` (파랑) | 실선 |
 | Flow Rate L2 | `#9467bd` (보라) | 실선 |
-| Pressure | `#8c564b` (갈색) | 실선 |
+| Total Flow | `#8c564b` (갈색) | 실선 |
 
 ---
 

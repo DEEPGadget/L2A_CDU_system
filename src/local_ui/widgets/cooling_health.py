@@ -348,7 +348,15 @@ class CoolingHealthWidget(QWidget):
         if self._current_mode != "manual":
             return
         current = self._current_duty.get(slot, 0)
-        dlg = NumpadDialog(current, parent=self)
+        # Operational lower bound per actuator (PCB.md "유량 추정" + Fan spec 확인 결과):
+        #   pump: 20% (= pump_input 17% Nmin, MCG maps with 0.85× factor)
+        #   fan:  10% (spec 0~100% 전 구간 가능, 운용 권장만)
+        is_pump = slot.startswith("pump")
+        min_value = 20 if is_pump else 10
+        title_suffix = " — Pump (≥20%)" if is_pump else " — Fan (≥10%)"
+        dlg = NumpadDialog(current, parent=self,
+                           min_value=min_value, max_value=100,
+                           title_suffix=title_suffix)
         if dlg.exec() == QDialog.Accepted:
             new_val = dlg.value()
             self._apply_duty(slot, new_val)

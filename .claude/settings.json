@@ -91,7 +91,15 @@
       "Bash(grep -E \"\\\\.\\(md|py\\)$\")",
       "Bash(grep -E \"\\\\.\\(py|md\\)$\")",
       "Bash(python3 -c \"import PySide6; print\\(PySide6.__file__\\)\")",
-      "Bash(/home/gadgetini/venv/bin/python -c ' *)"
+      "Bash(/home/gadgetini/venv/bin/python -c ' *)",
+      "Bash(sed -n '/^## 유량 추정/,/^---/p' /home/gadgetini/L2A_CDU_system/docs/PCB.md)",
+      "Bash(grep -nA8 \"유량 추정 \\(sensor:total_flow\\)\" /home/gadgetini/L2A_CDU_system/docs/MCG.md)",
+      "Bash(grep -nB1 -A6 \"Total Flow\\\\|total_flow\" /home/gadgetini/L2A_CDU_system/src/fake_data/simulator.py)",
+      "Bash(grep -nB1 -A4 \"sensor:total_flow\" /home/gadgetini/L2A_CDU_system/src/local_ui/widgets/status_strip.py)",
+      "Bash(grep -nB1 -A5 -iE \"auto|fan.curve|staging\" /home/gadgetini/L2A_CDU_system/docs/UI.md)",
+      "Bash(grep -nB1 -A5 -iE \"auto|fan.curve|staging|setting\" /home/gadgetini/L2A_CDU_system/docs/UI_Design.md)",
+      "Bash(pdfinfo \"/home/gadgetini/L2A_CDU_system/docs/Fan spec.PDF\")",
+      "Bash(QT_QPA_PLATFORM=offscreen /home/gadgetini/venv/bin/python)"
     ],
     "additionalDirectories": [
       "/tmp"

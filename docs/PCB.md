@@ -144,21 +144,30 @@ Config Command(HR 17)에 0x01을 쓰거나, BT2 Factory Reset 시 자동 저장.
 - 한 루프 = 직렬 2펌프 → 루프 유량 = 단일 펌프 유량 (압력만 2배)
 - 병렬 2 루프 → Total Flow = flow_L1 + flow_L2
 
-### UI/MCG duty 매핑
+### UI / MCG duty 매핑
 
-Pump spec (Johnson Electric 300W) 의 PWM 선형 구간(17~85%) 보호를 위해 MCG 에서 변환:
+UI 도메인은 사용자 직관 (UI X% = pump 출력 X% 의 일정 비율) 을 유지하기 위해 **직접 비례 매핑**. UI 0% = 펌프 정지. 단 UI 100% 가 곧 pump_input 100% 로 가지 않도록, **UI 100% → pump_input 85%** (Pump spec 4.2.1 의 운용 상한) 로 캡:
 
 ```
-ui_duty 0~100%  →  pump_input_pwm 17~85% (선형)
+pump_input_pwm = 0.85 × ui_duty
 ```
 
-Pump spec 4.2.1 동작 구간:
-- 0~8% : Nmax (안전 풀가동)
-- 8~13% : 정지
-- 13~17% : Nmin
-- **17~85% : Nmin ~ Nmax 선형** ← 운용 구간
-- 85~95% : Nmax 포화
-- 95~100% : no use
+| UI duty | pump_input PWM | flow (loop) | flow (total) |
+|---:|---:|---:|---:|
+| 100 % | 85 % | 35.0 LPM | 70.0 LPM |
+|  75 % | 63.75 % | 26.2 LPM | 52.5 LPM |
+|  50 % | 42.5 % | 17.5 LPM | 35.0 LPM |
+|  **20 %** (UI 하한) | **17 %** (Nmin) | 7.0 LPM | 14.0 LPM |
+|   0 % | 0 % | 0 LPM | 0 LPM (정지) |
+
+**UI 입력 하한 = 20 %**: pump spec 4.2.1 의 운용 하한 17 % (Nmin) 가 위 매핑으로 UI 20 % 에 대응 (`17 / 0.85 ≈ 20`). UI 도메인에서 20 % 미만 입력은 펌프가 정지·Nmin 사이 회피 구간으로 들어가므로 거부 (단, 0 % = 명시적 정지는 별도 허용 가능). Auto 모드 (PI) 의 `out_min` 도 동일 하한을 강제.
+
+Pump spec 4.2.1 동작 구간 (참고):
+- 0~8 % : Nmax 풀가동 (안전 트리거)
+- 8~13 % : 정지
+- 13~17 % : Nmin
+- **17~85 % : Nmin ~ Nmax 선형** ← 위 매핑이 닿는 영역
+- 85~95 % : Nmax 포화 / 95~100 % : no use
 
 ### 유량 산정
 
@@ -169,7 +178,7 @@ flow_loop_lpm  = 35 × (ui_duty / 100)        # 루프당 max 35 LPM
 total_flow_lpm = flow_L1 + flow_L2           # max 70 LPM (2 루프 합)
 ```
 
-Pump spec 정격점은 45 LPM (단독, 12V PWM 100%). 시스템 저항 고려해 35 LPM 채택.
+Pump spec 정격점 45 LPM (단독, 12V PWM 100%) — 시스템 저항 고려해 35 LPM 채택. UI 100 % 일 때 pump_input 85 % 로 운용하므로 정격(100 %) 대비 ~94 % 의 유량 ≈ 42 LPM 이 spec 상 예상치이나, **시스템 저항 보수 마진** 으로 35 LPM 채택.
 
 ---
 

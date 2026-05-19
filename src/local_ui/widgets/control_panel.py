@@ -1,7 +1,12 @@
 """Numeric keypad dialog for PWM duty input.
 
-NumpadDialog: modal popup, 0–100 range, Apply/Cancel buttons.
+NumpadDialog: modal popup with configurable min/max range, Apply/Cancel buttons.
 Used by CoolingHealthWidget overlay buttons (inline Pump/Fan control).
+
+`min_value` enforces the operational lower bound:
+  - Pump: 20 % (= pump_input 17 % Nmin, see PCB.md "유량 추정")
+  - Fan:  10 % (운용 권장, spec 무근거)
+Values below `min_value` are clamped or rejected on Apply with a hint message.
 """
 
 from __future__ import annotations
@@ -20,13 +25,25 @@ from PySide6.QtWidgets import (
 
 
 class NumpadDialog(QDialog):
-    """Numeric keypad popup for entering PWM duty (0–100)."""
+    """Numeric keypad popup for entering PWM duty (`min_value`–`max_value`)."""
 
-    def __init__(self, current_value: int, parent=None) -> None:
+    def __init__(
+        self,
+        current_value: int,
+        parent=None,
+        *,
+        min_value: int = 0,
+        max_value: int = 100,
+        title_suffix: str = "",
+    ) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Set PWM Duty (%)")
+        self.setWindowTitle(f"Set PWM Duty (%){title_suffix}")
         self.setModal(True)
-        self._value_str = str(current_value)
+        self._min = max(0, int(min_value))
+        self._max = min(100, int(max_value))
+        if self._min > self._max:
+            self._min, self._max = 0, 100
+        self._value_str = str(max(self._min, min(self._max, int(current_value))))
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -47,6 +64,12 @@ class NumpadDialog(QDialog):
             "border:2px solid #bdc3c7; border-radius:6px; padding:6px 12px;"
         )
         layout.addWidget(self._display)
+
+        if self._min > 0 or self._max < 100:
+            range_lbl = QLabel(f"입력 범위: {self._min}–{self._max} %")
+            range_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            range_lbl.setStyleSheet("color:#6c757d; font-size:10pt;")
+            layout.addWidget(range_lbl)
 
         # ── Numpad grid ───────────────────────────────────────────────────────
         grid = QGridLayout()
@@ -121,15 +144,15 @@ class NumpadDialog(QDialog):
         try:
             val = int(self._value_str)
         except ValueError:
-            val = 0
-        if 0 <= val <= 100:
+            val = self._min
+        if self._min <= val <= self._max:
             self.accept()
         else:
-            self._display.setText("0–100 only")
-            self._value_str = "50"
+            self._display.setText(f"{self._min}–{self._max} only")
+            self._value_str = str(self._min)
 
     def value(self) -> int:
         try:
-            return max(0, min(100, int(self._value_str)))
+            return max(self._min, min(self._max, int(self._value_str)))
         except ValueError:
-            return 0
+            return self._min
