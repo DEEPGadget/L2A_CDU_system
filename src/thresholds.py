@@ -44,9 +44,8 @@ AMBIENT_HUM_WARN_HI:   float = 60.0   # 60–80 → warning
 AMBIENT_HUM_CRIT_HI:   float = 80.0   # > 80  → critical
 AMBIENT_HUM_CRIT_LO:   float = 8.0    # < 8   → critical
 
-# ── Chemistry (Warning only) ──────────────────────────────────────────────────
-# docs/threshold.md § Chemistry  — GEN-REQ-08 / ALARM-REQ-17/18
-PH_NORMAL_LO:         float = 8.0     # GEN-REQ-08 normal range lower bound
-PH_NORMAL_HI:         float = 10.5    # GEN-REQ-08 normal range upper bound
-PH_WARN_LO:           float = 7.8     # < 7.8 → alarm:ph_warning (ALARM-REQ-17)
-CONDUCTIVITY_WARN_LO: float = 4600.0  # < 4600 µS/cm → alarm:conductivity_warning (ALARM-REQ-18)
+# ── Chemistry (pH / Conductivity) ─────────────────────────────────────────────
+# Not measured in current PCB revision (LTS v1). Constants intentionally removed.
+# Re-introduce PH_NORMAL_LO / PH_NORMAL_HI / PH_WARN_LO / CONDUCTIVITY_WARN_LO
+# when the future PCB exposes chemistry-capable analog inputs and compatible
+# sensors are selected. See ALARM-REQ-17 / ALARM-REQ-18 / GEN-REQ-08.

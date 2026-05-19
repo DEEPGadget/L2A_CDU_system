@@ -237,15 +237,8 @@ class FakeDataSimulator:
             elif v > T.AMBIENT_HUM_WARN_HI:
                 active.add("alarm:ambient_humidity_warning")
 
-        # pH
-        v = fval("sensor:ph")
-        if v is not None and v < T.PH_WARN_LO:
-            active.add("alarm:ph_warning")
-
-        # Conductivity
-        v = fval("sensor:conductivity")
-        if v is not None and v < T.CONDUCTIVITY_WARN_LO:
-            active.add("alarm:conductivity_warning")
+        # pH / Conductivity: not measured in current PCB revision (LTS v1).
+        # Re-enable threshold checks when the future PCB exposes those sensors.
 
         # Communication
         comm = sval("comm:status")

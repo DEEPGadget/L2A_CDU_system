@@ -24,7 +24,8 @@
    - 5.1 UI 선정 기준
    - 5.2 UI 후보 비교
 6. 라즈베리파이 키오스크 모드 설계
-7. TODO
+7. Versioning (LTS policy)
+8. TODO
 
 ---
 
@@ -180,3 +181,31 @@
 - 마우스 커서 숨김
 
 > WEB UI는 원격 브라우저 접속용 (http://\<RPi-IP\>:3000) — 키오스크 모드 해당 없음
+
+
+## 7. Versioning (LTS policy)
+
+L2A CDU 는 단일 PCB revision (MCS_IO Board Rev2) 에 묶여있고 향후 PCB 업그레이드 + 호환 센서 확정 시점에 신 기능(예: pH / Conductivity)이 추가될 예정이다. 운용 안정성 보장을 위해 **현재 시스템을 LTS v1 태그로 고정**한다.
+
+### LTS v1 — current baseline
+
+| 영역 | 현재 (LTS v1) | 미래 PCB 업그레이드 시 |
+|---|---|---|
+| **pH 측정** | 미지원 — `sensor:ph` redis 키 미emit, UI placeholder `-`, alarm 미발생 | PCB chemistry analog 입력 + 호환 pH 센서 확정 시 재도입 |
+| **Conductivity 측정** | 미지원 — 동일 (`sensor:conductivity` 미emit) | 동일 |
+| **Flow 측정** | 4-20mA 센서 미장착 — MCG 가 펌프 duty 로부터 derive (`sensor:flow_rate_*`, `sensor:total_flow`). [PCB.md "유량 추정"](docs/PCB.md) 참고 | 실제 유량 센서 장착 시 직접 measurement 로 교체 |
+| **Pressure 측정** | 시스템 자체에서 제외 (현재 UI / 알람 / Prometheus 모두 미사용) | 추후 결정 |
+| **Watchdog (PCB heartbeat 감시)** | PCB 펌웨어 미구현 — MCG 소프트웨어 측 모니터링으로 대체 | PCB 펌웨어 업데이트 시 [PCB.md "미구현 기능"](docs/PCB.md) 참고 |
+| **OP_MODE / Flash 초기값 / DOUT 12-24V** | 미지원 (PCB 펌웨어) | 동일 |
+
+### 운용 원칙
+
+1. **LTS v1 코드 베이스에는 미측정 항목용 placeholder 자체를 유지하지 않는다** — redis 키 미emit, UI 측은 default `-`, threshold/alarm 코드는 제거. 이로써 "측정 안 함" 이 시스템 전반에서 일관 표현됨.
+2. **각 미지원 항목은 docs 안에 LTS v1 표시**가 유지된다 ([threshold.md "Chemistry"](docs/threshold.md), [MCG.md §9](docs/MCG.md), [UI_Design.md "Coolant Quality"](docs/UI_Design.md), [auto_control.md §1](docs/auto_control.md)). 미래에 재도입할 때 변경 범위 추적이 용이하다.
+3. **재도입 절차** (미래 PCB 업그레이드 시):
+   - `src/thresholds.py` 의 `PH_*` / `CONDUCTIVITY_*` 상수 복원
+   - `src/fake_data/scenarios.py`, `simulator.py` 에 측정 + 알람 검사 재추가
+   - `src/local_ui/widgets/cooling_health.py` 의 `_KEY_TO_PLACEHOLDER` 매핑 + color 함수 복원
+   - `src/local_ui/widgets/alarm_overlay.py` 의 알람 라벨 복원
+   - 위 docs 의 "LTS v1: not emitted / deprecated" 노트 제거 후 표 활성화
+4. **git tag**: LTS v1 시점에 `v1.0-lts` 태그 마킹 (PCB 업그레이드 후 v2 분기 기점).

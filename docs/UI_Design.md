@@ -116,7 +116,7 @@
 
 | 레인 | 구성 요소 | 표시 데이터 | Redis key |
 |---|---|---|---|
-| 공유 (좌단) | Reservoir (Water Tank) | Coolant Level (레벨 바 + HIGH/MID/LOW 텍스트), pH, 전도도 (µS/cm) | `sensor:water_level`, `sensor:ph`, `sensor:conductivity` |
+| 공유 (좌단) | Reservoir (Water Tank) | Coolant Level (레벨 바 + HIGH/MID/LOW 텍스트). pH / 전도도 placeholder 는 LTS v1 에서 `-` 로 고정 (미측정) | `sensor:water_level` (pH / 전도도 미사용 — LTS v1) |
 | Loop 1 → | Pump Loop1 (P1·P2 직렬) | PWM duty (0–100 %) + `⚙` (Manual만) | `sensor:pump_pwm_duty_1` |
 | Loop 1 → | Flow Loop1 | 유량 (L/min) | `sensor:flow_rate_1` |
 | Loop 1 → | Coolant Inlet Manifold L1 | 입수 온도 (°C) | `sensor:coolant_temp_inlet_1` |
@@ -355,7 +355,11 @@
 
 ---
 
-#### Coolant Quality
+#### Coolant Quality (LTS v1: not emitted)
+
+> Current PCB revision does not measure pH / conductivity, so no Prometheus
+> time series exists for this group. Section retained for the future PCB
+> upgrade. See [ARCHITECTURE.md "Versioning"](../ARCHITECTURE.md).
 
 **시리즈**
 

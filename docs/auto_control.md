@@ -15,7 +15,8 @@
 | **출력** | 새 Pump/Fan PWM duty (0–100 %) → Modbus Write |
 | **적용 범위** | L1/L2 독립 + 동일 알고리즘 대칭 (초기). 실측 후 비대칭 허용 여부 재검토 |
 
-> 공유 센서(Reservoir level·pH·전도도, Ambient temp·humidity)는 양 루프 공통 읽기. Auto 제어 입력에는 직접 사용하지 않음 (알람 전용).
+> 공유 센서(Reservoir level, Ambient temp·humidity)는 양 루프 공통 읽기. Auto 제어 입력에는 직접 사용하지 않음 (알람 전용).
+> pH / Conductivity 는 현재 PCB revision 에서 측정되지 않는다 (LTS v1). 향후 PCB 업그레이드 + 호환 센서 확정 시 알람 입력에 재포함 — [ARCHITECTURE.md "Versioning"](ARCHITECTURE.md) 참고.
 
 ---
 

@@ -37,9 +37,8 @@ _ALARM_LABELS: dict[str, str] = {
     "alarm:leak_detected":             "Leak — Detected",
     # Flow
     "alarm:flow_rate_warning":         "Flow Rate — Warning",
-    # Chemistry
-    "alarm:ph_warning":                "pH — Warning",
-    "alarm:conductivity_warning":      "Conductivity — Warning",
+    # Chemistry (pH / Conductivity) intentionally removed — not measured in
+    # current PCB revision (LTS v1). Re-add when future PCB exposes those.
     # Ambient
     "alarm:ambient_temp_warning":      "Ambient Temp — Warning",
     "alarm:ambient_temp_critical":     "Ambient Temp — Critical",

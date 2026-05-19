@@ -150,26 +150,8 @@ def _color_ambient_hum(s: str) -> str:
     return _C_NORMAL
 
 
-def _color_ph(s: str) -> str:
-    try:
-        v = float(s)
-    except (ValueError, TypeError):
-        return _C_NO_DATA
-    if v < T.PH_WARN_LO or v > T.PH_NORMAL_HI:
-        return _C_WARNING
-    if v < T.PH_NORMAL_LO:
-        return _C_WARNING
-    return _C_NORMAL
-
-
-def _color_conductivity(s: str) -> str:
-    try:
-        v = float(s)
-    except (ValueError, TypeError):
-        return _C_NO_DATA
-    if v < T.CONDUCTIVITY_WARN_LO:
-        return _C_WARNING
-    return _C_NORMAL
+# pH / Conductivity color helpers removed — not measured in current PCB revision
+# (LTS v1). The placeholders are forced to "-" and rendered with NO_DATA color.
 
 
 # ── Default values & colors ────────────────────────────────────────────────────
@@ -182,7 +164,8 @@ _DEFAULT_VALUES: dict[str, str] = {
     "FAN_RPM_1": "--", "FAN_RPM_2": "--",
     "FLOW_1": "--", "FLOW_2": "--",
     "WATER_LEVEL": "--",
-    "PH": "--", "CONDUCTIVITY": "--",
+    # pH / Conductivity not measured in current PCB revision (LTS v1).
+    "PH": "-", "CONDUCTIVITY": "-",
     "LEAK": "--",
     "PH_C":            _C_NO_DATA,
     "CONDUCTIVITY_C":  _C_NO_DATA,
@@ -215,8 +198,8 @@ _KEY_TO_PLACEHOLDER: dict[str, str] = {
     "sensor:flow_rate_1":           "FLOW_1",
     "sensor:flow_rate_2":           "FLOW_2",
     "sensor:water_level":           "WATER_LEVEL",
-    "sensor:ph":                    "PH",
-    "sensor:conductivity":          "CONDUCTIVITY",
+    # sensor:ph / sensor:conductivity intentionally unmapped — not measured
+    # in current PCB revision. Placeholders {PH} / {CONDUCTIVITY} stay at "-".
     "sensor:leak":                  "LEAK",
     "sensor:ambient_temp":          "AMBIENT_TEMP",
     "sensor:ambient_humidity":      "AMBIENT_HUM",
@@ -460,8 +443,8 @@ class CoolingHealthWidget(QWidget):
         v["LEAK_C"]         = _color_leak(v["LEAK"])
         v["AMBIENT_TEMP_C"] = _color_ambient_temp(v["AMBIENT_TEMP"])
         v["AMBIENT_HUM_C"]  = _color_ambient_hum(v["AMBIENT_HUM"])
-        v["PH_C"]           = _color_ph(v["PH"])
-        v["CONDUCTIVITY_C"] = _color_conductivity(v["CONDUCTIVITY"])
+        # PH_C / CONDUCTIVITY_C stay at _C_NO_DATA (set in _DEFAULT_VALUES).
+        # Not measured in current PCB revision (LTS v1).
 
     # ------------------------------------------------------------------
     # SVG reload

@@ -38,8 +38,10 @@ _NORMAL_BASE: dict[str, _Value] = {
     # Do not define them as base tuples here, otherwise they would not react
     # to duty changes and would diverge from PCB.md / MCG.md.
     "sensor:water_level":            "2",
-    "sensor:ph":                    (9.0,   T.PH_NORMAL_LO,  T.PH_NORMAL_HI),
-    "sensor:conductivity":          (5500.0, T.CONDUCTIVITY_WARN_LO, 6500.0),
+    # NOTE: sensor:ph / sensor:conductivity are NOT measured in the current
+    # PCB revision (no compatible sensors yet). They are intentionally NOT
+    # emitted here so the UI shows "-" / NO_DATA. To be re-enabled in a future
+    # PCB revision with chemistry-capable analog inputs.
     "sensor:leak":                  "NORMAL",
     "sensor:ambient_temp":          (25.0, 18.0,                    T.AMBIENT_TEMP_WARN_HI),
     "sensor:ambient_humidity":      (45.0, T.AMBIENT_HUM_NORMAL_LO,  T.AMBIENT_HUM_WARN_HI),
@@ -60,8 +62,6 @@ _WARNING_OVERRIDES: dict[str, _Value] = {
     "sensor:coolant_temp_outlet_1": (62.0, T.OUTLET_TEMP_NORMAL_HI,    T.OUTLET_TEMP_CRIT_HI),
     "sensor:water_level":            "1",   # MIDDLE level
     "sensor:ambient_humidity":      (72.0, T.AMBIENT_HUM_WARN_HI, T.AMBIENT_HUM_CRIT_HI),
-    "sensor:ph":                    (7.7,  7.5,  T.PH_WARN_LO + 0.1),
-    "sensor:conductivity":          (4200.0, 3800.0, T.CONDUCTIVITY_WARN_LO - 100.0),
     "comm:status":                  "ok",
     "comm:consecutive_failures":    "0",
 }

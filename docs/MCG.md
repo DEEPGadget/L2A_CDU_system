@@ -307,8 +307,8 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 |---|---|---|
 | `sensor:flow_rate_1` | 유량 L1 (현재는 derived — sensor:total_flow 항목 참고) | TODO — 실제 4-20mA 센서 미장착 |
 | `sensor:flow_rate_2` | 유량 L2 (현재는 derived) | TODO |
-| `sensor:ph` | pH | TODO |
-| `sensor:conductivity` | 전도도 | TODO |
+
+> **LTS v1 시점 — pH / Conductivity 미지원**: 현재 PCB revision 은 chemistry 측정용 analog 입력이 없어 `sensor:ph` / `sensor:conductivity` 자체를 emit 하지 않는다. 미래 PCB 업그레이드 + 호환 센서 확정 시 위 표에 추가하고 UI / 알람 / threshold 도 함께 재도입 (LTS 정책은 [ARCHITECTURE.md "Versioning"](../ARCHITECTURE.md) 참고).
 
 **유량 추정 (sensor:total_flow)**
 
@@ -333,8 +333,6 @@ publish 주기: 폴링 주기와 동일. `SET` + `PUBLISH` 모두 수행.
 | `alarm:leak_detected` | 누수 감지 |
 | `alarm:water_level_warning` | 수위 부족 |
 | `alarm:water_level_critical` | 수위 위험 |
-| `alarm:ph_warning` | pH 이상 |
-| `alarm:conductivity_warning` | 전도도 이상 |
 | `alarm:flow_rate_warning` | 유량 저하 |
 | `alarm:ambient_temp_warning` | 장치 내부 온도 경고 |
 | `alarm:ambient_temp_critical` | 장치 내부 온도 한계 초과 |
