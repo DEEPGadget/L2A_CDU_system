@@ -160,7 +160,28 @@ pump_input_pwm = 0.85 × ui_duty
 |  **20 %** (UI 하한) | **17 %** (Nmin) | 7.0 LPM | 14.0 LPM |
 |   0 % | 0 % | 0 LPM | 0 LPM (정지) |
 
-**UI 입력 하한 = 20 %**: pump spec 4.2.1 의 운용 하한 17 % (Nmin) 가 위 매핑으로 UI 20 % 에 대응 (`17 / 0.85 ≈ 20`). UI 도메인에서 20 % 미만 입력은 펌프가 정지·Nmin 사이 회피 구간으로 들어가므로 거부 (단, 0 % = 명시적 정지는 별도 허용 가능). Auto 모드 (PI) 의 `out_min` 도 동일 하한을 강제.
+**UI 입력 하한 = 20 %**: pump spec 4.2.1 의 운용 하한 17 % (Nmin) 가 위 매핑으로 UI 20 % 에 대응 (`17 / 0.85 ≈ 20`). UI 도메인에서 20 % 미만 입력은 펌프가 정지·Nmin 사이 회피 구간으로 들어가므로 거부. Auto 모드 (PI) 의 `out_min` 도 동일 하한을 강제.
+
+> ### ⚠ Hazard — UI 0 % bypass risk (현재 무해, 향후 네트워크 노출 시 발생 가능)
+>
+> 직접 비례 매핑 `pump_input = 0.85 × ui_duty` 의 약점: **ui_duty = 0 → pump_input = 0** 이 되는데, Pump spec 4.2.1 에 따르면 pump_input **0~8 % 구간은 "Nmax safety full-speed (PWM 신호 이상 fallback)"** trigger 다. 즉 사용자는 "정지" 의도이나 펌프는 풀가동.
+>
+> | UI duty | pump_input | spec 해석 | 실제 동작 |
+> |---:|---:|---|---|
+> | 100 % | 85 % | Nmax 포화 | 정격 풀가동 (OK) |
+> |  20 % | 17 % | Nmin | 최저속 (OK) |
+> | **0 %** | **0 %** | **0~8 % Nmax safety fallback** | **펌프 풀가동 (예상과 반대)** |
+>
+> **현재는 무해**: PySide6 Local UI 가 유일한 entry point 이며, `NumpadDialog` + Settings 가 모두 하한 20 % 를 강제 ([src/local_ui/widgets/control_panel.py](../src/local_ui/widgets/control_panel.py) `min_value`). UI 외 경로로 `sensor:pump_pwm_duty_*` 에 0 이 들어올 가능성 없음.
+>
+> **향후 네트워크 노출 시 위험**: Web UI (REST API), 원격 MCG 명령, 외부 자동화 스크립트 등이 추가되어 `sensor:pump_pwm_duty_*` redis 키에 직접 SET 할 수 있게 되면 UI 의 하한 강제를 우회할 수 있다.
+>
+> **권장 mitigation** (MCG 구현 시 적용):
+> 1. **MCG 단의 hard clamp**: PCB HR write 직전에 `hr_value = max(170, min(850, round(0.85 * ui_duty * 10)))` 로 강제. UI domain 무관 안전 보장.
+> 2. **0 입력 special-case**: `ui_duty == 0` 일 때 pump_input 을 10 % (8~13 % 정지 구간 중심) 로 매핑하여 "OFF" 의도 보존.
+> 3. **API 레벨 validation**: REST API endpoint 도입 시 input schema 에 `min: 20, max: 100` 강제.
+>
+> 위 1~3 은 MCG 가 실제 구현되는 시점에 [auto_control.md](auto_control.md) 의 가드레일 정책과 함께 일관 적용해야 한다.
 
 Pump spec 4.2.1 동작 구간 (참고):
 - 0~8 % : Nmax 풀가동 (안전 트리거)

@@ -275,11 +275,13 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 > ```
 > hr_value = round(0.85 × ui_duty × 10)        # 0~1000 스케일
 > ```
-> 즉 UI 100% → pump_input 85% (Pump spec 4.2.1 의 운용 선형 구간 상한), UI 0% → pump 정지.
+> 즉 UI 100% → pump_input 85% (Pump spec 4.2.1 의 운용 선형 구간 상한), UI 0% → pump_input 0%.
 >
 > **UI 입력 하한 = 20%** (pump_input 17% Nmin = `17 / 0.85`). UI 도메인 20% 미만 입력은 정지~Nmin 사이 회피 구간에 들어가므로 UI 단에서 거부. Auto PI 의 `out_min` 도 동일 하한을 강제.
 >
-> Pump spec 4.2.1 동작 구간 (참고): 0~8% Nmax 풀가동(위험), 8~13% 정지, 13~17% Nmin, 17~85% 선형, 85~95% 포화, 95~100% no use. 위 캡(85%) 이 마지막 세 위험 구간을 회피한다. 자세한 표는 [PCB.md "유량 추정 > UI/MCG duty 매핑"](PCB.md) 참고.
+> Pump spec 4.2.1 동작 구간 (참고): **0~8% Nmax safety full-speed (PWM fallback)**, 8~13% 정지, 13~17% Nmin, 17~85% 선형, 85~95% 포화, 95~100% no use. 위 캡(85%) 이 마지막 세 위험 구간(85~100%) 을 회피한다. 자세한 표는 [PCB.md "유량 추정 > UI/MCG duty 매핑"](PCB.md) 참고.
+>
+> ⚠ **MCG 구현 시 추가 가드레일**: ui_duty = 0 이 그대로 pump_input = 0 으로 변환되면 spec 0~8% 영역 → Nmax safety fallback 으로 펌프가 풀가동되는 hazard 가 있다. **현재는 PySide6 Local UI 가 단일 entry point 라 하한 20% 강제로 무해**하나, 향후 네트워크 (Web UI REST API, 원격 명령 등) 가 추가되어 redis 키에 직접 SET 가능해지면 우회 가능. 권장: PCB HR write 직전 `hr_value = clamp(round(0.85 × ui_duty × 10), 170, 850)` 로 hard clamp. 상세 hazard 분석과 mitigation 옵션은 [PCB.md "Hazard — UI 0 % bypass risk"](PCB.md) 참고.
 
 **팬 RPM 피드백 (Pulse Freq — Input Register 13~24)**
 
