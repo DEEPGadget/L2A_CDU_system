@@ -99,7 +99,12 @@ class MainWindow(QMainWindow):
         central.setStyleSheet("background:#ffffff;")
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
-        layout.setContentsMargins(0, 0, 0, 0)
+        # Right-side safe-area margin: framebuffer is 1280 px wide but the
+        # DSI panel's visible region clips ~40 px off the right edge (no
+        # overscan, but the LCD bezel hides the edge). Pulling everything in
+        # by 40 px keeps the Fan+Radiator box, the clock and the status-strip
+        # rightmost slot fully on-screen.
+        layout.setContentsMargins(0, 0, 40, 0)
         layout.setSpacing(0)
 
         self._stack = QStackedWidget()

@@ -244,10 +244,12 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 | Key | 설명 | Register | 단위 |
 |---|---|---|---|
-| `sensor:coolant_temp_inlet_1` | 냉각수 입수 온도 L1 | Input Register 28 (NTC CH13) | 0.1°C |
-| `sensor:coolant_temp_inlet_2` | 냉각수 입수 온도 L2 | Input Register 29 (NTC CH14) | 0.1°C |
-| `sensor:coolant_temp_outlet_1` | 냉각수 출수 온도 L1 | Input Register 30 (NTC CH15) | 0.1°C |
-| `sensor:coolant_temp_outlet_2` | 냉각수 출수 온도 L2 | Input Register 31 (NTC CH16) | 0.1°C |
+| `sensor:coolant_temp_inlet_1`  | 냉각수 입수 온도 L1 (T1) | Input Register 28 (NTC CH13) | 0.1°C signed |
+| `sensor:coolant_temp_outlet_1` | 냉각수 출수 온도 L1 (T2) | Input Register 29 (NTC CH14) | 0.1°C signed |
+| `sensor:coolant_temp_outlet_2` | 냉각수 출수 온도 L2 (T3) | Input Register 30 (NTC CH15) | 0.1°C signed |
+| `sensor:coolant_temp_inlet_2`  | 냉각수 입수 온도 L2 (T4) | Input Register 31 (NTC CH16) | 0.1°C signed |
+
+> PCB 실제 wiring: T1 (IR 28) = inlet L1, T2 (IR 29) = outlet L1, T3 (IR 30) = outlet L2, T4 (IR 31) = inlet L2. silkscreen 의 inlet/outlet/outlet/inlet 배치 그대로. 자세한 설명은 [PCB.md](PCB.md) NTC 표 참고.
 
 **디지털 입력 (DIN — Input Register 25)**
 

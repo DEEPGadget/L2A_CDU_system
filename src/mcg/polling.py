@@ -4,8 +4,10 @@ Called once per main-loop cycle. On any read failure the function returns
 False so the caller can update comm:status.
 
 Register map (docs/PCB.md "Modbus Registers"):
-  - Input Register 28~31  : NTC Temp (0.1 C unit) - inlet L1, inlet L2,
-                             outlet L1, outlet L2
+  - Input Register 28~31  : NTC Temp (0.1 C unit, **signed int16**) ordered as
+                             T1 inlet_L1, T2 outlet_L1, T3 outlet_L2,
+                             T4 inlet_L2 -- per board silkscreen.
+                             Open circuit returns ~-40.4 C (raw 0xFE6C).
   - Input Register 20, 21 : Pulse Freq CH8, CH9 (Hz) - fan RPM feedback
                              (RPM = Hz * 30, 2 pulses/revolution)
   - Input Register 25     : DIN Status (bit0~5) - water level / leak inputs
@@ -34,12 +36,24 @@ log = logging.getLogger(__name__)
 # Register layout
 _NTC_BASE  = 28
 _NTC_COUNT = 4
+# IR 28~31 in physical T1/T2/T3/T4 silkscreen order:
+#   T1 = inlet  L1   (IR 28)
+#   T2 = outlet L1   (IR 29)
+#   T3 = outlet L2   (IR 30)
+#   T4 = inlet  L2   (IR 31)
 _NTC_REDIS_KEYS = (
-    K.SENSOR_COOLANT_TEMP_INLET_1,
-    K.SENSOR_COOLANT_TEMP_INLET_2,
-    K.SENSOR_COOLANT_TEMP_OUTLET_1,
-    K.SENSOR_COOLANT_TEMP_OUTLET_2,
+    K.SENSOR_COOLANT_TEMP_INLET_1,   # T1
+    K.SENSOR_COOLANT_TEMP_OUTLET_1,  # T2
+    K.SENSOR_COOLANT_TEMP_OUTLET_2,  # T3
+    K.SENSOR_COOLANT_TEMP_INLET_2,   # T4
 )
+
+
+def _signed16(u: int) -> int:
+    """Decode an unsigned 16-bit Modbus register as signed (two's complement).
+    NTC range -40 ~ 85 C means raw values can be slightly negative
+    (e.g. open circuit returns ~0xFE6C = -404 -> -40.4 C)."""
+    return u - 0x10000 if u >= 0x8000 else u
 
 _PULSE_BASE  = 20         # Pulse CH8 (= IR 20). CH9 = IR 21.
 _PULSE_COUNT = 2
@@ -63,8 +77,9 @@ def poll_once(pcb: PCB, r: redis.Redis) -> bool:
     if ntc is None:
         return False
     for raw, key in zip(ntc, _NTC_REDIS_KEYS):
-        # IR value is tenths of degC (e.g. 253 -> 25.3)
-        celsius = raw / 10.0
+        # IR value is tenths of degC, signed int16 (e.g. 253 -> 25.3,
+        # 0xFE6C = -404 -> -40.4 for open-circuit / unconnected NTC)
+        celsius = _signed16(raw) / 10.0
         _publish(pipe, key, f"{celsius:.1f}")
 
     # 2. Fan RPM (best-effort; do not abort if it fails)

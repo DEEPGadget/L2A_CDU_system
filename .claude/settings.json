@@ -125,7 +125,18 @@
       "Bash(journalctl -u cdu-mcg.service --no-pager -n 20 --since \"15 seconds ago\")",
       "Bash(udevadm info *)",
       "Bash(sudo fuser -v /dev/ttyUSB0)",
-      "Bash(dmesg)"
+      "Bash(dmesg)",
+      "Bash(grep -nB2 \"INLET_1}\\\\|INLET_2}\\\\|OUTLET_1}\\\\|OUTLET_2}\" /home/gadgetini/L2A_CDU_system/src/local_ui/assets/cooling_health.svg)",
+      "Bash(grep -nA3 \"celsius = _signed16\" /home/gadgetini/L2A_CDU_system/src/mcg/polling.py)",
+      "Bash(journalctl -u cdu-mcg.service --no-pager --since \"10 seconds ago\")",
+      "Bash(timeout 5 redis-cli psubscribe \"sensor:coolant_temp_*\")",
+      "Bash(command -v scrot import xwd)",
+      "Bash(sudo -u gadgetini DISPLAY=:0 scrot /tmp/screen_now.png)",
+      "Bash(sudo -u gadgetini DISPLAY=:0 xwininfo -root -tree)",
+      "Bash(sudo -u gadgetini DISPLAY=:0 xwininfo -root)",
+      "Bash(sudo -u gadgetini DISPLAY=:0 wmctrl -lG)",
+      "Bash(sudo -u gadgetini DISPLAY=:0 xdotool search --name \"L2A\" getwindowgeometry)",
+      "Bash(sudo -u gadgetini DISPLAY=:0 scrot /tmp/screen_after.png)"
     ],
     "additionalDirectories": [
       "/tmp"
