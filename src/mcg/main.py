@@ -60,20 +60,37 @@ def main() -> int:
              modbus_cfg.ports, modbus_cfg.baud, modbus_cfg.slave,
              loop_cfg.cycle_seconds)
 
-    pcb, port = open_pcb(
-        ports=modbus_cfg.ports,
-        baud=modbus_cfg.baud,
-        slave=modbus_cfg.slave,
-        timeout=modbus_cfg.timeout_seconds,
-    )
-    if pcb is None:
-        log.error("PCB not found on any of %s @ %d, slave %d",
-                  list(modbus_cfg.ports), modbus_cfg.baud, modbus_cfg.slave)
-        return 2
+    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
+
+    # Connect to PCB - retry forever instead of exiting. This avoids systemd
+    # restart-loop noise when the cable is unplugged or USB enumeration is
+    # slow on boot, and lets us publish comm:status = disconnected so the UI
+    # can show a meaningful state.
+    pcb = None
+    port = None
+    retry_seconds = 5.0
+    while pcb is None:
+        pcb, port = open_pcb(
+            ports=modbus_cfg.ports,
+            baud=modbus_cfg.baud,
+            slave=modbus_cfg.slave,
+            timeout=modbus_cfg.timeout_seconds,
+        )
+        if pcb is not None:
+            break
+        log.error("PCB not found on any of %s @ %d, slave %d -- retry in %.0fs",
+                  list(modbus_cfg.ports), modbus_cfg.baud, modbus_cfg.slave,
+                  retry_seconds)
+        try:
+            pipe = r.pipeline()
+            pipe.set(K.COMM_STATUS, "disconnected")
+            pipe.publish(K.COMM_STATUS, "disconnected")
+            pipe.execute()
+        except Exception:
+            pass
+        time.sleep(retry_seconds)
     log.info("PCB connected on %s @ %d, slave %d (probe OK)",
              port, modbus_cfg.baud, modbus_cfg.slave)
-
-    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
 
     # Clear stale comm state from a previous run so the UI does not show
     # a red "disconnected" flash before the first poll cycle.

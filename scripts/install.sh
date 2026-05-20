@@ -29,15 +29,14 @@ require_root() {
 }
 
 read_mode() {
-    if command -v python3 &>/dev/null && [ -f "$CONFIG_FILE" ]; then
-        python3 -c "
-import yaml, sys
-with open('$CONFIG_FILE') as f:
-    d = yaml.safe_load(f)
-print(d.get('mode', 'fake'))
-" 2>/dev/null || echo "fake"
+    # Simple grep (PyYAML may not be installed for sudo's system python3).
+    # config.yaml top-level `mode:` is always a single token, no quoting.
+    if [ -f "$CONFIG_FILE" ]; then
+        local m
+        m=$(grep -E '^mode:' "$CONFIG_FILE" | awk '{print $2}' | tr -d "'\"")
+        echo "${m:-fake}"
     else
-        grep -E '^mode:' "$CONFIG_FILE" | awk '{print $2}' | tr -d "'\"" || echo "fake"
+        echo "fake"
     fi
 }
 
@@ -65,8 +64,8 @@ do_install() {
         install_service "cdu-fake-simulator.service"
         log "Fake simulator service installed."
     else
-        log "Real mode: skipping fake simulator service."
-        # MCG service will be added here when implemented
+        install_service "cdu-mcg.service"
+        log "MCG service installed."
     fi
 
     systemctl daemon-reload
@@ -77,6 +76,8 @@ do_install() {
 
     if [ "$MODE" = "fake" ]; then
         enable_service "cdu-fake-simulator.service"
+    else
+        enable_service "cdu-mcg.service"
     fi
 
     # Kiosk setup
@@ -85,7 +86,11 @@ do_install() {
 
     log ""
     log "Installation complete."
-    log "Reboot or run: sudo systemctl start cdu-fake-simulator (fake mode)"
+    if [ "$MODE" = "fake" ]; then
+        log "Start: sudo systemctl start cdu-fake-simulator"
+    else
+        log "Start: sudo systemctl start cdu-mcg"
+    fi
 }
 
 install_service() {
@@ -153,7 +158,7 @@ EOF
 # ── Status ────────────────────────────────────────────────────────────────────
 
 do_status() {
-    for svc in pushgateway.service cdu-fake-simulator.service; do
+    for svc in pushgateway.service cdu-fake-simulator.service cdu-mcg.service cdu-local-ui.service; do
         echo "─── $svc ───────────────────────────"
         systemctl status "$svc" --no-pager -l 2>/dev/null || echo "  (not installed)"
     done
@@ -163,7 +168,7 @@ do_status() {
 
 do_stop() {
     require_root
-    for svc in cdu-fake-simulator.service; do
+    for svc in cdu-fake-simulator.service cdu-mcg.service; do
         systemctl stop "$svc" 2>/dev/null && log "Stopped $svc" || warn "$svc not running"
     done
 }
@@ -172,7 +177,7 @@ do_stop() {
 
 do_remove() {
     require_root
-    for svc in cdu-fake-simulator.service pushgateway.service; do
+    for svc in cdu-fake-simulator.service cdu-mcg.service pushgateway.service; do
         systemctl stop    "$svc" 2>/dev/null || true
         systemctl disable "$svc" 2>/dev/null || true
         rm -f "$SERVICES_DST/$svc"

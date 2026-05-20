@@ -1,9 +1,14 @@
-mode: fake   # fake | real
+mode: real   # fake | real
 
 # ── Modbus RTU (PCB connection, MCS_IO Board REV_C) ───────────────────────────
 # PCB DIP switches expected: DIP 6 ON (115200 baud), DIP 1~5 OFF (slave ID = 1)
+# Interface candidates -- tried in order, first responding port is used:
+#   /dev/serial0  RPi 40-pin UART (GPIO 14/15) routed to an RS485 transceiver
+#   /dev/ttyACM0  PCB USB CDC (STM32G474 native USB)
+#   /dev/ttyUSB0  External USB-UART/RS485 adapter (FTDI etc.)
 modbus:
-  port:                            # list - try in order, first success wins
+  port:
+    - /dev/serial0
     - /dev/ttyACM0
     - /dev/ttyUSB0
   baud: 115200

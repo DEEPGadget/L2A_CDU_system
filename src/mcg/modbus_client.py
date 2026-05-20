@@ -65,7 +65,11 @@ class PCB:
     def probe(self) -> bool:
         """Round-trip read of a known-safe register to verify the slave answers."""
         # HR 12 (PWM Freq TIM1) is R/W, always present, no side effect when read.
-        return self.read_holding_registers(12, 1) is not None
+        ok = self.read_holding_registers(12, 1) is not None
+        if not ok:
+            log.warning("probe failed on %s @ %d (no Modbus response from slave %d)",
+                        self.port, self.baud, self.slave)
+        return ok
 
     def close(self) -> None:
         if self._client is not None:
@@ -77,11 +81,13 @@ class PCB:
 
     # ── reads ─────────────────────────────────────────────────────────────
 
+    # pymodbus 3.12 API: slave kw is renamed to device_id, count is keyword-only.
+
     def read_input_registers(self, address: int, count: int) -> list[int] | None:
         if self._client is None:
             return None
         try:
-            r = self._client.read_input_registers(address=address, count=count, slave=self.slave)
+            r = self._client.read_input_registers(address, count=count, device_id=self.slave)
             if r is None or r.isError():
                 return None
             return list(r.registers)
@@ -96,7 +102,7 @@ class PCB:
         if self._client is None:
             return None
         try:
-            r = self._client.read_holding_registers(address=address, count=count, slave=self.slave)
+            r = self._client.read_holding_registers(address, count=count, device_id=self.slave)
             if r is None or r.isError():
                 return None
             return list(r.registers)
@@ -113,7 +119,7 @@ class PCB:
         if self._client is None:
             return False
         try:
-            r = self._client.write_register(address=address, value=int(value), slave=self.slave)
+            r = self._client.write_register(address, int(value), device_id=self.slave)
             return not (r is None or r.isError())
         except ModbusException as exc:
             log.debug("write_register(%s,%s) failed: %s", address, value, exc)
@@ -126,7 +132,7 @@ class PCB:
         if self._client is None:
             return False
         try:
-            r = self._client.write_registers(address=address, values=list(values), slave=self.slave)
+            r = self._client.write_registers(address, list(values), device_id=self.slave)
             return not (r is None or r.isError())
         except ModbusException as exc:
             log.debug("write_registers(%s,%s) failed: %s", address, list(values), exc)

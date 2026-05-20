@@ -115,7 +115,17 @@
       "Bash(redis-cli config *)",
       "Bash(/home/gadgetini/venv/bin/python)",
       "Bash(/home/gadgetini/venv/bin/python -m src.mcg.main)",
-      "Bash(echo \"exit code: $?\")"
+      "Bash(echo \"exit code: $?\")",
+      "Bash(sudo bash /home/gadgetini/L2A_CDU_system/scripts/install.sh install)",
+      "Bash(sudo python3 -c \"import yaml; print\\('yaml OK'\\)\")",
+      "Bash(awk '{print $2}')",
+      "Bash(sudo python3 -c ' *)",
+      "Bash(/home/gadgetini/venv/bin/python -c \"import serial; print\\(serial.__version__\\)\")",
+      "Bash(journalctl -u cdu-mcg.service --no-pager -n 12 --since \"10 seconds ago\")",
+      "Bash(journalctl -u cdu-mcg.service --no-pager -n 20 --since \"15 seconds ago\")",
+      "Bash(udevadm info *)",
+      "Bash(sudo fuser -v /dev/ttyUSB0)",
+      "Bash(dmesg)"
     ],
     "additionalDirectories": [
       "/tmp"

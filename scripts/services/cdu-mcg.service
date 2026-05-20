@@ -10,8 +10,10 @@ Type=simple
 User=gadgetini
 WorkingDirectory=/home/gadgetini/L2A_CDU_system
 ExecStart=/home/gadgetini/venv/bin/python -m src.mcg.main
-# Allow dialout group to access /dev/ttyACM* / /dev/ttyUSB* for Modbus RTU
-SupplementaryGroups=dialout
+# Allow access to all common Modbus serial device groups:
+#   dialout - /dev/ttyACM* (USB CDC), /dev/ttyAMA0 (= /dev/serial0)
+#   plugdev - /dev/ttyUSB* (USB-UART adapters like FTDI on some RPi images)
+SupplementaryGroups=dialout plugdev
 # Exit code 1 = "fake mode, intentional stop" -> treat as success so the
 # service does not get marked failed when running fake-data mode.
 SuccessExitStatus=1
