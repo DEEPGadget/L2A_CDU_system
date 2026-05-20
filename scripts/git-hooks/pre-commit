@@ -1,0 +1,34 @@
+#!/bin/bash
+# pre-commit hook — auto-update "**Last Update:**" line in ARCHITECTURE.md
+#
+# Triggers only when ARCHITECTURE.md is staged in this commit. Replaces the
+# line in place with today's date (YYYY.MM.DD) and re-stages the file.
+#
+# Install (per repository, once):
+#   ./scripts/install-hooks.sh
+#
+# To bypass intentionally (e.g. dated commit during research):
+#   git commit --no-verify ...
+
+set -e
+
+# Only act when ARCHITECTURE.md is part of this commit.
+if ! git diff --cached --name-only --diff-filter=AM | grep -qx 'ARCHITECTURE.md'; then
+    exit 0
+fi
+
+TODAY=$(date +%Y.%m.%d)
+FILE="ARCHITECTURE.md"
+
+# Skip if today's date is already there (avoid noisy re-stages on repeat commits)
+if grep -q "^\*\*Last Update:\*\* ${TODAY}$" "$FILE"; then
+    exit 0
+fi
+
+# Replace the Last Update line. Portable sed -i (handles BSD/GNU on Linux/macOS).
+# Pattern is anchored to start of line to avoid touching prose.
+sed -i.bak -E "s|^\*\*Last Update:\*\* .*|**Last Update:** ${TODAY}|" "$FILE"
+rm -f "${FILE}.bak"
+
+git add "$FILE"
+echo "[pre-commit] ARCHITECTURE.md Last Update -> ${TODAY}"

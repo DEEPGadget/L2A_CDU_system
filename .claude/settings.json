@@ -107,7 +107,11 @@
       "Bash(redis-cli DEL control:auto)",
       "Bash(QT_QPA_PLATFORM=offscreen /home/gadgetini/venv/bin/python -c ' *)",
       "Bash(redis-cli set *)",
-      "Bash(redis-cli publish *)"
+      "Bash(redis-cli publish *)",
+      "Bash(chmod +x /home/gadgetini/L2A_CDU_system/scripts/git-hooks/pre-commit /home/gadgetini/L2A_CDU_system/scripts/install-hooks.sh)",
+      "Bash(/home/gadgetini/L2A_CDU_system/scripts/install-hooks.sh)",
+      "Bash(.git/hooks/pre-commit)",
+      "Bash(/home/gadgetini/L2A_CDU_system/scripts/git-hooks/pre-commit)"
     ],
     "additionalDirectories": [
       "/tmp"
