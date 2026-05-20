@@ -1,4 +1,6 @@
-# PCB (Modbus Slave) — MCS_IO Board Rev2
+# PCB (Modbus Slave) — MCS_IO Board REV_C
+
+> 본 문서는 **MCS_IO Board REV_C (= LTS v1)** 기준이다. 다음 revision 은 **REV_D (= LTS v2)** 가 될 예정 — 사양 확정 시 별도 문서로 분리. 버전 정책은 [ARCHITECTURE.md §7 "Versioning (LTS policy)"](../ARCHITECTURE.md) 참고.
 
 ## 개요
 

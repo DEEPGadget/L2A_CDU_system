@@ -125,7 +125,7 @@
 
 > 상세 내용: [UI.md](docs/UI.md)
 
-### 4.4 PCB (Modbus Slave) — MCS_IO Board Rev2
+### 4.4 PCB (Modbus Slave) — MCS_IO Board REV_C
 
 - STM32G474 기반 다목적 I/O 제어 보드
 - 센서 입력 값 제공 (ADC 8ch 전압 + 4ch NTC 온도, Pulse 12ch, DIN 6ch)
@@ -185,7 +185,7 @@
 
 ## 7. Versioning (LTS policy)
 
-L2A CDU 는 단일 PCB revision (MCS_IO Board Rev2) 에 묶여있고 향후 PCB 업그레이드 + 호환 센서 확정 시점에 신 기능(예: pH / Conductivity)이 추가될 예정이다. 운용 안정성 보장을 위해 **현재 시스템을 LTS v1 태그로 고정**한다.
+L2A CDU 는 현재 **MCS_IO Board REV_C** 에 묶여있고, 향후 **REV_D** + 호환 센서 확정 시점에 신 기능(예: pH / Conductivity)이 추가될 예정이다. 운용 안정성 보장을 위해 **REV_C 기준 코드 베이스를 LTS v1 태그로 고정**한다.
 
 ### LTS v1 — current baseline
 
