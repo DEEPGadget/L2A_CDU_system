@@ -38,7 +38,7 @@
 | Raspberry Pi | MCG, UI, DB를 탑재하는 하드웨어 플랫폼 (IP: DHCP 할당 — Local UI Top bar에서 확인). 온/습도 센서를 I2C/GPIO로 직접 연결하여 읽음 (예외적 직접 수집 — Modbus 미경유) |
 | Web UI (Svelte + FastAPI) | WEB 기반 유저 인터페이스. http 기반으로 파이썬 기반의 제어모듈(MCG - modbus control gateway)과 통신. 모니터링 및 제어 화면, 과거 기록 확인 화면 |
 | Touch Display UI (PySide6) | 로컬 기반 유저 인터페이스. Redis (Pub/Sub + Hash) 매개로 MCG 와 통신. 모니터링 및 제어, 과거 기록 확인 화면 |
-| Redis DB | Monitoring 페이지 실시간 상태 전용 DB (`sensor:*`, `comm:*`, `alarm:*`, `control:mode`, `control:auto` hash) + UI ↔ MCG Pub/Sub 매개체 — 이력 저장 없음 |
+| Redis DB | 실시간 상태 + 설정 저장 (`sensor:*`, `comm:*`, `alarm:*`, `control:mode`, `control:fan_curve`, `control:pump_duty`) + UI ↔ MCG Pub/Sub 매개체. **Persistence (RDB + AOF, fsync everysec) 활성** — `control:*` 설정값은 재시작/전원 인가 후 자동 복원. 시계열 이력은 Prometheus 담당 |
 | Prometheus + Exporter | 과거 이력 DB. Exporter가 Redis `sensor:*` + `alarm:*` 를 주기적으로 pull → 시계열 적재 |
 | Prometheus Pushgateway | 이벤트성 이력 수신 (제어 명령·통신 장애). MCG가 이벤트 발생 시 직접 push |
 | Modbus Control Gateway (MCG) | 실질적 Modbus Master (읽기/쓰기). 읽기: pcb 로부터 polling → redis에 전송. 쓰기: UI 로부터 요청받음 → PCB 로 write 명령 |
@@ -46,7 +46,8 @@
 | 센서 및 엑츄에이터 | 센서: 수온, 유량, 유압, 누수, 수위센서. 엑츄에이터: 펌프, 팬 |
 
 > **DB 설계 원칙**
-> - **Redis** — Monitoring 페이지에서 실시간 상태를 보기 위한 저장소. 현재값만 보관, 이력 없음. 제어 모드(`control:mode`)도 Redis에서 관리.
+> - **Redis** — 실시간 상태 + 설정 저장. RDB + AOF persistence 활성 (`appendonly yes`, `appendfsync everysec`) 으로 `control:*` 설정값은 영구 보존되며 재시작 후 자동 복원. `sensor:*` / `comm:*` / `alarm:*` 도 같은 DB 에 있으나 매 cycle 갱신되므로 영구 보존 불요. 시계열 이력은 Prometheus 담당.
+> - **Race condition 정책** — Last-write-wins + Pub/Sub 즉시 반영. Local UI 와 Web UI (FastAPI 백엔드) 둘 다 같은 Redis 키를 SET 하며, 늦은 쪽이 이김. Pub/Sub 으로 다른 UI 는 즉시 변경된 값을 받아 표시.
 > - **Prometheus** — 과거 이력을 보기 위한 저장소. 두 가지 적재 경로:
 >   - **Exporter (Pull)**: Redis에 쌓인 연속형 상태값(`sensor:*`, `alarm:*`)을 주기적으로 pull → 시계열 적재
 >   - **Pushgateway (Push)**: 이벤트성 이력(제어 명령 결과, 통신 상태 변경 등)을 발생 시점에 MCG가 직접 push
@@ -76,8 +77,9 @@
 | 구간 | 방식 |
 |---|---|
 | MCG ↔ PCB | Modbus RTU (Master / Slave) |
-| Touch Display UI ↔ MCG | **Redis** (Pub/Sub + Hash) — UI 는 `control:mode`/`control:auto`/duty 키를 SET, MCG 는 매 cycle Pub/Sub drain 으로 픽업 |
-| Web UI ↔ MCG | REST API (FastAPI) |
+| Touch Display UI ↔ MCG | **Redis** (Pub/Sub + Hash) — UI 는 `control:mode` / `control:fan_curve` / `control:pump_duty` / duty 키를 SET, MCG 는 매 cycle Pub/Sub drain 으로 픽업 |
+| Web UI (Svelte) ↔ FastAPI 백엔드 | REST API (write: PUT `/api/control/*`) + **WebSocket `/ws`** (sync: 백엔드가 Redis Pub/Sub 구독 → 모든 클라이언트에 push) |
+| FastAPI 백엔드 ↔ Redis | Pub/Sub 구독 + Hash/String R/W |
 | RPi ↔ 온/습도 센서 | I2C / GPIO (직접 연결 — Modbus 미경유) |
 
 ### 3.3 Modbus 동작

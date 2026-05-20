@@ -343,14 +343,18 @@ publish 주기: 폴링 주기와 동일. `SET` + `PUBLISH` 모두 수행.
 
 ### Redis Key — 상태
 
-| Key | Type | 설명 |
-|---|---|---|
-| `comm:status` | string | 통신 상태 (ok / timeout / disconnected) |
-| `comm:consecutive_failures` | string | 연속 실패 횟수 |
-| `comm:last_error` | string | 마지막 오류 |
-| `control:mode` | string | 제어 모드 (manual / auto / emergency) |
-| `control:fan_curve` | hash | Auto 모드 fan 제어 곡선 (2-point linear). UI Settings 페이지에서 편집. fields: `min_temp` (°C), `max_temp` (°C), `min_duty` (0~1000, ≥100 = ≥10% UI 하한), `max_duty` (0~1000). 동작: outlet 온도 ≤ min_temp → min_duty, ≥ max_temp → max_duty, 사이는 선형 보간. settings.js Fan Curve editor 와 동일 schema (별도 시스템이지만 의도적 정합). |
-| `control:pump_duty` | string | Auto 모드 pump 고정 duty (Stage 1 정책 — auto_control.md §2). 값: 0~1000 (×10 정수, ≥200 = ≥20% UI 하한). UI Settings 페이지에서 편집. MCG 는 Auto 모드에서 매 cycle 이 값을 HR 0~3 으로 write (pump 4채널 동일 duty, 0.85× 매핑 적용 후). |
+> **Persistence**: Redis 는 RDB + AOF (fsync everysec) 활성. 아래 표의 `persistent: yes` 표시 키는 재시작 / 전원 인가 후 자동 복원된다. `no` 표시 키는 매 cycle 갱신되므로 영구 보존 불요. 정책 근거: [ARCHITECTURE.md §1 "DB 설계 원칙"](../ARCHITECTURE.md) 참고.
+
+| Key | Type | persistent | 설명 |
+|---|---|---|---|
+| `comm:status` | string | no | 통신 상태 (ok / timeout / disconnected) |
+| `comm:consecutive_failures` | string | no | 연속 실패 횟수 |
+| `comm:last_error` | string | no | 마지막 오류 |
+| `control:mode` | string | **yes** | 제어 모드 (manual / auto / emergency). UI 토글이 SET, MCG 가 매 cycle 읽기 |
+| `control:fan_curve` | hash | **yes** | Auto 모드 fan 제어 곡선 (2-point linear). UI Settings 페이지에서 편집. fields: `min_temp` (°C), `max_temp` (°C), `min_duty` (0~1000, ≥100 = ≥10% UI 하한), `max_duty` (0~1000). 동작: outlet 온도 ≤ min_temp → min_duty, ≥ max_temp → max_duty, 사이는 선형 보간. settings.js Fan Curve editor 와 동일 schema (별도 시스템이지만 의도적 정합). |
+| `control:pump_duty` | string | **yes** | Auto 모드 pump 고정 duty (Stage 1 정책 — auto_control.md §2). 값: 0~1000 (×10 정수, ≥200 = ≥20% UI 하한). UI Settings 페이지에서 편집. MCG 는 Auto 모드에서 매 cycle 이 값을 HR 0~3 으로 write (pump 4채널 동일 duty, 0.85× 매핑 적용 후). |
+| `sensor:*_duty_*` (pump/fan) | string | **yes** | Manual 모드에서 UI 가 SET 하는 마지막 duty. 재시작 후 마지막 사용자 의도 복원. |
+| `sensor:*` (그 외 - 온도/유량/RPM/leak/level/ambient) | string | no | 매 cycle MCG polling 으로 갱신. 재시작 후 다음 cycle 에서 자동 채워짐. |
 
 **Pub/Sub 채널 (제어 갱신)**
 

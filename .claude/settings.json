@@ -111,7 +111,11 @@
       "Bash(chmod +x /home/gadgetini/L2A_CDU_system/scripts/git-hooks/pre-commit /home/gadgetini/L2A_CDU_system/scripts/install-hooks.sh)",
       "Bash(/home/gadgetini/L2A_CDU_system/scripts/install-hooks.sh)",
       "Bash(.git/hooks/pre-commit)",
-      "Bash(/home/gadgetini/L2A_CDU_system/scripts/git-hooks/pre-commit)"
+      "Bash(/home/gadgetini/L2A_CDU_system/scripts/git-hooks/pre-commit)",
+      "Bash(redis-cli config *)",
+      "Bash(/home/gadgetini/venv/bin/python)",
+      "Bash(/home/gadgetini/venv/bin/python -m src.mcg.main)",
+      "Bash(echo \"exit code: $?\")"
     ],
     "additionalDirectories": [
       "/tmp"

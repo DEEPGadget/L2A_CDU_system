@@ -1,1 +1,18 @@
 mode: fake   # fake | real
+
+# ── Modbus RTU (PCB connection, MCS_IO Board REV_C) ───────────────────────────
+# PCB DIP switches expected: DIP 6 ON (115200 baud), DIP 1~5 OFF (slave ID = 1)
+modbus:
+  port:                            # list - try in order, first success wins
+    - /dev/ttyACM0
+    - /dev/ttyUSB0
+  baud: 115200
+  slave: 1
+  timeout_seconds: 1.0
+
+# ── MCG main loop ─────────────────────────────────────────────────────────────
+loop:
+  cycle_seconds: 1.0               # 1 Hz polling
+  comm:
+    timeout_after_failures: 3      # >= N consecutive poll fails -> comm:status = timeout
+    disconnected_after_failures: 10  # >= N -> comm:status = disconnected
