@@ -136,7 +136,9 @@
       "Bash(sudo -u gadgetini DISPLAY=:0 xwininfo -root)",
       "Bash(sudo -u gadgetini DISPLAY=:0 wmctrl -lG)",
       "Bash(sudo -u gadgetini DISPLAY=:0 xdotool search --name \"L2A\" getwindowgeometry)",
-      "Bash(sudo -u gadgetini DISPLAY=:0 scrot /tmp/screen_after.png)"
+      "Bash(sudo -u gadgetini DISPLAY=:0 scrot /tmp/screen_after.png)",
+      "Bash(grep -nA12 \"_refresh_delta\" /home/gadgetini/L2A_CDU_system/src/local_ui/widgets/status_strip.py)",
+      "Bash(pdfinfo \"/home/gadgetini/L2A_CDU_system/docs/Rev_B_Test.pdf\")"
     ],
     "additionalDirectories": [
       "/tmp"
