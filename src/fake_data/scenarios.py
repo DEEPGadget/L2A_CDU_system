@@ -45,9 +45,19 @@ _NORMAL_BASE: dict[str, _Value] = {
     "sensor:leak":                  "NORMAL",
     "sensor:ambient_temp":          (25.0, 18.0,                    T.AMBIENT_TEMP_WARN_HI),
     "sensor:ambient_humidity":      (45.0, T.AMBIENT_HUM_NORMAL_LO,  T.AMBIENT_HUM_WARN_HI),
-    # Fan RPM (read-only tachometer feedback; independent drift in fake mode)
-    "sensor:fan_rpm_1":             (2500.0, 2400.0, 2600.0),
-    "sensor:fan_rpm_2":             (2480.0, 2400.0, 2600.0),
+    # Fan RPM — simulate the 8 physical Tach channels (CH 5~12) the PCB
+    # actually carries; per-channel drift with slight bias to mimic
+    # fan-to-fan tolerance. simulator.py never publishes these underscore
+    # keys directly — at write time it averages each loop's 4 channels and
+    # publishes only sensor:fan_rpm_1 / _2 (byte-identical with real mode).
+    "_fan_rpm_l1_1":                (2500.0, 2400.0, 2600.0),
+    "_fan_rpm_l1_2":                (2510.0, 2400.0, 2600.0),
+    "_fan_rpm_l1_3":                (2495.0, 2400.0, 2600.0),
+    "_fan_rpm_l1_4":                (2505.0, 2400.0, 2600.0),
+    "_fan_rpm_l2_1":                (2480.0, 2400.0, 2600.0),
+    "_fan_rpm_l2_2":                (2490.0, 2400.0, 2600.0),
+    "_fan_rpm_l2_3":                (2475.0, 2400.0, 2600.0),
+    "_fan_rpm_l2_4":                (2485.0, 2400.0, 2600.0),
     # Duty: initialised once by simulator, never overwritten afterwards
     "sensor:pump_pwm_duty_1":       "60",
     "sensor:pump_pwm_duty_2":       "60",

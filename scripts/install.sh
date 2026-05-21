@@ -51,13 +51,19 @@ do_install() {
         libxcb-cursor0 \
         unclutter \
         fonts-noto-color-emoji \
+        nodejs \
+        npm \
         2>/dev/null || warn "apt-get failed — install packages manually if needed"
 
     MODE=$(read_mode)
     log "Config mode: $MODE"
 
-    # Always install pushgateway service
+    # Web UI frontend build (best-effort; backend still works without it).
+    build_web_frontend
+
+    # Always install pushgateway + web backend services
     install_service "pushgateway.service"
+    install_service "cdu-web-backend.service"
 
     # Mode-specific services
     if [ "$MODE" = "fake" ]; then
@@ -73,6 +79,7 @@ do_install() {
 
     # Enable + start installed services
     enable_service "pushgateway.service"
+    enable_service "cdu-web-backend.service"
 
     if [ "$MODE" = "fake" ]; then
         enable_service "cdu-fake-simulator.service"
@@ -86,11 +93,27 @@ do_install() {
 
     log ""
     log "Installation complete."
+    log "Web UI:  http://<rpi-ip>:8000/"
     if [ "$MODE" = "fake" ]; then
         log "Start: sudo systemctl start cdu-fake-simulator"
     else
         log "Start: sudo systemctl start cdu-mcg"
     fi
+}
+
+build_web_frontend() {
+    local fe="$PROJECT_ROOT/src/web_ui/frontend"
+    if [ ! -f "$fe/package.json" ]; then
+        warn "Frontend package.json missing at $fe — skipping build."
+        return
+    fi
+    if ! command -v npm >/dev/null 2>&1; then
+        warn "npm not available — skipping web frontend build. Install with: apt install npm"
+        return
+    fi
+    log "Building Web UI frontend (npm ci && npm run build)..."
+    (cd "$fe" && sudo -u "$USER" npm ci && sudo -u "$USER" npm run build) \
+        || warn "Frontend build failed — backend will serve a 503 hint until built."
 }
 
 install_service() {
@@ -158,7 +181,7 @@ EOF
 # ── Status ────────────────────────────────────────────────────────────────────
 
 do_status() {
-    for svc in pushgateway.service cdu-fake-simulator.service cdu-mcg.service cdu-local-ui.service; do
+    for svc in pushgateway.service cdu-fake-simulator.service cdu-mcg.service cdu-local-ui.service cdu-web-backend.service; do
         echo "─── $svc ───────────────────────────"
         systemctl status "$svc" --no-pager -l 2>/dev/null || echo "  (not installed)"
     done
@@ -168,7 +191,7 @@ do_status() {
 
 do_stop() {
     require_root
-    for svc in cdu-fake-simulator.service cdu-mcg.service; do
+    for svc in cdu-fake-simulator.service cdu-mcg.service cdu-web-backend.service; do
         systemctl stop "$svc" 2>/dev/null && log "Stopped $svc" || warn "$svc not running"
     done
 }
@@ -177,7 +200,7 @@ do_stop() {
 
 do_remove() {
     require_root
-    for svc in cdu-fake-simulator.service cdu-mcg.service pushgateway.service; do
+    for svc in cdu-fake-simulator.service cdu-mcg.service pushgateway.service cdu-web-backend.service; do
         systemctl stop    "$svc" 2>/dev/null || true
         systemctl disable "$svc" 2>/dev/null || true
         rm -f "$SERVICES_DST/$svc"

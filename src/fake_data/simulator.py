@@ -133,8 +133,27 @@ class FakeDataSimulator:
                 str_val = spec
                 self._str_current[key] = str_val
 
+            # Underscore-prefixed keys are internal drift state only — they
+            # stand in for physical channels that the real-mode polling
+            # averages before publishing (e.g. _fan_rpm_l1_1..4 → fan_rpm_1).
+            # Never write them to Redis.
+            if key.startswith("_"):
+                continue
+
             pipe.set(key, str_val)
             pipe.publish(key, str_val)
+
+        # Aggregate the 8 internal fan-Tach channels into the 2 published
+        # loop-average keys, matching MCG's real-mode polling behaviour
+        # (see src/mcg/polling.py: 8ch read → loop avg → 2 keys).
+        for loop_id, publish_key in ((1, "sensor:fan_rpm_1"),
+                                     (2, "sensor:fan_rpm_2")):
+            ch_keys = [f"_fan_rpm_l{loop_id}_{n}" for n in (1, 2, 3, 4)]
+            ch_vals = [self._current[k] for k in ch_keys if k in self._current]
+            if ch_vals:
+                avg_rpm = round(sum(ch_vals) / len(ch_vals))
+                pipe.set(publish_key, str(avg_rpm))
+                pipe.publish(publish_key, str(avg_rpm))
 
         # Derived: per-loop flow + total flow (A5 formula, see PCB.md "Flow estimation")
         #   flow_loop_lpm  = 35 * (ui_duty / 100)
