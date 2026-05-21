@@ -8,8 +8,11 @@ Register map (docs/PCB.md "Modbus Registers"):
                              T1 inlet_L1, T2 outlet_L1, T3 outlet_L2,
                              T4 inlet_L2 -- per board silkscreen.
                              Open circuit returns ~-40.4 C (raw 0xFE6C).
-  - Input Register 20, 21 : Pulse Freq CH8, CH9 (Hz) - fan RPM feedback
-                             (RPM = Hz * 30, 2 pulses/revolution)
+  - Input Register 17~24  : Pulse Freq CH5~CH12 (Hz) - fan RPM feedback
+                             (RPM = Hz * 30, 2 pulses/revolution).
+                             L1 = CH5~8 (IR 17~20), L2 = CH9~12 (IR 21~24).
+                             MCG publishes the per-loop 4ch **average** to
+                             sensor:fan_rpm_1 / _2 (UI shows the average).
   - Input Register 25     : DIN Status (bit0~5) - water level / leak inputs
                              (bit assignment TBD until PCB bring-up;
                              currently published as raw integer only)
@@ -55,8 +58,10 @@ def _signed16(u: int) -> int:
     (e.g. open circuit returns ~0xFE6C = -404 -> -40.4 C)."""
     return u - 0x10000 if u >= 0x8000 else u
 
-_PULSE_BASE  = 20         # Pulse CH8 (= IR 20). CH9 = IR 21.
-_PULSE_COUNT = 2
+# Pulse CH N -> IR (12 + N). L2A uses CH5~12 -> IR 17~24 (8 channels).
+# Read all 8 in one transaction; loop-average is published to the 2 RPM keys.
+_PULSE_BASE  = 17
+_PULSE_COUNT = 8
 _FAN_RPM_REDIS_KEYS = (K.SENSOR_FAN_RPM_1, K.SENSOR_FAN_RPM_2)
 
 _DIN_BASE  = 25
@@ -82,12 +87,15 @@ def poll_once(pcb: PCB, r: redis.Redis) -> bool:
         celsius = _signed16(raw) / 10.0
         _publish(pipe, key, f"{celsius:.1f}")
 
-    # 2. Fan RPM (best-effort; do not abort if it fails)
+    # 2. Fan RPM (best-effort; do not abort if it fails).
+    #    8 channels read, per-loop 4ch average -> 2 Redis keys (UI shows avg).
     pulse = pcb.read_input_registers(_PULSE_BASE, _PULSE_COUNT)
     if pulse is not None:
-        for hz, key in zip(pulse, _FAN_RPM_REDIS_KEYS):
-            rpm = hz * 30   # 2 pulses/revolution
-            _publish(pipe, key, str(rpm))
+        # pulse[0..3] = L1 (CH5~8), pulse[4..7] = L2 (CH9~12)
+        rpm_l1 = round(sum(pulse[0:4]) / 4 * 30)  # 2 pulses/revolution
+        rpm_l2 = round(sum(pulse[4:8]) / 4 * 30)
+        _publish(pipe, _FAN_RPM_REDIS_KEYS[0], str(rpm_l1))
+        _publish(pipe, _FAN_RPM_REDIS_KEYS[1], str(rpm_l2))
 
     # 3. DIN raw (water level / leak bit mapping TBD - publish raw integer)
     din = pcb.read_input_registers(_DIN_BASE, _DIN_COUNT)

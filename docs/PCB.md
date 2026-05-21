@@ -73,7 +73,7 @@
 |---|---|---|---|
 | 0 | System Timer | 시스템 가동 시간 | 0~9999 초 |
 | 1~12 | ADC Raw Data | ADC 12채널 원시값 | 0~4095 (12-bit) |
-| 13~24 | Pulse Freq | 펄스 주파수 12채널 (팬 RPM 피드백; **RPM = Hz × 30**, 2 pulse/rev) | 0~65535 Hz |
+| 13~24 | Pulse Freq | 펄스 주파수 12채널 (팬 RPM 피드백; **RPM = Hz × 30**, 2 pulse/rev). ※ L2A 운용: 팬 RPM 8 채널 = CH5~12 = IR 17~24, MCG 가 loop 별 4ch 평균을 `sensor:fan_rpm_1/2` 로 publish | 0~65535 Hz |
 | 25 | DIN Status | 디지털 입력 DIN1~6 | bit0~5 |
 | 26 | Pulse State | 펄스 핀 H/L 상태 | bit0~11 |
 | 27 | DIP Switch | DIP 스위치 1~6 | bit0~5 |

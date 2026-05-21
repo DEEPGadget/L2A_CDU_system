@@ -39,8 +39,10 @@ from .polling import poll_once
 log = logging.getLogger(__name__)
 
 # Holding register addresses (control_board mapping, see MCG.md sec 9)
-HR_PUMP_BASE = 0    # pump CH1~4 -> HR 0~3 (TIM1, 1 kHz)
-HR_FAN_BASE  = 4    # fan  CH5~6 -> HR 4~5 (TIM2, 25 kHz)  (L2A uses 2 fan loops only)
+HR_PUMP_BASE = 0    # pump CH1~4  -> HR 0~3  (TIM1, 1 kHz)
+HR_FAN_L1_BASE = 4  # fan L1 CH5~8  -> HR 4~7  (TIM2, 25 kHz)
+HR_FAN_L2_BASE = 8  # fan L2 CH9~12 -> HR 8~11 (TIM8, 25 kHz)
+FAN_CHANNELS_PER_LOOP = 4
 
 
 # ── Mode + duty source ───────────────────────────────────────────────────────
@@ -78,7 +80,11 @@ def _write_pumps(pcb: PCB, pump_l1_ui: float, pump_l2_ui: float) -> bool:
 def _write_fans(pcb: PCB, fan_l1_ui: float, fan_l2_ui: float) -> bool:
     hr_l1 = ui_to_fan_hr(fan_l1_ui)
     hr_l2 = ui_to_fan_hr(fan_l2_ui)
-    return pcb.write_registers(HR_FAN_BASE, [hr_l1, hr_l2])
+    # Burst write HR 4..11 = 8 channels (L1 CH5~8 + L2 CH9~12) in one transaction.
+    return pcb.write_registers(
+        HR_FAN_L1_BASE,
+        [hr_l1] * FAN_CHANNELS_PER_LOOP + [hr_l2] * FAN_CHANNELS_PER_LOOP,
+    )
 
 
 # ── Comm state ───────────────────────────────────────────────────────────────

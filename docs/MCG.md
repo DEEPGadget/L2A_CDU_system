@@ -190,8 +190,8 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 | Pump L1 PWM (P2) | Holding Register 1 | **60 %** (L1과 동일 값) | CH2, TIM1 (1 kHz 운용), L1 직렬 2번째 |
 | Pump L2 PWM (P3) | Holding Register 2 | **60 %** | CH3, TIM1 (1 kHz 운용), L2 직렬 1번째 |
 | Pump L2 PWM (P4) | Holding Register 3 | **60 %** (L2와 동일 값) | CH4, TIM1 (1 kHz 운용), L2 직렬 2번째 |
-| Fan L1 PWM | Holding Register 4 | **15 %** (저속 기동, PID 수렴 대기) | CH5, TIM2 (25 kHz 운용) |
-| Fan L2 PWM | Holding Register 5 | **15 %** | CH6, TIM2 (25 kHz 운용) |
+| Fan L1 PWM | Holding Register 4~7 (4ch burst) | **15 %** (저속 기동, PID 수렴 대기) | CH5~8, TIM2 (25 kHz 운용). 그룹 내 동일 duty. |
+| Fan L2 PWM | Holding Register 8~11 (4ch burst) | **15 %** | CH9~12, TIM8 (25 kHz 운용). 그룹 내 동일 duty. |
 | PWM Freq (TIM1) | Holding Register 12 | **1 (kHz)** | 펌프: **1~25 kHz 조절 가능**, Johnson eModule 600~3000 Hz 중 typical |
 | PWM Freq (TIM2) | Holding Register 13 | **25 (kHz)** | 팬: **1~25 kHz 조절 가능**, Cooltron 팬 스펙 정격 |
 
@@ -264,13 +264,12 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 |---|---|---|---|
 | `sensor:pump_pwm_duty_1` | 펌프 PWM L1 (0–100%) | **HR 0, 1** (CH1+CH2, TIM1) | Johnson Electric eModule 300W × 2 (L1 직렬 P1→P2, 두 채널 동일 duty) |
 | `sensor:pump_pwm_duty_2` | 펌프 PWM L2 (0–100%) | **HR 2, 3** (CH3+CH4, TIM1) | Johnson Electric eModule 300W × 2 (L2 직렬 P3→P4, 두 채널 동일 duty) |
-| `sensor:fan_pwm_duty_1` | 팬 PWM L1 (0–100%) | Holding Register 4 (CH5, TIM2) | COOLTRON FD8038B12W7 (최대 수량 §10 참고) |
-| `sensor:fan_pwm_duty_2` | 팬 PWM L2 (0–100%) | Holding Register 5 (CH6, TIM2) | COOLTRON FD8038B12W7 (최대 수량 §10 참고) |
+| `sensor:fan_pwm_duty_1` | 팬 PWM L1 (0–100%) | **HR 4~7** (CH5~8, TIM2, 4ch burst) | COOLTRON FD8038B12W7 (최대 수량 §10 참고). 4채널 동일 duty |
+| `sensor:fan_pwm_duty_2` | 팬 PWM L2 (0–100%) | **HR 8~11** (CH9~12, TIM8, 4ch burst) | COOLTRON FD8038B12W7 (최대 수량 §10 참고). 4채널 동일 duty |
 
 > **PWM 채널 매핑 (control_board 기준)**: HR 0~3 = 펌프 4ch (TIM1, 1 kHz), HR 4~11 = 팬 8ch (TIM2/TIM8, 25 kHz). 자세한 표는 [PCB.md "Holding Registers"](PCB.md) 참고.
 > TIM1 펌프 4채널: L2A는 **2 병렬 루프 × 루프당 2개 직렬** 구성 (L1=P1→P2 = HR 0+1, L2=P3→P4 = HR 2+3). Redis 키는 루프 레벨 2개 유지 (`pump_pwm_duty_1`, `_2`)이며, MCG가 쓸 때 같은 duty를 같은 루프의 두 HR에 동시에 Write. dg5w(펌프 2개)는 HR 0~1만 사용.
-> TIM2 팬 4채널 (HR 4~7): L2A는 L1/L2 각 1개 (HR 4, 5)만 사용. 나머지(HR 6, 7) 예비.
-> TIM8 팬 4채널 (HR 8~11): L2A에서는 미사용. dg5r 의 전압제어 펌프(Koolance PMP-500) 가 이 영역을 점유. 제품/변형별 매핑 상세: §10.2 참고.
+> TIM2 팬 4채널 (HR 4~7) + TIM8 팬 4채널 (HR 8~11): L2A는 **L1 = HR 4~7 (CH5~8), L2 = HR 8~11 (CH9~12) 의 8채널 전부** 사용 (한 그룹의 4채널을 같은 duty 로 burst write). 한 fan group connector 에 4채널의 4-pin(전원/GND/PWM/Tach)이 모두 묶여 fanout 되는 배선이므로 8 채널 모두에 동일 신호가 인가되어야 한다. dg5r 의 전압제어 펌프(Koolance PMP-500) 는 HR 8~11 의 TIM8 자원을 다른 모드로 점유 — 변형별 매핑 상세: §10.2.
 
 > **펌프 ui_duty → 펌프 입력 PWM 변환 (직접 비례 + 85% 캡)**
 > Redis 키 `sensor:pump_pwm_duty_x` 는 UI 도메인 (0~100%). MCG 가 PCB Holding Register 로 write 할 때 직접 비례 매핑 + 운용 상한 캡:
@@ -289,10 +288,10 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 | Key | 설명 | Register | 비고 |
 |---|---|---|---|
-| `sensor:fan_rpm_1` | 팬 RPM L1 | Input Register 20 (Pulse CH8) | FG wire, 2 pulses/rotation → RPM = Hz × 30 |
-| `sensor:fan_rpm_2` | 팬 RPM L2 | Input Register 21 (Pulse CH9) | FG wire, 2 pulses/rotation → RPM = Hz × 30 |
+| `sensor:fan_rpm_1` | 팬 RPM L1 (4ch 평균) | Input Register 17~20 (Pulse CH5~8) | FG wire, 2 pulses/rotation → RPM = Hz × 30. MCG 가 4채널 평균을 publish |
+| `sensor:fan_rpm_2` | 팬 RPM L2 (4ch 평균) | Input Register 21~24 (Pulse CH9~12) | FG wire, 2 pulses/rotation → RPM = Hz × 30. MCG 가 4채널 평균을 publish |
 
-> Fan PWM 채널(HR 4, 5)과 Fan RPM 피드백 채널(Pulse CH 8, 9)이 다른 이유: control_board 의 PCB 배선에서 fan RPM 라인은 별도 pulse 채널에 묶여 있음 (`gadgetini/src/control_board/polling.py` 의 fan_ch_rpm 매핑 참고).
+> Fan PWM 채널 (HR 4~11) 과 Fan Tach 채널 (Pulse CH5~12 = IR 17~24) 는 PCB 내부에서 같은 4핀 fan connector 로 묶여 fanout 된다. UI 는 루프당 4채널 평균 RPM 만 표시 — 8 채널을 개별 키로 보고 싶다면 §"후속" 참고.
 
 > 펌프 Fault 피드백 (Johnson Electric PWM 에러 패턴): TODO — 구현 시 Pulse 채널 추가 할당.
 
@@ -401,7 +400,7 @@ publish 주기: 폴링 주기와 동일. `SET` + `PUBLISH` 모두 수행.
 
 | 변형 | Fan 모델 | Fan 최대 수 | Fan 채널 | Pump 모델 | Pump 수 | Pump 채널 |
 |---|---|---|---|---|---|---|
-| **L2A** (본 프로젝트) | COOLTRON FD8038B12W7-63-4J | **112** (L1/L2 **비대칭 독립 관리**) | **HR 4~5 (TIM2 PWM)** | Johnson Electric eModule 300W | 4 (**2 병렬 루프 × 루프당 2 직렬**: L1=P1→P2, L2=P3→P4) | **HR 0~3 (TIM1 PWM, 4채널 독립)** |
+| **L2A** (본 프로젝트) | COOLTRON FD8038B12W7-63-4J | **112** (L1/L2 **비대칭 독립 관리**) | **HR 4~11 (8ch burst, L1=HR 4~7 TIM2, L2=HR 8~11 TIM8). Tach = Pulse CH5~12 = IR 17~24 (8ch read, loop 별 4ch 평균 publish)** | Johnson Electric eModule 300W | 4 (**2 병렬 루프 × 루프당 2 직렬**: L1=P1→P2, L2=P3→P4) | **HR 0~3 (TIM1 PWM, 4채널 독립)** |
 | dg5r | COOLTRON FD8038B12W7-63-4J | 41 | HR 4~5 (TIM2 PWM) | Koolance PMP-500 | 4 | HR 8~11 (TIM8 전압 제어) |
 | dg5w | SUNON PF80381B2-Q050-S99-4P | 16 | HR 4~5 (TIM2 PWM) | Barrow LRC2.0 PLUS | 2 | HR 0~1 (TIM1 PWM) |
 
@@ -413,7 +412,7 @@ publish 주기: 폴링 주기와 동일. `SET` + `PUBLISH` 모두 수행.
 
 | 변형 | Fan 피드백 | Pump 피드백 |
 |---|---|---|
-| L2A / dg5r (Cooltron) | FG wire, 2 pulses/rotation, 7500 RPM ± 10% (rated), 10~9990 RPM 측정 범위 (Pulse CH1~2 = IR 13~14) | Johnson: PWM 패턴 에러 코드 (Dry run / Stall / Over temp / Over-under voltage — 펄스 폭으로 구분). 디코더 TBD |
+| L2A / dg5r (Cooltron) | FG wire, 2 pulses/rotation, 7500 RPM ± 10% (rated), 10~9990 RPM 측정 범위. L2A: Pulse CH5~12 = IR 17~24 (8ch) | Johnson: PWM 패턴 에러 코드 (Dry run / Stall / Over temp / Over-under voltage — 펄스 폭으로 구분). 디코더 TBD |
 | dg5w (Sunon) | FG wire, 2 pulses/rotation, 7500 RPM ± 10% (rated) | Barrow: 피드백 명세 TBD |
 | 공통 | 표시 단위: ×10 RPM (2-pole 기준) | — |
 

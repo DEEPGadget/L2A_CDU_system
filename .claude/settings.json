@@ -138,7 +138,10 @@
       "Bash(sudo -u gadgetini DISPLAY=:0 xdotool search --name \"L2A\" getwindowgeometry)",
       "Bash(sudo -u gadgetini DISPLAY=:0 scrot /tmp/screen_after.png)",
       "Bash(grep -nA12 \"_refresh_delta\" /home/gadgetini/L2A_CDU_system/src/local_ui/widgets/status_strip.py)",
-      "Bash(pdfinfo \"/home/gadgetini/L2A_CDU_system/docs/Rev_B_Test.pdf\")"
+      "Bash(pdfinfo \"/home/gadgetini/L2A_CDU_system/docs/Rev_B_Test.pdf\")",
+      "Bash(python3 -m py_compile src/mcg/main_loop.py src/mcg/polling.py)",
+      "Bash(python3 -c \"import sys; print\\(sys.executable, sys.prefix\\)\")",
+      "Bash(/home/gadgetini/venv/bin/python -c \"import pymodbus, redis; print\\('pymodbus', pymodbus.__version__\\); print\\('redis', redis.__version__\\)\")"
     ],
     "additionalDirectories": [
       "/tmp"
