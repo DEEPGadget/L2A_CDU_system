@@ -77,8 +77,8 @@ UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서
   3. Manual 명령 적용 (Manual 모드일 때만):
        → sensor:pump_pwm_duty_x, sensor:fan_pwm_duty_x Redis GET
        → 직전 cycle 값과 다른 채널만 Modbus Write
-         (pump 측은 PCB.md A5 의 0.85× 매핑 적용 후 HR 0~3 write,
-          fan 측은 직접 매핑 후 HR 4~11 write)
+         (pump 측은 PCB.md A5 의 0.85× 매핑 적용 후 HR 8~11 burst write,
+          fan 측은 직접 매핑 후 HR 4~7 burst write)
 
   4. Polling (항상 실행)
        → Modbus Read (센서 레지스터)
@@ -346,7 +346,7 @@ publish 주기: 폴링 주기와 동일. `SET` + `PUBLISH` 모두 수행.
 | `comm:last_error` | string | no | 마지막 오류 |
 | `control:mode` | string | **yes** | 제어 모드 (manual / auto / emergency). UI 토글이 SET, MCG 가 매 cycle 읽기 |
 | `control:fan_curve` | hash | **yes** | Auto 모드 fan 제어 곡선 (2-point linear). UI Settings 페이지에서 편집. fields: `min_temp` (°C), `max_temp` (°C), `min_duty` (0~1000, ≥100 = ≥10% UI 하한), `max_duty` (0~1000). 동작: outlet 온도 ≤ min_temp → min_duty, ≥ max_temp → max_duty, 사이는 선형 보간. settings.js Fan Curve editor 와 동일 schema (별도 시스템이지만 의도적 정합). |
-| `control:pump_duty` | string | **yes** | Auto 모드 pump 고정 duty (Stage 1 정책 — auto_control.md §2). 값: 0~1000 (×10 정수, ≥200 = ≥20% UI 하한). UI Settings 페이지에서 편집. MCG 는 Auto 모드에서 매 cycle 이 값을 HR 0~3 으로 write (pump 4채널 동일 duty, 0.85× 매핑 적용 후). |
+| `control:pump_duty` | string | **yes** | Auto 모드 pump 고정 duty (Stage 1 정책 — auto_control.md §2). 값: 0~1000 (×10 정수, ≥200 = ≥20% UI 하한). UI Settings 페이지에서 편집. MCG 는 Auto 모드에서 매 cycle 이 값을 HR 8~11 (L2A Rev_C: 펌프 CH 9~12) 로 burst write (pump 4채널 동일 duty, 0.85× 매핑 적용 후). |
 | `sensor:*_duty_*` (pump/fan) | string | **yes** | Manual 모드에서 UI 가 SET 하는 마지막 duty. 재시작 후 마지막 사용자 의도 복원. |
 | `sensor:*` (그 외 - 온도/유량/RPM/leak/level/ambient) | string | no | 매 cycle MCG polling 으로 갱신. 재시작 후 다음 cycle 에서 자동 채워짐. |
 
@@ -375,7 +375,7 @@ publish 주기: 폴링 주기와 동일. `SET` + `PUBLISH` 모두 수행.
 
 ## 10. PCB 액추에이터 사양
 
-같은 제어 보드(RealSYS MCS Con BD 기반)로 **L2A · dg5r · dg5w** 세 CDU 변형을 모두 지원. 보드는 PWM 8채널(TIM1·TIM2) + 전압 제어 4채널(TIM8) 구성.
+같은 제어 보드(RealSYS MCS Con BD 기반)로 **L2A · dg5r · dg5w** 세 CDU 변형을 모두 지원. 보드는 **PWM 12채널 (TIM1·TIM2·TIM8 각 4ch, HR 0~11)** 구성 — TIM8 4채널은 변형에 따라 PWM (L2A 펌프 / dg5w 사용 안 함) 또는 전압 제어 (dg5r 펌프) 로 점유.
 
 ### 10.1 PWM 신호 규격
 

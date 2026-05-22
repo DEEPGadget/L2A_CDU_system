@@ -37,7 +37,7 @@
 
 1. **본 표 다시 확인**: 운용 화면 폭 **1280 px**, 높이 **720 px**, top_bar 64 px 고정 → 페이지 영역 = **1280 × 656 px**
 2. **명시적 크기 강제**: 최상위 페이지/오버레이는 `setFixedSize` 또는 `setMaximumWidth(1280)`. status_strip 같은 고정 높이 위젯은 `setFixedHeight` 만 두고 가로는 부모 layout 에 위임 (단, contentsMargins + spacing + 라벨 폭 합 ≤ 1280 보장).
-3. **가로 위젯 합산**: 같은 행에 들어가는 모든 위젯 → `contentsMargins.left + Σ(widget.minSizeHint() + spacing) + contentsMargins.right ≤ 1280` 을 종이/headless 로 계산. 긴 라벨(예: "Total Flow: 42.0 L/min" 23자) 추가 시 폰트 포인트 ↓ 또는 padding ↓ 로 보정.
+3. **가로 위젯 합산**: 같은 행에 들어가는 모든 위젯 → `contentsMargins.left + Σ(widget.minSizeHint() + spacing) + contentsMargins.right ≤ 1280` 을 종이/headless 로 계산. 긴 라벨(예: "Humidity: 100% RH" 17자) 추가 시 폰트 포인트 ↓ 또는 padding ↓ 로 보정.
 4. **사용자 화면 확인**: smoke test (AST + 인스턴스화) 만으로 OK 처리 금지. `sudo systemctl restart cdu-local-ui.service` 후 **사용자에게 실제 화면 확인 요청**.
 
 | 화면 영역 | 픽셀 | 고정 위젯 |

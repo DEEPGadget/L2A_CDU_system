@@ -177,7 +177,8 @@
       "Bash(ip -4 addr show)",
       "Bash(awk '/inet / && $2 !~ /^127/ {print \"  http://\" $2 \"/\"}')",
       "Bash(/home/gadgetini/venv/bin/python -m py_compile src/mcg/main.py src/mcg/main_loop.py src/mcg/polling.py src/fake_data/scenarios.py src/fake_data/simulator.py src/local_ui/widgets/top_bar.py)",
-      "Bash(/home/gadgetini/venv/bin/python -m py_compile src/mcg/duty_mapper.py src/mcg/polling.py src/mcg/redis_keys.py src/mcg/main_loop.py src/mcg/main.py src/fake_data/simulator.py src/fake_data/scenarios.py src/local_ui/widgets/status_strip.py src/local_ui/widgets/alarm_overlay.py src/local_ui/widgets/top_bar.py src/local_ui/pages/history_page.py src/web_ui/backend/main.py)"
+      "Bash(/home/gadgetini/venv/bin/python -m py_compile src/mcg/duty_mapper.py src/mcg/polling.py src/mcg/redis_keys.py src/mcg/main_loop.py src/mcg/main.py src/fake_data/simulator.py src/fake_data/scenarios.py src/local_ui/widgets/status_strip.py src/local_ui/widgets/alarm_overlay.py src/local_ui/widgets/top_bar.py src/local_ui/pages/history_page.py src/web_ui/backend/main.py)",
+      "Bash(git -C /home/gadgetini/L2A_CDU_system diff --stat)"
     ],
     "additionalDirectories": [
       "/tmp"

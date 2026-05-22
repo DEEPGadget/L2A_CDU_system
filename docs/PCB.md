@@ -58,9 +58,9 @@
 |---|---|---|---|
 | 0~3 | PWM Duty | **펌프** CH1~4 듀티비 (L2A Rev_C: 미사용. 펌프는 CH 9~12 = HR 8~11. 변형별 매핑은 MCG.md §10.2 참고) | 0~1000 (0.0~100.0%) |
 | 4~11 | PWM Duty | **팬** CH5~12 듀티비 | 0~1000 (0.0~100.0%) |
-| 12 | PWM Freq (TIM1) | 펌프 CH1~4 주파수 (운용 기본 **1000 Hz**) | 1000~25000 Hz |
-| 13 | PWM Freq (TIM2) | 팬 CH5~8 주파수 (운용 기본 **25000 Hz**) | 1000~25000 Hz |
-| 14 | PWM Freq (TIM8) | 팬 CH9~12 주파수 (운용 기본 **25000 Hz**) | 1000~25000 Hz |
+| 12 | PWM Freq (TIM1) | CH1~4 주파수 (L2A Rev_C: 미사용 채널이므로 영향 없음. 변형별 매핑은 MCG.md §10.2 참고) | 1000~25000 Hz |
+| 13 | PWM Freq (TIM2) | CH5~8 주파수 (L2A Rev_C: 팬, 운용 기본 **25000 Hz**) | 1000~25000 Hz |
+| 14 | PWM Freq (TIM8) | CH9~12 주파수 (L2A Rev_C: 펌프, 운용 기본 **1000 Hz** — MCG 시작 시 명시 write) | 1000~25000 Hz |
 | 15 | Digital Output | DOUT1~6 비트패킹 | bit0=DOUT1 ~ bit5=DOUT6 |
 | 16 | PWM Polarity | 극성 설정 (1=반전) | bit0~11 (CH1~12) |
 | 17 | Config Command | 설정 저장/로드 | 0x01=Save, 0x02=Load |
