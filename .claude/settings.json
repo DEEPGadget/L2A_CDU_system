@@ -169,7 +169,13 @@
       "Bash(curl -s -o /tmp/set.html -w \"HTTP %{http_code}  size=%{size_download}\\\\n\" http://127.0.0.1:8765/settings/)",
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}  ct=%{content_type}  size=%{size_download}\\\\n\" http://127.0.0.1:8765/favicon.svg)",
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://127.0.0.1:8765/api/control)",
-      "Bash(pkill -9 -f 'uvicorn.*8765')"
+      "Bash(pkill -9 -f 'uvicorn.*8765')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:8000/api/control)",
+      "Bash(curl -s -o /dev/null -w \"GET / HTTP %{http_code}\\\\n\" http://127.0.0.1:8000/)",
+      "Bash(curl -s -o /dev/null -w \"GET /settings/ HTTP %{http_code}\\\\n\" http://127.0.0.1:8000/settings/)",
+      "Bash(curl -s -o /dev/null -w \"GET /api/control HTTP %{http_code}\\\\n\" http://127.0.0.1:8000/api/control)",
+      "Bash(ip -4 addr show)",
+      "Bash(awk '/inet / && $2 !~ /^127/ {print \"  http://\" $2 \"/\"}')"
     ],
     "additionalDirectories": [
       "/tmp"
