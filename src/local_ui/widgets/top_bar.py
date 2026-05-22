@@ -466,8 +466,16 @@ class TopBarWidget(QWidget):
         self._set_status_text(self._system_label, "System:", state, color)
 
     def _refresh_link_text(self, status: str) -> None:
-        color = _LINK_COLORS.get(status, _LINK_COLORS["disconnected"])
-        self._set_status_text(self._link_label, "Link:", status, color)
+        # "disconnected" is a long string that overflows the 1280 px top_bar
+        # width budget (docs/UI.md "Layout verification"). Show "-" instead;
+        # the alarm overlay still surfaces the comm_disconnected event for the
+        # user, and System: also collapses to "-" via _refresh_system_text().
+        if status == "disconnected":
+            display, color = "-", _LINK_COLORS["-"]
+        else:
+            display = status
+            color = _LINK_COLORS.get(status, _LINK_COLORS["-"])
+        self._set_status_text(self._link_label, "Link:", display, color)
 
     def _refresh_alarm_badge(self) -> None:
         count = len(self._active_alarms)

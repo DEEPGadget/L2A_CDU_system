@@ -178,7 +178,13 @@
       "Bash(awk '/inet / && $2 !~ /^127/ {print \"  http://\" $2 \"/\"}')",
       "Bash(/home/gadgetini/venv/bin/python -m py_compile src/mcg/main.py src/mcg/main_loop.py src/mcg/polling.py src/fake_data/scenarios.py src/fake_data/simulator.py src/local_ui/widgets/top_bar.py)",
       "Bash(/home/gadgetini/venv/bin/python -m py_compile src/mcg/duty_mapper.py src/mcg/polling.py src/mcg/redis_keys.py src/mcg/main_loop.py src/mcg/main.py src/fake_data/simulator.py src/fake_data/scenarios.py src/local_ui/widgets/status_strip.py src/local_ui/widgets/alarm_overlay.py src/local_ui/widgets/top_bar.py src/local_ui/pages/history_page.py src/web_ui/backend/main.py)",
-      "Bash(git -C /home/gadgetini/L2A_CDU_system diff --stat)"
+      "Bash(git -C /home/gadgetini/L2A_CDU_system diff --stat)",
+      "Bash(redis-cli -n 0 get comm:status)",
+      "Bash(journalctl -u cdu-mcg --since \"5 minutes ago\" --no-pager)",
+      "Bash(curl -s http://localhost:8000/api/state)",
+      "Bash(journalctl -u cdu-local-ui --since \"2 minutes ago\" --no-pager)",
+      "Bash(redis-cli keys *)",
+      "Bash(redis-cli DEL air_humit air_temp chassis_stabil host_stat coolant_delta_t1 coolant_delta_t2 coolant_leak coolant_level coolant_temp coolant_temp_inlet1 coolant_temp_inlet2 coolant_temp_outlet1 coolant_temp_outlet2 sensor:total_flow sensor:ph sensor:conductivity sensor:water_level_high sensor:water_level_low)"
     ],
     "additionalDirectories": [
       "/tmp"
