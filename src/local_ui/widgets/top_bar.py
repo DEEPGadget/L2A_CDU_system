@@ -55,6 +55,7 @@ _LINK_COLORS: dict[str, str] = {
     "ok":           "#27ae60",
     "timeout":      "#e67e22",
     "disconnected": "#e74c3c",
+    "-":            "#9e9e9e",   # initial state before MCG's first comm:status publish
 }
 
 # ── Alarm badge colors ─────────────────────────────────────────────────────────
@@ -243,7 +244,7 @@ class TopBarWidget(QWidget):
         super().__init__(parent)
         self._stacked = stacked_widget
         self._active_alarms: set[str] = set()
-        self._link_status = "ok"
+        self._link_status = "-"   # MCG overwrites this on the first comm:status publish
         self._redis = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
         self.setStyleSheet("background:#ffffff;")
         self._build_ui()
@@ -324,7 +325,7 @@ class TopBarWidget(QWidget):
         center_layout.addWidget(_sep())
 
         # Link status
-        self._link_label = self._make_status_label("Link:", "ok", _LINK_COLORS["ok"])
+        self._link_label = self._make_status_label("Link:", "-", _LINK_COLORS["-"])
         center_layout.addWidget(self._link_label)
 
         center_layout.addWidget(_sep())

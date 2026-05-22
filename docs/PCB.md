@@ -56,7 +56,7 @@
 
 | 주소 | 기능 | 설명 | 범위 |
 |---|---|---|---|
-| 0~3 | PWM Duty | **펌프** CH1~4 듀티비 (직렬 2 × 병렬 2 루프) | 0~1000 (0.0~100.0%) |
+| 0~3 | PWM Duty | **펌프** CH1~4 듀티비 (L2A Rev_C: 미사용. 펌프는 CH 9~12 = HR 8~11. 변형별 매핑은 MCG.md §10.2 참고) | 0~1000 (0.0~100.0%) |
 | 4~11 | PWM Duty | **팬** CH5~12 듀티비 | 0~1000 (0.0~100.0%) |
 | 12 | PWM Freq (TIM1) | 펌프 CH1~4 주파수 (운용 기본 **1000 Hz**) | 1000~25000 Hz |
 | 13 | PWM Freq (TIM2) | 팬 CH5~8 주파수 (운용 기본 **25000 Hz**) | 1000~25000 Hz |
@@ -73,7 +73,7 @@
 |---|---|---|---|
 | 0 | System Timer | 시스템 가동 시간 | 0~9999 초 |
 | 1~12 | ADC Raw Data | ADC 12채널 원시값 | 0~4095 (12-bit) |
-| 13~24 | Pulse Freq | 펄스 주파수 12채널 (팬 RPM 피드백; **RPM = Hz × 30**, 2 pulse/rev). ※ L2A 운용: 팬 RPM 8 채널 = CH5~12 = IR 17~24, MCG 가 loop 별 4ch 평균을 `sensor:fan_rpm_1/2` 로 publish | 0~65535 Hz |
+| 13~24 | Pulse Freq | 펄스 주파수 12채널 (팬 RPM 피드백; **RPM = Hz × 30**, 2 pulse/rev). ※ L2A Rev_C 운용: 팬 RPM 4 채널 = CH 5~8 = IR 17~20, MCG 가 loop 별 2ch 평균을 `sensor:fan_rpm_1/2` 로 publish. 펌프 (CH 9~12) 는 Tach 미사용 | 0~65535 Hz |
 | 25 | DIN Status | 디지털 입력 DIN1~6 | bit0~5 |
 | 26 | Pulse State | 펄스 핀 H/L 상태 | bit0~11 |
 | 27 | DIP Switch | DIP 스위치 1~6 | bit0~5 |
@@ -140,13 +140,13 @@ Config Command(HR 17)에 0x01을 쓰거나, BT2 Factory Reset 시 자동 저장.
 
 ## 유량 추정
 
-본 PCB 에 **유량 센서는 미장착**. MCG 가 펌프 PWM duty 기반으로 선형 추정하여 `sensor:total_flow` redis 키로 publish.
+Rev_C 부터 **각 루프 합류점에 실 유량 센서 1개씩 (총 2개)** 도입 예정. 채널/환산 계수 확정 시 [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` hook 을 채워 `sensor:flow_rate_1/2` 로 publish. 그 전까지는 아래 derived fallback 동작.
 
-### 펌프 배치
+### 펌프 배치 (L2A Rev_C)
 
-- 직렬 2개씩 × 병렬 2 루프 = 총 4 펌프 (HR 0~3 = 펌프 CH1~4)
-- 한 루프 = 직렬 2펌프 → 루프 유량 = 단일 펌프 유량 (압력만 2배)
-- 병렬 2 루프 → Total Flow = flow_L1 + flow_L2
+- 병렬 2개씩 × 병렬 2 루프 = 총 4 펌프 (HR 8~11 = 펌프 CH9~12, TIM8 @ 1 kHz)
+- 한 루프 = 병렬 2펌프 → 동일 head (≈130 kPa), **루프 유량 = 단일 펌프 × 2**
+- 시스템 max = flow_L1 + flow_L2 (참고용, UI 미표시)
 
 ### UI / MCG duty 매핑
 
@@ -156,13 +156,13 @@ UI 도메인은 사용자 직관 (UI X% = pump 출력 X% 의 일정 비율) 을 
 pump_input_pwm = 0.85 × ui_duty
 ```
 
-| UI duty | pump_input PWM | flow (loop) | flow (total) |
-|---:|---:|---:|---:|
-| 100 % | 85 % | 35.0 LPM | 70.0 LPM |
-|  75 % | 63.75 % | 26.2 LPM | 52.5 LPM |
-|  50 % | 42.5 % | 17.5 LPM | 35.0 LPM |
-|  **20 %** (UI 하한) | **17 %** (Nmin) | 7.0 LPM | 14.0 LPM |
-|   0 % | 0 % | 0 LPM | 0 LPM (정지) |
+| UI duty | pump_input PWM | flow (loop, 병렬 ×2) |
+|---:|---:|---:|
+| 100 % | 85 % | 70.0 LPM |
+|  75 % | 63.75 % | 52.5 LPM |
+|  50 % | 42.5 % | 35.0 LPM |
+|  **20 %** (UI 하한) | **17 %** (Nmin) | 14.0 LPM |
+|   0 % | 0 % | 0 LPM (정지) |
 
 **UI 입력 하한 = 20 %**: pump spec 4.2.1 의 운용 하한 17 % (Nmin) 가 위 매핑으로 UI 20 % 에 대응 (`17 / 0.85 ≈ 20`). UI 도메인에서 20 % 미만 입력은 펌프가 정지·Nmin 사이 회피 구간으로 들어가므로 거부. Auto 모드 (PI) 의 `out_min` 도 동일 하한을 강제.
 
@@ -194,16 +194,15 @@ Pump spec 4.2.1 동작 구간 (참고):
 - **17~85 % : Nmin ~ Nmax 선형** ← 위 매핑이 닿는 영역
 - 85~95 % : Nmax 포화 / 95~100 % : no use
 
-### 유량 산정
+### 유량 산정 (실 센서 hook 비어 있을 때의 fallback)
 
 시스템 손실 마진 포함:
 
 ```
-flow_loop_lpm  = 35 × (ui_duty / 100)        # 루프당 max 35 LPM
-total_flow_lpm = flow_L1 + flow_L2           # max 70 LPM (2 루프 합)
+flow_loop_lpm = 70 × (ui_duty / 100)        # 루프당 max 70 LPM (병렬 펌프 P1‖P2)
 ```
 
-Pump spec 정격점 45 LPM (단독, 12V PWM 100%) — 시스템 저항 고려해 35 LPM 채택. UI 100 % 일 때 pump_input 85 % 로 운용하므로 정격(100 %) 대비 ~94 % 의 유량 ≈ 42 LPM 이 spec 상 예상치이나, **시스템 저항 보수 마진** 으로 35 LPM 채택.
+단일 펌프 (단독, 12V PWM 100%) 정격점 45 LPM — 시스템 저항 고려해 35 LPM 채택. UI 100 % 일 때 pump_input 85 % 로 운용하므로 정격(100 %) 대비 ~94 % 의 유량 ≈ 42 LPM 이 spec 상 예상치이나 **시스템 저항 보수 마진** 으로 35 LPM 채택. **병렬 2 펌프 → 루프당 70 LPM** (head 는 단일 펌프와 동일).
 
 ---
 

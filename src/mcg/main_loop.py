@@ -38,11 +38,12 @@ from .polling import poll_once
 
 log = logging.getLogger(__name__)
 
-# Holding register addresses (control_board mapping, see MCG.md sec 9)
-HR_PUMP_BASE = 0    # pump CH1~4  -> HR 0~3  (TIM1, 1 kHz)
-HR_FAN_L1_BASE = 4  # fan L1 CH5~8  -> HR 4~7  (TIM2, 25 kHz)
-HR_FAN_L2_BASE = 8  # fan L2 CH9~12 -> HR 8~11 (TIM8, 25 kHz)
-FAN_CHANNELS_PER_LOOP = 4
+# Holding register addresses (control_board mapping, see MCG.md sec 9).
+# L2A Rev_C wiring: pumps on CH 9~12 (TIM8 @ 1 kHz), fans on CH 5~8 (TIM2 @ 25 kHz).
+# Per-loop layout: L1 = first 2 channels of each block, L2 = next 2.
+HR_PUMP_BASE      = 8   # pumps -> HR 8~11 (CH 9~12, TIM8 @ 1 kHz)
+HR_FAN_BASE       = 4   # fans  -> HR 4~7  (CH 5~8,  TIM2 @ 25 kHz)
+CHANNELS_PER_LOOP = 2
 
 
 # ── Mode + duty source ───────────────────────────────────────────────────────
@@ -73,17 +74,20 @@ def _read_ui_duty(r: redis.Redis, key: str) -> float:
 def _write_pumps(pcb: PCB, pump_l1_ui: float, pump_l2_ui: float) -> bool:
     hr_l1 = ui_to_pump_hr(pump_l1_ui)
     hr_l2 = ui_to_pump_hr(pump_l2_ui)
-    # HR 0,1 = L1 (serial pair), HR 2,3 = L2 (serial pair). Same duty within a pair.
-    return pcb.write_registers(HR_PUMP_BASE, [hr_l1, hr_l1, hr_l2, hr_l2])
+    # Burst HR 8..11: HR 8,9 = L1 pair (CH 9,10), HR 10,11 = L2 pair (CH 11,12).
+    return pcb.write_registers(
+        HR_PUMP_BASE,
+        [hr_l1] * CHANNELS_PER_LOOP + [hr_l2] * CHANNELS_PER_LOOP,
+    )
 
 
 def _write_fans(pcb: PCB, fan_l1_ui: float, fan_l2_ui: float) -> bool:
     hr_l1 = ui_to_fan_hr(fan_l1_ui)
     hr_l2 = ui_to_fan_hr(fan_l2_ui)
-    # Burst write HR 4..11 = 8 channels (L1 CH5~8 + L2 CH9~12) in one transaction.
+    # Burst HR 4..7: HR 4,5 = L1 pair (CH 5,6), HR 6,7 = L2 pair (CH 7,8).
     return pcb.write_registers(
-        HR_FAN_L1_BASE,
-        [hr_l1] * FAN_CHANNELS_PER_LOOP + [hr_l2] * FAN_CHANNELS_PER_LOOP,
+        HR_FAN_BASE,
+        [hr_l1] * CHANNELS_PER_LOOP + [hr_l2] * CHANNELS_PER_LOOP,
     )
 
 

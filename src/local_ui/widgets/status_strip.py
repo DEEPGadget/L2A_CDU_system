@@ -1,6 +1,6 @@
 """Status strip widget — fixed bottom bar.
 
-Displays: dT1, dT2, Total Flow, Ambient Temp/Humidity, (Leak placeholder - D1 to activate).
+Displays: dT1, dT2, Temp, Humidity, (Leak placeholder - D1 to activate).
 Placed below the Cooling Health SVG as a separate QWidget.
 Updated via on_sensor_updated() signal from main window.
 """
@@ -27,8 +27,6 @@ class StatusStripWidget(QWidget):
         self._inlet2  = "--"
         self._outlet1 = "--"
         self._outlet2 = "--"
-        self._amb_temp = "--"
-        self._amb_hum  = "--"
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -53,11 +51,11 @@ class StatusStripWidget(QWidget):
             s.setAlignment(Qt.AlignVCenter)
             return s
 
-        items = [("ΔT1:", "_dt1_val"),
-                 ("ΔT2:", "_dt2_val"),
-                 ("Total Flow:", "_flow_val"),
-                 ("Ambient:", "_amb_val"),
-                 ("", "_leak_val")]  # reserved for future Leak (D1)
+        items = [("ΔT1:",      "_dt1_val"),
+                 ("ΔT2:",      "_dt2_val"),
+                 ("Temp:",     "_temp_val"),
+                 ("Humidity:", "_hum_val"),
+                 ("",          "_leak_val")]  # reserved for future Leak (D1)
 
         layout.addStretch(1)
 
@@ -99,21 +97,14 @@ class StatusStripWidget(QWidget):
             self._refresh_delta(2)
         elif key == "sensor:ambient_temp":
             try:
-                self._amb_temp = f"{float(value):.1f}°C"
+                self._temp_val.setText(f"{float(value):.1f}°C")
             except ValueError:
-                self._amb_temp = "--"
-            self._refresh_ambient()
+                self._temp_val.setText("--")
         elif key == "sensor:ambient_humidity":
             try:
-                self._amb_hum = f"{float(value):.0f}% RH"
+                self._hum_val.setText(f"{float(value):.0f}% RH")
             except ValueError:
-                self._amb_hum = "--"
-            self._refresh_ambient()
-        elif key == "sensor:total_flow":
-            try:
-                self._flow_val.setText(f"{float(value):.1f} L/min")
-            except ValueError:
-                self._flow_val.setText("--")
+                self._hum_val.setText("--")
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -129,6 +120,3 @@ class StatusStripWidget(QWidget):
         except (ValueError, TypeError):
             label.setText("--")
             label.setStyleSheet(f"color:{_C_BLACK};")
-
-    def _refresh_ambient(self) -> None:
-        self._amb_val.setText(f"{self._amb_temp} / {self._amb_hum}")

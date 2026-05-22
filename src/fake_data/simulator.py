@@ -143,23 +143,23 @@ class FakeDataSimulator:
             pipe.set(key, str_val)
             pipe.publish(key, str_val)
 
-        # Aggregate the 8 internal fan-Tach channels into the 2 published
+        # Aggregate the 4 internal fan-Tach channels into the 2 published
         # loop-average keys, matching MCG's real-mode polling behaviour
-        # (see src/mcg/polling.py: 8ch read → loop avg → 2 keys).
+        # (see src/mcg/polling.py: 4ch read → loop avg → 2 keys).
         for loop_id, publish_key in ((1, "sensor:fan_rpm_1"),
                                      (2, "sensor:fan_rpm_2")):
-            ch_keys = [f"_fan_rpm_l{loop_id}_{n}" for n in (1, 2, 3, 4)]
+            ch_keys = [f"_fan_rpm_l{loop_id}_{n}" for n in (1, 2)]
             ch_vals = [self._current[k] for k in ch_keys if k in self._current]
             if ch_vals:
                 avg_rpm = round(sum(ch_vals) / len(ch_vals))
                 pipe.set(publish_key, str(avg_rpm))
                 pipe.publish(publish_key, str(avg_rpm))
 
-        # Derived: per-loop flow + total flow (A5 formula, see PCB.md "Flow estimation")
-        #   flow_loop_lpm  = 35 * (ui_duty / 100)
-        #   total_flow_lpm = flow_L1 + flow_L2  (max 70 LPM)
-        # In real operation MCG publishes with the same formula. Fake mode
-        # must react to pump duty immediately so SVG/StatusStrip stays consistent.
+        # Derived: per-loop flow (A5 formula, see PCB.md "Flow estimation")
+        #   flow_loop_lpm = 70 * (ui_duty / 100)   # parallel pump pair per loop
+        # In real operation MCG publishes with the same formula until the
+        # per-loop real flow sensor is wired. Fake mode must react to pump
+        # duty immediately so SVG/StatusStrip stays consistent.
         for loop, duty_key, flow_key in (
             (1, "sensor:pump_pwm_duty_1", "sensor:flow_rate_1"),
             (2, "sensor:pump_pwm_duty_2", "sensor:flow_rate_2"),
@@ -169,15 +169,11 @@ class FakeDataSimulator:
                 duty = float(raw) if raw is not None else 0.0
             except (ValueError, TypeError):
                 duty = 0.0
-            flow_lpm = 35.0 * max(0.0, min(100.0, duty)) / 100.0
+            flow_lpm = 70.0 * max(0.0, min(100.0, duty)) / 100.0
             flow_str = f"{flow_lpm:.1f}"
             pipe.set(flow_key, flow_str)
             pipe.publish(flow_key, flow_str)
             self._current[flow_key] = flow_lpm  # referenced by alarm logic
-
-        total_str = f"{(self._current['sensor:flow_rate_1'] + self._current['sensor:flow_rate_2']):.1f}"
-        pipe.set("sensor:total_flow", total_str)
-        pipe.publish("sensor:total_flow", total_str)
 
         pipe.execute()
 

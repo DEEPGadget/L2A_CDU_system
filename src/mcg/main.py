@@ -92,6 +92,17 @@ def main() -> int:
     log.info("PCB connected on %s @ %d, slave %d (probe OK)",
              port, modbus_cfg.baud, modbus_cfg.slave)
 
+    # PWM frequency init. PCB Flash default is 1 kHz for all three timers
+    # (PCB.md "Flash 저장 항목"). For L2A Rev_C: fans on TIM2 need 25 kHz,
+    # pumps on TIM8 need 1 kHz (Johnson eModule spec). TIM1 is unused.
+    # Idempotent — safe to re-write every boot.
+    try:
+        pcb.write_register(13, 25000)  # HR 13 = TIM2 = fans @ 25 kHz
+        pcb.write_register(14, 1000)   # HR 14 = TIM8 = pumps @ 1 kHz
+        log.info("PWM freq init: TIM2=25 kHz (fan), TIM8=1 kHz (pump)")
+    except Exception as e:
+        log.warning("PWM freq init failed: %s", e)
+
     # Clear stale comm state from a previous run so the UI does not show
     # a red "disconnected" flash before the first poll cycle.
     try:

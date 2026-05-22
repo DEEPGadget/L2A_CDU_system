@@ -35,8 +35,8 @@ _ALARM_LABELS: dict[str, str] = {
     "alarm:water_level_critical":      "Coolant Level — Critical",
     # Leak
     "alarm:leak_detected":             "Leak — Detected",
-    # Flow
-    "alarm:flow_rate_warning":         "Flow Rate — Warning",
+    # Flow alarm intentionally absent — per-loop thresholds will be defined
+    # once the real flow sensor is wired (see polling._read_flow_lpm()).
     # Chemistry (pH / Conductivity) intentionally removed — not measured in
     # current PCB revision (LTS v1). Re-add when future PCB exposes those.
     # Ambient

@@ -32,9 +32,9 @@ _NORMAL_BASE: dict[str, _Value] = {
     "sensor:coolant_temp_inlet_2":  (29.5, T.INLET_TEMP_NORMAL_LO,  T.INLET_TEMP_NORMAL_HI),
     "sensor:coolant_temp_outlet_1": (44.0, T.OUTLET_TEMP_WARN_LO,   T.OUTLET_TEMP_NORMAL_HI),
     "sensor:coolant_temp_outlet_2": (43.5, T.OUTLET_TEMP_WARN_LO,   T.OUTLET_TEMP_NORMAL_HI),
-    # NOTE: sensor:flow_rate_1, sensor:flow_rate_2, sensor:total_flow are
-    # derived in simulator.py each cycle from pump_pwm_duty using A5 formula
-    # (`35 * ui_duty / 100` LPM per loop, max 70 LPM total).
+    # NOTE: sensor:flow_rate_1, sensor:flow_rate_2 are derived in simulator.py
+    # each cycle from pump_pwm_duty using A5 formula
+    # (`70 * ui_duty / 100` LPM per loop — parallel pump pair, max 140 LPM total).
     # Do not define them as base tuples here, otherwise they would not react
     # to duty changes and would diverge from PCB.md / MCG.md.
     "sensor:water_level":            "2",
@@ -45,19 +45,15 @@ _NORMAL_BASE: dict[str, _Value] = {
     "sensor:leak":                  "NORMAL",
     "sensor:ambient_temp":          (25.0, 18.0,                    T.AMBIENT_TEMP_WARN_HI),
     "sensor:ambient_humidity":      (45.0, T.AMBIENT_HUM_NORMAL_LO,  T.AMBIENT_HUM_WARN_HI),
-    # Fan RPM — simulate the 8 physical Tach channels (CH 5~12) the PCB
-    # actually carries; per-channel drift with slight bias to mimic
+    # Fan RPM — simulate the 4 physical Tach channels (CH 5~8) the PCB
+    # carries on L2A Rev_C; per-channel drift with slight bias to mimic
     # fan-to-fan tolerance. simulator.py never publishes these underscore
-    # keys directly — at write time it averages each loop's 4 channels and
+    # keys directly — at write time it averages each loop's 2 channels and
     # publishes only sensor:fan_rpm_1 / _2 (byte-identical with real mode).
     "_fan_rpm_l1_1":                (2500.0, 2400.0, 2600.0),
     "_fan_rpm_l1_2":                (2510.0, 2400.0, 2600.0),
-    "_fan_rpm_l1_3":                (2495.0, 2400.0, 2600.0),
-    "_fan_rpm_l1_4":                (2505.0, 2400.0, 2600.0),
     "_fan_rpm_l2_1":                (2480.0, 2400.0, 2600.0),
     "_fan_rpm_l2_2":                (2490.0, 2400.0, 2600.0),
-    "_fan_rpm_l2_3":                (2475.0, 2400.0, 2600.0),
-    "_fan_rpm_l2_4":                (2485.0, 2400.0, 2600.0),
     # Duty: initialised once by simulator, never overwritten afterwards
     "sensor:pump_pwm_duty_1":       "60",
     "sensor:pump_pwm_duty_2":       "60",

@@ -56,11 +56,11 @@ def ui_to_fan_hr(ui_duty: float) -> int:
     return max(FAN_HR_MIN, min(FAN_HR_MAX, round(raw)))
 
 
-def loop_flow_lpm(ui_duty: float, max_loop_lpm: float = 35.0) -> float:
+def loop_flow_lpm(ui_duty: float, max_loop_lpm: float = 70.0) -> float:
     """Derive per-loop flow in L/min from pump UI duty.
 
     PCB.md A5: `flow_loop_lpm = max_loop_lpm * (ui_duty / 100)`
-    Default max 35 LPM/loop -> total max 70 LPM with two loops.
+    Default 70 LPM/loop = single pump 35 LPM × 2 (parallel topology).
     """
     duty = max(0.0, min(100.0, float(ui_duty)))
     return max_loop_lpm * duty / 100.0

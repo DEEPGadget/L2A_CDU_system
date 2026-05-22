@@ -8,20 +8,22 @@ Register map (docs/PCB.md "Modbus Registers"):
                              T1 inlet_L1, T2 outlet_L1, T3 outlet_L2,
                              T4 inlet_L2 -- per board silkscreen.
                              Open circuit returns ~-40.4 C (raw 0xFE6C).
-  - Input Register 17~24  : Pulse Freq CH5~CH12 (Hz) - fan RPM feedback
+  - Input Register 17~20  : Pulse Freq CH5~CH8 (Hz) - fan RPM feedback
                              (RPM = Hz * 30, 2 pulses/revolution).
-                             L1 = CH5~8 (IR 17~20), L2 = CH9~12 (IR 21~24).
-                             MCG publishes the per-loop 4ch **average** to
+                             L1 = CH5,6 (IR 17,18), L2 = CH7,8 (IR 19,20).
+                             MCG publishes the per-loop 2ch **average** to
                              sensor:fan_rpm_1 / _2 (UI shows the average).
   - Input Register 25     : DIN Status (bit0~5) - water level / leak inputs
                              (bit assignment TBD until PCB bring-up;
                              currently published as raw integer only)
 
 Flow estimation (PCB.md "Flow estimation"):
-  sensor:flow_rate_1/_2 and sensor:total_flow are derived in this same cycle
-  from the latest pump_pwm_duty values held in Redis. Fake-mode simulator
-  uses the same formula in src/fake_data/simulator.py so both modes are
-  byte-identical from the UI's perspective.
+  Rev_C introduces real flow sensors on the PCB (one per loop at the
+  manifold confluence). `_read_flow_lpm()` is the hook for that read; it
+  returns (None, None) until the sensor channel and conversion factor are
+  confirmed. While the hook returns None, we fall back to the derived
+  formula (`70 * ui_duty / 100` LPM per loop — parallel pump pair) so the
+  UI and fake simulator stay byte-identical with the pre-sensor contract.
 """
 
 from __future__ import annotations
@@ -58,10 +60,11 @@ def _signed16(u: int) -> int:
     (e.g. open circuit returns ~0xFE6C = -404 -> -40.4 C)."""
     return u - 0x10000 if u >= 0x8000 else u
 
-# Pulse CH N -> IR (12 + N). L2A uses CH5~12 -> IR 17~24 (8 channels).
-# Read all 8 in one transaction; loop-average is published to the 2 RPM keys.
+# Pulse CH N -> IR (12 + N). L2A Rev_C uses fan CH 5~8 -> IR 17~20 (4 ch).
+# Read all 4 in one transaction; per-loop 2-ch average is published to the
+# 2 RPM keys.
 _PULSE_BASE  = 17
-_PULSE_COUNT = 8
+_PULSE_COUNT = 4
 _FAN_RPM_REDIS_KEYS = (K.SENSOR_FAN_RPM_1, K.SENSOR_FAN_RPM_2)
 
 _DIN_BASE  = 25
@@ -88,12 +91,12 @@ def poll_once(pcb: PCB, r: redis.Redis) -> bool:
         _publish(pipe, key, f"{celsius:.1f}")
 
     # 2. Fan RPM (best-effort; do not abort if it fails).
-    #    8 channels read, per-loop 4ch average -> 2 Redis keys (UI shows avg).
+    #    4 channels read, per-loop 2ch average -> 2 Redis keys (UI shows avg).
     pulse = pcb.read_input_registers(_PULSE_BASE, _PULSE_COUNT)
     if pulse is not None:
-        # pulse[0..3] = L1 (CH5~8), pulse[4..7] = L2 (CH9~12)
-        rpm_l1 = round(sum(pulse[0:4]) / 4 * 30)  # 2 pulses/revolution
-        rpm_l2 = round(sum(pulse[4:8]) / 4 * 30)
+        # pulse[0:2] = L1 (CH5,6), pulse[2:4] = L2 (CH7,8)
+        rpm_l1 = round(sum(pulse[0:2]) / 2 * 30)  # 2 pulses/revolution
+        rpm_l2 = round(sum(pulse[2:4]) / 2 * 30)
         _publish(pipe, _FAN_RPM_REDIS_KEYS[0], str(rpm_l1))
         _publish(pipe, _FAN_RPM_REDIS_KEYS[1], str(rpm_l2))
 
@@ -104,17 +107,34 @@ def poll_once(pcb: PCB, r: redis.Redis) -> bool:
         # wiring is confirmed; for now keep the raw value reachable for ops.
         _publish(pipe, "sensor:din_raw", str(din[0]))
 
-    # 4. Derive flow from current pump duty held in Redis (UI domain 0~100 %)
-    d1 = _to_float(r.get(K.SENSOR_PUMP_PWM_DUTY_1))
-    d2 = _to_float(r.get(K.SENSOR_PUMP_PWM_DUTY_2))
-    f1 = loop_flow_lpm(d1)
-    f2 = loop_flow_lpm(d2)
+    # 4. Flow rate per loop. Prefer the real PCB sensor (Rev_C+) once it is
+    #    wired; until then, fall back to the duty-derived estimate.
+    f1_real, f2_real = _read_flow_lpm(pcb)
+    if f1_real is None or f2_real is None:
+        d1 = _to_float(r.get(K.SENSOR_PUMP_PWM_DUTY_1))
+        d2 = _to_float(r.get(K.SENSOR_PUMP_PWM_DUTY_2))
+        f1 = loop_flow_lpm(d1) if f1_real is None else f1_real
+        f2 = loop_flow_lpm(d2) if f2_real is None else f2_real
+    else:
+        f1, f2 = f1_real, f2_real
     _publish(pipe, K.SENSOR_FLOW_RATE_1, f"{f1:.1f}")
     _publish(pipe, K.SENSOR_FLOW_RATE_2, f"{f2:.1f}")
-    _publish(pipe, K.SENSOR_TOTAL_FLOW,  f"{f1 + f2:.1f}")
 
     pipe.execute()
     return True
+
+
+def _read_flow_lpm(pcb: PCB) -> tuple[float | None, float | None]:
+    """Read real per-loop flow rate (L1, L2) in LPM from the PCB.
+
+    Returns (None, None) until the Rev_C+ flow sensor channel is decided
+    and wired. The fallback in poll_once() then keeps the duty-derived
+    estimate so UI/Redis contract stays unchanged.
+    """
+    # TODO(rev_c_flow): channel and conversion are pending hardware decision.
+    #   Pulse-type:  pulse = pcb.read_input_registers(<IR>, 2); LPM = Hz * K_FLOW
+    #   ADC-type:    adc   = pcb.read_input_registers(<IR>, 2); LPM = (adc - OFFSET) * GAIN
+    return (None, None)
 
 
 def _to_float(raw) -> float:
