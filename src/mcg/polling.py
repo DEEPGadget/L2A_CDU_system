@@ -124,17 +124,34 @@ def poll_once(pcb: PCB, r: redis.Redis) -> bool:
     return True
 
 
-def _read_flow_lpm(pcb: PCB) -> tuple[float | None, float | None]:
-    """Read real per-loop flow rate (L1, L2) in LPM from the PCB.
+# ── Real flow sensor (SIKA VVX20, Frequency output) ──────────────────────────
+# Config — see docs/PCB.md "실 센서 후보: SIKA VVX".
+# - Model: VVX20 (DN20, 4..80 L/min, 200 pulses/L).
+# - Sensor outputs a square-wave frequency proportional to flow:
+#       flow_lpm = Hz * 60 / 200 = Hz * 0.3
+# - Wired to PCB pulse-input CH1 (L1) and CH2 (L2) → IR 13 and IR 14 (Hz).
+# - Flip _FLOW_SENSOR_ENABLED = True once the physical sensor is installed
+#   and the pulse channels are confirmed at PCB bring-up.
+_FLOW_SENSOR_ENABLED = False
+_FLOW_PULSE_IR_BASE  = 13          # IR 13 = CH1 (L1), IR 14 = CH2 (L2)
+_FLOW_PULSE_COUNT    = 2
+_PULSES_PER_LITER    = 200         # VVX20
 
-    Returns (None, None) until the Rev_C+ flow sensor channel is decided
-    and wired. The fallback in poll_once() then keeps the duty-derived
-    estimate so UI/Redis contract stays unchanged.
+
+def _read_flow_lpm(pcb: PCB) -> tuple[float | None, float | None]:
+    """Read real per-loop flow rate (L1, L2) in LPM from the PCB pulse input.
+
+    Returns (None, None) until _FLOW_SENSOR_ENABLED is flipped on (sensor
+    installed + model-specific _PULSES_PER_LITER confirmed). The fallback in
+    poll_once() then keeps the duty-derived estimate.
     """
-    # TODO(rev_c_flow): channel and conversion are pending hardware decision.
-    #   Pulse-type:  pulse = pcb.read_input_registers(<IR>, 2); LPM = Hz * K_FLOW
-    #   ADC-type:    adc   = pcb.read_input_registers(<IR>, 2); LPM = (adc - OFFSET) * GAIN
-    return (None, None)
+    if not _FLOW_SENSOR_ENABLED:
+        return (None, None)
+    hz = pcb.read_input_registers(_FLOW_PULSE_IR_BASE, _FLOW_PULSE_COUNT)
+    if hz is None:
+        return (None, None)
+    scale = 60.0 / _PULSES_PER_LITER
+    return (hz[0] * scale, hz[1] * scale)
 
 
 def _to_float(raw) -> float:

@@ -142,6 +142,39 @@ Config Command(HR 17)에 0x01을 쓰거나, BT2 Factory Reset 시 자동 저장.
 
 Rev_C 부터 **각 루프 합류점에 실 유량 센서 1개씩 (총 2개)** 도입 예정. 채널/환산 계수 확정 시 [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` hook 을 채워 `sensor:flow_rate_1/2` 로 publish. 그 전까지는 아래 derived fallback 동작.
 
+### 실 센서: SIKA **VVX20** (Vortex)
+
+카탈로그 수령 (docs/private/Flow meter spec1.pdf, spec2.pdf). **발주 모델 = VVX20 확정**. 실물 미도착 — 결선·환산은 아래대로 진행, 실물 도착 후 `_FLOW_SENSOR_ENABLED` 토글.
+
+| 항목 | 값 |
+|---|---|
+| 모델 | **VVX20** (DN20, G1) |
+| 유량 범위 | 4 ~ 80 L/min |
+| Pulse rate | **200 pulses/L** |
+| F_max (정격 상한) | 80 × 200 / 60 ≈ **267 Hz** |
+| F at 4 L/min | 4 × 200 / 60 ≈ 13.3 Hz |
+| 환산식 | `flow_lpm = Hz × 60 / 200 = Hz × 0.3` |
+
+PCB 펄스 입력 한계 (0~10 kHz) 대비 1/37 수준 → **Frequency 출력 + 펄스 입력 채널** 조합이 최적 (아날로그 대비 분해능·노이즈 우위).
+
+**M12 핀맵 (VVX 4-pin)** — Spec PDF 3.1.1 참조
+- Pin 1: +UB (8~30 V DC, Push-Pull/NPN/PNP 시)
+- Pin 3: GND
+- Pin 4: Frequenz (Push-Pull / NPN OC / PNP OC 중 발주 시 택1)
+
+**MCS_IO 결선 권장**
+- VVX Pin 1 → +24 V (펌프 전원 라인에서 분기, fuse 권장)
+- VVX Pin 3 → GND (PCB GND 공통)
+- VVX Pin 4 → 펄스 입력 **CH1 (L1)** / **CH2 (L2)** — Fan tach가 CH5~8 점유, CH1~4 가용
+- Modbus 읽기 주소: **IR 13 (CH1, L1), IR 14 (CH2, L2)** — 단위 Hz
+- 환산: `flow_lpm = Hz × 60 / pulses_per_liter`
+
+> ⚠ **펄스 입력 전압 레벨 미확인 (현장 검증 필요)**
+> MCS_IO 매뉴얼에 펄스 입력단의 허용 전압 레벨이 명시되지 않음. STM32G474 GPIO는 5 V tolerant 이나 PCB 입력단에 전치 보호회로가 있을 수 있음. VVX Push-Pull은 +UB 그대로 출력 → 24 V 공급 시 24 V 펄스가 PCB 입력으로 들어감.
+> **확인 전까지 NPN Open Collector + PCB 측 5 V 풀업** 구성을 권장 (R_L ≈ 5 kΩ, Spec PDF *3 권장). 이렇게 하면 펄스 진폭이 PCB 로직 레벨로 클램프됨.
+
+> ⚠ **출력 옵션 (Push-Pull vs NPN OC) 발주 시 확정 필요**. 4-pin 케이블이면 Pin4가 펄스 출력. 5-pin이면 Pin5에 온도(Pt1000/NTC) 동시 출력도 가능 (이 경우 NTC 채널 IR 28~31 의 외기 슬롯 활용 가능, 단 매핑 추가 필요).
+
 ### 펌프 배치 (L2A Rev_C)
 
 - 병렬 2개씩 × 병렬 2 루프 = 총 4 펌프 (HR 8~11 = 펌프 CH9~12, TIM8 @ 1 kHz)

@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 *.pyo
+
+# Confidential vendor datasheets / internal manuals — keep local only.
+docs/private/
