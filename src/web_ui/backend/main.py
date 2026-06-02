@@ -17,18 +17,26 @@ Run (prod): see scripts/services/cdu-web-backend.service.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.web_ui.backend.redis_client import close_redis, get_redis
-from src.web_ui.backend.routes import control, state
+from src.web_ui.backend.routes import control, history, state
 
 log = logging.getLogger(__name__)
+
+# Pub/Sub channels the dashboard listens to. sensor/comm/control publish to a
+# channel named after the key; alarms are detected via keyspace events
+# (Redis notify-keyspace-events = AKE) since they are SET/DEL, not published.
+_WS_PATTERNS = ("sensor:*", "comm:*", "control:*", "__keyevent@0__:set", "__keyevent@0__:del")
+_KEYEVENT_SET = "__keyevent@0__:set"
+_KEYEVENT_DEL = "__keyevent@0__:del"
 
 # frontend build is at src/web_ui/frontend/build/ (adapter-static).
 _FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend" / "build"
@@ -46,6 +54,47 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="L2A CDU Web UI", lifespan=lifespan)
 app.include_router(state.router)
 app.include_router(control.router)
+app.include_router(history.router)
+
+
+@app.websocket("/ws")
+async def ws_live(websocket: WebSocket) -> None:
+    """Live state stream. Pushes {key, value} deltas as Redis updates arrive.
+
+    value is null for an alarm that was just cleared (key DEL). The client
+    hydrates once via GET /api/state, then applies these deltas.
+    """
+    await websocket.accept()
+    r = get_redis()
+    pubsub = r.pubsub(ignore_subscribe_messages=True)
+    await pubsub.psubscribe(*_WS_PATTERNS)
+
+    async def pump() -> None:
+        async for msg in pubsub.listen():
+            if msg.get("type") not in ("message", "pmessage"):
+                continue
+            channel = msg["channel"]
+            data = msg["data"]
+            if channel in (_KEYEVENT_SET, _KEYEVENT_DEL):
+                # Only forward alarm key lifecycle; sensor SETs already arrive
+                # via their own pub/sub channel below.
+                if not (isinstance(data, str) and data.startswith("alarm:")):
+                    continue
+                out = {"key": data, "value": "1" if channel == _KEYEVENT_SET else None}
+            else:
+                out = {"key": channel, "value": data}
+            await websocket.send_json(out)
+
+    pump_task = asyncio.create_task(pump())
+    try:
+        # We don't expect inbound frames; this await unblocks on disconnect.
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        pump_task.cancel()
+        await pubsub.aclose()
 
 
 if _FRONTEND_DIR.is_dir():

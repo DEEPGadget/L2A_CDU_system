@@ -69,11 +69,12 @@ do_install() {
     # Web UI frontend build (best-effort; backend still works without it).
     build_web_frontend
 
-    # Always install web backend + local UI (kiosk) services
+    # Always install web backend + local UI (kiosk) + exporter services
     install_service "cdu-web-backend.service"
     install_service "cdu-local-ui.service"
+    install_service "cdu-exporter.service"
 
-    # Pushgateway: only install if its binary actually exists. The exporter
+    # Pushgateway: only install if its binary actually exists. The pushgateway
     # binary is not implemented yet (see docs / memory), so enabling the
     # service unconditionally would crash-loop (status=203/EXEC). Skip until ready.
     PUSHGATEWAY_BIN="/home/gadgetini/pushgateway/pushgateway"
@@ -98,6 +99,7 @@ do_install() {
     # Enable + start installed services
     enable_service "cdu-web-backend.service"
     enable_service "cdu-local-ui.service"
+    enable_service "cdu-exporter.service"
     [ -x "$PUSHGATEWAY_BIN" ] && enable_service "pushgateway.service"
 
     if [ "$MODE" = "fake" ]; then
@@ -186,7 +188,7 @@ install_nginx() {
 # ── Status ────────────────────────────────────────────────────────────────────
 
 do_status() {
-    for svc in pushgateway.service cdu-fake-simulator.service cdu-mcg.service cdu-local-ui.service cdu-web-backend.service; do
+    for svc in pushgateway.service cdu-fake-simulator.service cdu-mcg.service cdu-local-ui.service cdu-web-backend.service cdu-exporter.service; do
         echo "─── $svc ───────────────────────────"
         systemctl status "$svc" --no-pager -l 2>/dev/null || echo "  (not installed)"
     done
@@ -196,7 +198,7 @@ do_status() {
 
 do_stop() {
     require_root
-    for svc in cdu-fake-simulator.service cdu-mcg.service cdu-web-backend.service cdu-local-ui.service; do
+    for svc in cdu-fake-simulator.service cdu-mcg.service cdu-web-backend.service cdu-local-ui.service cdu-exporter.service; do
         systemctl stop "$svc" 2>/dev/null && log "Stopped $svc" || warn "$svc not running"
     done
 }
@@ -205,7 +207,7 @@ do_stop() {
 
 do_remove() {
     require_root
-    for svc in cdu-fake-simulator.service cdu-mcg.service pushgateway.service cdu-web-backend.service cdu-local-ui.service; do
+    for svc in cdu-fake-simulator.service cdu-mcg.service pushgateway.service cdu-web-backend.service cdu-local-ui.service cdu-exporter.service; do
         systemctl stop    "$svc" 2>/dev/null || true
         systemctl disable "$svc" 2>/dev/null || true
         rm -f "$SERVICES_DST/$svc"

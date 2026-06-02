@@ -3,6 +3,7 @@
 
   const tabs = [
     { href: '/',          label: 'Dashboard' },
+    { href: '/history/',  label: 'History'   },
     { href: '/settings/', label: 'Settings'  }
   ];
 

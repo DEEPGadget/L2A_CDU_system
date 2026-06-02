@@ -19,5 +19,10 @@ export const api = {
   putMode(mode)                 { return request('/api/control/mode',      { method: 'PUT', body: JSON.stringify({ mode }) }); },
   putFanCurve(fanCurve)         { return request('/api/control/fan_curve', { method: 'PUT', body: JSON.stringify(fanCurve) }); },
   putPumpDuty(duty)             { return request('/api/control/pump_duty', { method: 'PUT', body: JSON.stringify({ duty }) }); },
-  getState()                    { return request('/api/state'); }
+  getState()                    { return request('/api/state'); },
+  // Prometheus range query proxy → { resultType:'matrix', result:[{metric,values}] }
+  getHistory(query, minutes, step) {
+    const qs = new URLSearchParams({ query, minutes, step }).toString();
+    return request(`/api/history?${qs}`);
+  }
 };
