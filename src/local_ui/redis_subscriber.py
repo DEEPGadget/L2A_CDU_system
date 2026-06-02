@@ -1,9 +1,9 @@
 """Redis subscriber thread.
 
 Subscribes to:
-  - Pub/Sub channels  : sensor:*, comm:*, control:mode
-                        (simulator publishes sensor:*/comm:*;
-                         top_bar publishes control:mode on toggle)
+  - Pub/Sub channels  : sensor:*, comm:*, control:* (mode + fan_curve:update +
+                        pump_duty:update — for cross-UI settings sync with the
+                        Web UI; simulator publishes sensor:*/comm:*)
   - Keyspace events   : __keyevent@0__:set, __keyevent@0__:del
                         (used to detect alarm:* key creation / deletion)
 
@@ -35,6 +35,8 @@ class RedisSubscriber(QThread):
     sensor_updated = Signal(str, str)   # (key, value)
     comm_updated = Signal(str, str)     # (key, value)
     mode_updated = Signal(str)          # control:mode value (manual/auto/emergency)
+    fan_curve_updated = Signal()        # control:fan_curve:update (re-read hash)
+    pump_duty_updated = Signal(str)     # control:pump_duty:update (payload = duty)
     alarm_set = Signal(str)             # alarm key
     alarm_deleted = Signal(str)         # alarm key
 
@@ -49,7 +51,7 @@ class RedisSubscriber(QThread):
         pubsub.psubscribe(
             "sensor:*",
             "comm:*",
-            "control:mode",
+            "control:*",            # mode + fan_curve:update + pump_duty:update
             "__keyevent@0__:set",
             "__keyevent@0__:del",
         )
@@ -99,6 +101,10 @@ class RedisSubscriber(QThread):
             self.comm_updated.emit(channel, data)
         elif channel == "control:mode":
             self.mode_updated.emit(data)
+        elif channel == "control:fan_curve:update":
+            self.fan_curve_updated.emit()
+        elif channel == "control:pump_duty:update":
+            self.pump_duty_updated.emit(data)
 
     def stop(self) -> None:
         self._running = False

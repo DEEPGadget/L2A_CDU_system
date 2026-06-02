@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { api } from '$lib/api.js';
+  import { live, startLive } from '$lib/live.svelte.js';
   import ModeToggle    from '$lib/components/ModeToggle.svelte';
   import FanCurveCard  from '$lib/components/FanCurveCard.svelte';
   import PumpFixedCard from '$lib/components/PumpFixedCard.svelte';
@@ -11,17 +12,28 @@
   let loaded    = $state(false);
   let loadError = $state('');
 
-  onMount(async () => {
+  async function refresh() {
     try {
       const s = await api.getControl();
       mode     = s.mode;
-      fanCurve = s.fan_curve;
+      fanCurve = s.fan_curve;   // new object ref → cards reset to the synced value
       pumpDuty = s.pump_duty;
+      loadError = '';
     } catch (e) {
       loadError = String(e);
     } finally {
       loaded = true;
     }
+  }
+
+  onMount(startLive);
+
+  // Initial load + re-sync whenever any control:* change is published —
+  // including changes made from the Local (touch) UI. Last-write-wins per
+  // ARCHITECTURE.md "Race condition 정책".
+  $effect(() => {
+    live.controlRev;   // dependency: re-run on every control update
+    refresh();
   });
 
   // Auto-only controls are read-only in Manual / Emergency modes.

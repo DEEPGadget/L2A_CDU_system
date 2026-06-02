@@ -135,6 +135,10 @@ class MainWindow(QMainWindow):
         sub.mode_updated.connect(self._monitoring_page.cooling_health.on_mode_updated)
         sub.mode_updated.connect(self._settings_page.on_mode_updated)
 
+        # Settings sync (Web UI changed fan curve / pump duty) → reload cards
+        sub.fan_curve_updated.connect(self._settings_page.on_fan_curve_updated)
+        sub.pump_duty_updated.connect(self._settings_page.on_pump_duty_updated)
+
         # Alarm signals → top bar + monitoring page
         sub.alarm_set.connect(self._top_bar.on_alarm_set)
         sub.alarm_set.connect(self._monitoring_page.on_alarm_set)

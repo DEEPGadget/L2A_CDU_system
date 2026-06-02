@@ -2,7 +2,10 @@
 // the /ws WebSocket. Singleton: safe to call startLive() from multiple pages.
 import { api } from './api.js';
 
-export const live = $state({ data: {}, connected: false });
+// controlRev increments on every control:* message (mode / fan_curve:update /
+// pump_duty:update), so pages can refetch on each change even when the value
+// repeats (e.g. saving the same fan curve twice). See settings page.
+export const live = $state({ data: {}, connected: false, controlRev: 0 });
 
 let ws = null;
 let started = false;
@@ -33,6 +36,9 @@ function connect() {
     let msg;
     try { msg = JSON.parse(ev.data); } catch { return; }
     const { key, value } = msg;
+    if (typeof key === 'string' && key.startsWith('control:')) {
+      live.controlRev += 1;
+    }
     if (value === null) {
       const next = { ...live.data };
       delete next[key];

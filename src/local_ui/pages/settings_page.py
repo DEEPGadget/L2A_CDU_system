@@ -295,6 +295,11 @@ class FanCurveCard(QWidget):
             f.set_enabled(editable)
         self._save_btn.setEnabled(editable and self._dirty)
 
+    def reload(self) -> None:
+        """Re-read from Redis (cross-UI sync: the Web UI changed the curve).
+        Overwrites local unsaved edits — last-write-wins per ARCHITECTURE.md."""
+        self._load_from_redis()
+
     def _load_from_redis(self) -> None:
         try:
             raw = self._redis.hgetall(_FAN_CURVE_KEY)
@@ -396,6 +401,11 @@ class PumpFixedCard(QWidget):
     def set_editable(self, editable: bool) -> None:
         self._field.set_enabled(editable)
         self._save_btn.setEnabled(editable and self._dirty)
+
+    def reload(self) -> None:
+        """Re-read from Redis (cross-UI sync: the Web UI changed the duty).
+        Overwrites local unsaved edits — last-write-wins per ARCHITECTURE.md."""
+        self._load_from_redis()
 
     def _load_from_redis(self) -> None:
         try:
@@ -546,6 +556,13 @@ class SettingsPage(QWidget):
             pipe.execute()
         except Exception as e:
             log.warning("Could not write control:mode: %s", e)
+
+    # ---- Cross-UI settings sync (Web UI changed fan curve / pump duty) ----
+    def on_fan_curve_updated(self) -> None:
+        self.auto_panel.fan_card.reload()
+
+    def on_pump_duty_updated(self, *_args) -> None:
+        self.auto_panel.pump_card.reload()
 
     def on_mode_updated(self, mode: str) -> None:
         self._current_mode = mode
