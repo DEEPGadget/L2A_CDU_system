@@ -217,10 +217,24 @@
       "Bash(redis-cli ping *)",
       "Bash(python -c 'import ast; ast.parse\\(open\\('\\\\''__TRACKED_VAR__'\\\\''\\).read\\(\\)\\); print\\('\\\\''OK: __TRACKED_VAR__'\\\\''\\)')",
       "Bash(python -c \"import src.mcg.polling, src.mcg.duty_mapper, src.fake_data.simulator, src.fake_data.scenarios; print\\('all modules import OK'\\)\")",
-      "Bash(/home/gadgetini/venv/bin/python -c \"import src.mcg.polling, src.mcg.duty_mapper, src.fake_data.simulator, src.fake_data.scenarios; print\\('all modules import OK \\(venv\\)'\\)\")"
+      "Bash(/home/gadgetini/venv/bin/python -c \"import src.mcg.polling, src.mcg.duty_mapper, src.fake_data.simulator, src.fake_data.scenarios; print\\('all modules import OK \\(venv\\)'\\)\")",
+      "Bash(curl -s http://localhost:9090/api/v1/status/buildinfo)",
+      "Bash(curl -s http://localhost:9100/metrics)",
+      "Bash(curl -s http://localhost:9090/api/v1/targets)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(t['scrapeUrl'], t['health']\\) for t in d['data']['activeTargets']]\")",
+      "Bash(cd /home/gadgetini/L2A_CDU_system *)",
+      "Read(//home/**)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:8000/)",
+      "Bash(bash -n scripts/install.sh)",
+      "Bash(command -v shellcheck)",
+      "Bash(shellcheck -S warning scripts/install.sh)",
+      "Bash(echo \"상태: $\\(systemctl is-active pushgateway.service \\) / $\\(systemctl is-enabled pushgateway.service \\)\")",
+      "Bash(systemctl get-default *)",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('package.json'\\)\\); print\\('scripts:', json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\); print\\('deps:', list\\(d.get\\('dependencies',{}\\).keys\\(\\)\\)\\); print\\('devDeps adapter:', [k for k in d.get\\('devDependencies',{}\\) if 'adapter' in k]\\)\")"
     ],
     "additionalDirectories": [
-      "/tmp"
+      "/tmp",
+      "/etc/nginx/sites-available"
     ]
   }
 }

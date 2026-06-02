@@ -13,9 +13,6 @@ PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SERVICES_SRC="$PROJECT_ROOT/scripts/services"
 SERVICES_DST="/etc/systemd/system"
 CONFIG_FILE="$PROJECT_ROOT/config/config.yaml"
-VENV_PYTHON="/home/gadgetini/venv/bin/python"
-XINITRC="/home/gadgetini/.xinitrc"
-BASH_PROFILE="/home/gadgetini/.bash_profile"
 USER="gadgetini"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -45,14 +42,25 @@ read_mode() {
 do_install() {
     require_root
 
-    # System dependencies required by PySide6 xcb platform plugin (Qt 6.5+)
+    # System dependencies:
+    #   - libxcb-cursor0 : PySide6 xcb platform plugin (Qt 6.5+)
+    #   - xserver-xorg / xinit / x11-xserver-utils : kiosk X session
+    #     (cdu_session.sh uses xinit, xset, xsetroot)
+    #   - unclutter : hide mouse cursor in kiosk
+    #   - fonts-noto-color-emoji : UI glyphs
+    #   - nodejs / npm : build the SvelteKit web frontend
+    #   - nginx : reverse proxy so the web UI is reachable at http://<rpi-ip>/
     log "Installing system dependencies..."
     apt-get install -y --no-install-recommends \
         libxcb-cursor0 \
+        xserver-xorg \
+        xinit \
+        x11-xserver-utils \
         unclutter \
         fonts-noto-color-emoji \
         nodejs \
         npm \
+        nginx \
         2>/dev/null || warn "apt-get failed — install packages manually if needed"
 
     MODE=$(read_mode)
@@ -61,9 +69,19 @@ do_install() {
     # Web UI frontend build (best-effort; backend still works without it).
     build_web_frontend
 
-    # Always install pushgateway + web backend services
-    install_service "pushgateway.service"
+    # Always install web backend + local UI (kiosk) services
     install_service "cdu-web-backend.service"
+    install_service "cdu-local-ui.service"
+
+    # Pushgateway: only install if its binary actually exists. The exporter
+    # binary is not implemented yet (see docs / memory), so enabling the
+    # service unconditionally would crash-loop (status=203/EXEC). Skip until ready.
+    PUSHGATEWAY_BIN="/home/gadgetini/pushgateway/pushgateway"
+    if [ -x "$PUSHGATEWAY_BIN" ]; then
+        install_service "pushgateway.service"
+    else
+        warn "Pushgateway binary missing ($PUSHGATEWAY_BIN) — skipping service (re-run install once implemented)."
+    fi
 
     # Mode-specific services
     if [ "$MODE" = "fake" ]; then
@@ -78,8 +96,9 @@ do_install() {
     log "systemd daemon reloaded."
 
     # Enable + start installed services
-    enable_service "pushgateway.service"
     enable_service "cdu-web-backend.service"
+    enable_service "cdu-local-ui.service"
+    [ -x "$PUSHGATEWAY_BIN" ] && enable_service "pushgateway.service"
 
     if [ "$MODE" = "fake" ]; then
         enable_service "cdu-fake-simulator.service"
@@ -87,13 +106,15 @@ do_install() {
         enable_service "cdu-mcg.service"
     fi
 
-    # Kiosk setup
-    setup_bash_profile
-    setup_xinitrc
+    # Kiosk: the X session + PySide6 UI is managed by cdu-local-ui.service
+    # (xinit -> scripts/cdu_session.sh). No .bash_profile/.xinitrc needed.
+
+    # Web service: reverse proxy so the UI is reachable at http://<rpi-ip>/
+    install_nginx
 
     log ""
     log "Installation complete."
-    log "Web UI:  http://<rpi-ip>:8000/"
+    log "Web UI:  http://<rpi-ip>/   (also http://<rpi-ip>:8000/ direct)"
     if [ "$MODE" = "fake" ]; then
         log "Start: sudo systemctl start cdu-fake-simulator"
     else
@@ -132,50 +153,34 @@ enable_service() {
     log "Enabled $name"
 }
 
-# ── Kiosk setup ───────────────────────────────────────────────────────────────
+# ── Web service (nginx reverse proxy) ──────────────────────────────────────────
 
-setup_bash_profile() {
-    if [ -f "$BASH_PROFILE" ]; then
-        log ".bash_profile already exists — skipping."
-        return
+install_nginx() {
+    local src="$PROJECT_ROOT/scripts/nginx/l2a-cdu.conf"
+    local dst="/etc/nginx/sites-available/default"
+    local link="/etc/nginx/sites-enabled/default"
+
+    [ -f "$src" ] || { warn "nginx config not found: $src — skipping web proxy."; return; }
+    command -v nginx >/dev/null 2>&1 || { warn "nginx not installed — skipping web proxy."; return; }
+
+    # Back up any pre-existing site config that isn't already ours (one-time).
+    if [ -f "$dst" ] && ! grep -q "L2A CDU Web UI" "$dst"; then
+        local bak="${dst}.bak.$(date +%Y%m%d_%H%M%S)"
+        cp "$dst" "$bak"
+        log "Backed up existing nginx site → $bak"
     fi
 
-    cat > "$BASH_PROFILE" << 'EOF'
-# Auto-start X server on tty1 login
-if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-    startx -- -nocursor 2>/dev/null
-fi
-EOF
-    chown "$USER:$USER" "$BASH_PROFILE"
-    log ".bash_profile created."
-}
+    cp "$src" "$dst"
+    ln -sf "$dst" "$link"
+    log "Deployed nginx site → $dst"
 
-setup_xinitrc() {
-    cat > "$XINITRC" << EOF
-#!/bin/bash
-# ~/.xinitrc — CDU kiosk session
-
-export DISPLAY=:0
-export QT_QPA_PLATFORM=xcb
-export QT_SCALE_FACTOR=1
-
-# Disable screen saver / power management
-xset s off
-xset -dpms
-xset s noblank
-
-# Hide mouse cursor (requires: sudo apt install unclutter)
-# unclutter -idle 0 -root &
-
-# Run PySide6 UI with auto-restart on crash
-while true; do
-    $VENV_PYTHON $PROJECT_ROOT/src/local_ui/main.py
-    sleep 2
-done
-EOF
-    chown "$USER:$USER" "$XINITRC"
-    chmod +x "$XINITRC"
-    log ".xinitrc updated → $PROJECT_ROOT/src/local_ui/main.py"
+    if nginx -t 2>/dev/null; then
+        systemctl reload nginx 2>/dev/null || systemctl restart nginx 2>/dev/null || true
+        systemctl enable nginx 2>/dev/null || true
+        log "nginx reloaded (web UI at http://<rpi-ip>/)"
+    else
+        warn "nginx config test failed — leaving service untouched. Run 'sudo nginx -t' to debug."
+    fi
 }
 
 # ── Status ────────────────────────────────────────────────────────────────────
@@ -191,7 +196,7 @@ do_status() {
 
 do_stop() {
     require_root
-    for svc in cdu-fake-simulator.service cdu-mcg.service cdu-web-backend.service; do
+    for svc in cdu-fake-simulator.service cdu-mcg.service cdu-web-backend.service cdu-local-ui.service; do
         systemctl stop "$svc" 2>/dev/null && log "Stopped $svc" || warn "$svc not running"
     done
 }
@@ -200,7 +205,7 @@ do_stop() {
 
 do_remove() {
     require_root
-    for svc in cdu-fake-simulator.service cdu-mcg.service pushgateway.service cdu-web-backend.service; do
+    for svc in cdu-fake-simulator.service cdu-mcg.service pushgateway.service cdu-web-backend.service cdu-local-ui.service; do
         systemctl stop    "$svc" 2>/dev/null || true
         systemctl disable "$svc" 2>/dev/null || true
         rm -f "$SERVICES_DST/$svc"
@@ -208,6 +213,7 @@ do_remove() {
     done
     systemctl daemon-reload
     log "Removal complete."
+    log "Note: nginx site (/etc/nginx/sites-available/default) left in place — restore a .bak.* manually if needed."
 }
 
 # ── Entry point ───────────────────────────────────────────────────────────────
