@@ -84,7 +84,7 @@ UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서
        → Modbus Read (센서 레지스터)
        → 디코딩 → Redis SET + Pub/Sub
        → 알람 threshold 검사
-       → 펌프 duty 기반 유량 derive → sensor:flow_rate_1/2 publish (Rev_C+ 실 센서로 교체 예정)
+       → 실 유량 센서(IR 32/33, ADC 전압) 측정값 → sensor:flow_rate_1/2 publish (센서 미가용 시 미발행)
 
   5. if Auto: Stage 2 PI 알고리즘 (control:auto 파라미터 사용) → Modbus Write
 
@@ -162,7 +162,7 @@ sequenceDiagram
 
     Main->>PCB: Modbus Read (Polling)
     PCB-->>Main: 센서값
-    Main->>Main: 디코딩 + 알람 검사 + 유량 derive
+    Main->>Main: 디코딩 + 알람 검사 + 유량(실 센서) 측정
     Main-)Redis: SET sensor:* + Pub/Sub
 
     alt Auto 모드
@@ -304,12 +304,12 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 | Key | 설명 | Register |
 |---|---|---|
-| `sensor:flow_rate_1` | 유량 L1 (Rev_C+ 실 센서 우선, 미연결 시 derived fallback) | Rev_C+: TBD (Pulse 또는 ADC, 채널/환산식 하드웨어 확정 시 결정) |
-| `sensor:flow_rate_2` | 유량 L2 (위와 동일) | TBD |
+| `sensor:flow_rate_1` | 유량 L1 (실 센서 측정값, 미가용 시 미발행) | **IR 32** (ADC 전압 CH1, 0.01V) |
+| `sensor:flow_rate_2` | 유량 L2 (위와 동일) | **IR 33** (ADC 전압 CH2, 0.01V) |
 
-> **Rev_C+ 실 유량 센서**: 각 루프 합류점에 1개씩 (총 2개). [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` 가 hook 으로 자리잡혀 있으며 현재 `(None, None)` 반환 → derived fallback 동작. PCB 측 채널 / 환산 계수 확정 시 hook 만 채우면 Redis 키 / UI 무변경.
+> **Rev_C+ 실 유량 센서**: SIKA **VVX20** (Vortex), 각 루프 합류점에 1개씩 (총 2개). **Analogue 전압 출력(0.5~3.5V)** 을 ADC 입력 AIN1/AIN2 로 받아 IR 32/33 (0.01V 단위) 으로 읽고 `flow_lpm = 25 × V − 7.5` (VVX20) 환산. 결선·환산 상세는 [PCB.md "유량 추정"](PCB.md) 참고. [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` 가 IR 32/33 을 읽으며, `_FLOW_SENSOR_ENABLED` 가 off(실물 미설치) 인 동안 `(None, None)` 반환 → 유량 키 **미발행**(펌프 추정 fallback 없음). 실물 설치 후 토글하면 Redis 키 / UI 무변경.
 
-> **Derived fallback 공식**: 실 센서 hook 이 비어 있는 동안 MCG 가 펌프 PWM duty 기반 선형 추정으로 publish — 루프당 `70 × (ui_duty / 100)` LPM (병렬 펌프 P1‖P2 = 단일 35 LPM × 2). 시스템 max = 140 LPM (양 루프 합).
+> **유량 = 실측값 (펌프 추정 폐기)**: 유량은 실 센서(IR 32/33) 측정값으로만 publish 한다. 센서 미가용 시 `sensor:flow_rate_*` 를 발행하지 않으며(조작된 추정치 없음), UI 는 no-data 를 표시. 과거의 펌프 duty 기반 추정 fallback(`70 × ui_duty/100`)은 제거됨 ([PCB.md "유량 = 실 센서 측정값"](PCB.md)).
 
 > **LTS v1 시점 — pH / Conductivity 미지원**: 현재 PCB revision 은 chemistry 측정용 analog 입력이 없어 `sensor:ph` / `sensor:conductivity` 자체를 emit 하지 않는다. 미래 PCB 업그레이드 + 호환 센서 확정 시 위 표에 추가하고 UI / 알람 / threshold 도 함께 재도입 (LTS 정책은 [ARCHITECTURE.md "Versioning"](../ARCHITECTURE.md) 참고).
 

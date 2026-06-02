@@ -32,11 +32,11 @@ _NORMAL_BASE: dict[str, _Value] = {
     "sensor:coolant_temp_inlet_2":  (29.5, T.INLET_TEMP_NORMAL_LO,  T.INLET_TEMP_NORMAL_HI),
     "sensor:coolant_temp_outlet_1": (44.0, T.OUTLET_TEMP_WARN_LO,   T.OUTLET_TEMP_NORMAL_HI),
     "sensor:coolant_temp_outlet_2": (43.5, T.OUTLET_TEMP_WARN_LO,   T.OUTLET_TEMP_NORMAL_HI),
-    # NOTE: sensor:flow_rate_1, sensor:flow_rate_2 are derived in simulator.py
-    # each cycle from pump_pwm_duty using A5 formula
-    # (`70 * ui_duty / 100` LPM per loop — parallel pump pair, max 140 LPM total).
-    # Do not define them as base tuples here, otherwise they would not react
-    # to duty changes and would diverge from PCB.md / MCG.md.
+    # Flow is a real measured sensor value (SIKA VVX, analogue voltage) —
+    # independent of pump duty. Simulated as a slow-drift sensor like the
+    # temperatures, NOT derived from pump_pwm_duty. Per-loop nominal ~45 LPM.
+    "sensor:flow_rate_1":           (45.0, 40.0, 50.0),
+    "sensor:flow_rate_2":           (44.0, 40.0, 50.0),
     "sensor:water_level":            "2",
     # NOTE: sensor:ph / sensor:conductivity are NOT measured in the current
     # PCB revision (no compatible sensors yet). They are intentionally NOT

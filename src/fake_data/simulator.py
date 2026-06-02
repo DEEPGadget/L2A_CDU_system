@@ -155,25 +155,9 @@ class FakeDataSimulator:
                 pipe.set(publish_key, str(avg_rpm))
                 pipe.publish(publish_key, str(avg_rpm))
 
-        # Derived: per-loop flow (A5 formula, see PCB.md "Flow estimation")
-        #   flow_loop_lpm = 70 * (ui_duty / 100)   # parallel pump pair per loop
-        # In real operation MCG publishes with the same formula until the
-        # per-loop real flow sensor is wired. Fake mode must react to pump
-        # duty immediately so SVG/StatusStrip stays consistent.
-        for loop, duty_key, flow_key in (
-            (1, "sensor:pump_pwm_duty_1", "sensor:flow_rate_1"),
-            (2, "sensor:pump_pwm_duty_2", "sensor:flow_rate_2"),
-        ):
-            try:
-                raw = self._redis.get(duty_key)
-                duty = float(raw) if raw is not None else 0.0
-            except (ValueError, TypeError):
-                duty = 0.0
-            flow_lpm = 70.0 * max(0.0, min(100.0, duty)) / 100.0
-            flow_str = f"{flow_lpm:.1f}"
-            pipe.set(flow_key, flow_str)
-            pipe.publish(flow_key, flow_str)
-            self._current[flow_key] = flow_lpm  # referenced by alarm logic
+        # Flow rate is a real measured sensor value (independent of pump duty),
+        # now simulated via the generic drift loop above (see scenarios.py
+        # sensor:flow_rate_1/2). No pump-derived computation here.
 
         pipe.execute()
 

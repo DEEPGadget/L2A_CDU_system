@@ -16,14 +16,20 @@ Register map (docs/PCB.md "Modbus Registers"):
   - Input Register 25     : DIN Status (bit0~5) - water level / leak inputs
                              (bit assignment TBD until PCB bring-up;
                              currently published as raw integer only)
+  - Input Register 32~33  : ADC Voltage CH1/CH2 (0.01 V unit) - real flow
+                             sensor analogue output (SIKA VVX, 0.5~3.5 V).
+                             L1 = CH1 (IR 32), L2 = CH2 (IR 33).
 
-Flow estimation (PCB.md "Flow estimation"):
+Flow rate (PCB.md "유량 추정"):
   Rev_C introduces real flow sensors on the PCB (one per loop at the
-  manifold confluence). `_read_flow_lpm()` is the hook for that read; it
-  returns (None, None) until the sensor channel and conversion factor are
-  confirmed. While the hook returns None, we fall back to the derived
-  formula (`70 * ui_duty / 100` LPM per loop — parallel pump pair) so the
-  UI and fake simulator stay byte-identical with the pre-sensor contract.
+  manifold confluence). The sensor (SIKA VVX20) emits a 0.5~3.5 V analogue
+  signal proportional to flow; it is wired to the PCB ADC voltage inputs
+  AIN1/AIN2 and read back as IR 32/33 (0.01 V). `_read_flow_lpm()` reads
+  those registers and applies the model-specific linear scaling. Flow is a
+  *measured* value — it is never derived from pump duty. It returns
+  (None, None) until `_FLOW_SENSOR_ENABLED` is flipped on at bring-up; while
+  it returns None the flow keys are simply not published (no fabricated
+  estimate — the UI shows no-data).
 """
 
 from __future__ import annotations
@@ -33,7 +39,6 @@ import logging
 import redis
 
 from . import redis_keys as K
-from .duty_mapper import loop_flow_lpm
 from .modbus_client import PCB
 
 log = logging.getLogger(__name__)
@@ -107,57 +112,57 @@ def poll_once(pcb: PCB, r: redis.Redis) -> bool:
         # wiring is confirmed; for now keep the raw value reachable for ops.
         _publish(pipe, "sensor:din_raw", str(din[0]))
 
-    # 4. Flow rate per loop. Prefer the real PCB sensor (Rev_C+) once it is
-    #    wired; until then, fall back to the duty-derived estimate.
+    # 4. Flow rate per loop — real PCB flow sensor only (SIKA VVX, analogue
+    #    voltage on IR 32/33). Flow is a measured value; it is NOT derived from
+    #    pump duty. When the sensor is unavailable (_FLOW_SENSOR_ENABLED off, or
+    #    read failure) we publish nothing — the key keeps its last value / the
+    #    UI shows no-data rather than a fabricated estimate.
     f1_real, f2_real = _read_flow_lpm(pcb)
-    if f1_real is None or f2_real is None:
-        d1 = _to_float(r.get(K.SENSOR_PUMP_PWM_DUTY_1))
-        d2 = _to_float(r.get(K.SENSOR_PUMP_PWM_DUTY_2))
-        f1 = loop_flow_lpm(d1) if f1_real is None else f1_real
-        f2 = loop_flow_lpm(d2) if f2_real is None else f2_real
-    else:
-        f1, f2 = f1_real, f2_real
-    _publish(pipe, K.SENSOR_FLOW_RATE_1, f"{f1:.1f}")
-    _publish(pipe, K.SENSOR_FLOW_RATE_2, f"{f2:.1f}")
+    if f1_real is not None and f2_real is not None:
+        _publish(pipe, K.SENSOR_FLOW_RATE_1, f"{f1_real:.1f}")
+        _publish(pipe, K.SENSOR_FLOW_RATE_2, f"{f2_real:.1f}")
 
     pipe.execute()
     return True
 
 
-# ── Real flow sensor (SIKA VVX20, Frequency output) ──────────────────────────
-# Config — see docs/PCB.md "실 센서 후보: SIKA VVX".
-# - Model: VVX20 (DN20, 4..80 L/min, 200 pulses/L).
-# - Sensor outputs a square-wave frequency proportional to flow:
-#       flow_lpm = Hz * 60 / 200 = Hz * 0.3
-# - Wired to PCB pulse-input CH1 (L1) and CH2 (L2) → IR 13 and IR 14 (Hz).
+# ── Real flow sensor (SIKA VVX, analogue voltage output) ─────────────────────
+# Config — see docs/PCB.md "유량 추정".
+# - Sensor outputs an analogue voltage proportional to flow (0.5~3.5 V),
+#   wired to the PCB ADC voltage inputs AIN1 (L1) / AIN2 (L2) and read back
+#   as IR 32 / IR 33 (0.01 V unit, e.g. 350 = 3.50 V).
+# - Linear scaling is model-specific (0.5 V = min flow, 3.5 V = max flow):
+#       VVX20 (cert):  0.5 V→5 LPM,  3.5 V→80 LPM  ->  flow = 25.0  * V - 7.5
+#       VVX15 (prod):  0.5 V→2 LPM,  3.5 V→40 LPM  ->  flow = 12.667 * V - 4.333
 # - Flip _FLOW_SENSOR_ENABLED = True once the physical sensor is installed
-#   and the pulse channels are confirmed at PCB bring-up.
+#   and the ADC channels are confirmed at PCB bring-up; set _FLOW_MODEL to
+#   match the fitted sensor.
 _FLOW_SENSOR_ENABLED = False
-_FLOW_PULSE_IR_BASE  = 13          # IR 13 = CH1 (L1), IR 14 = CH2 (L2)
-_FLOW_PULSE_COUNT    = 2
-_PULSES_PER_LITER    = 200         # VVX20
+_FLOW_VOLT_IR_BASE   = 32          # IR 32 = ADC voltage CH1 (L1), IR 33 = CH2 (L2)
+_FLOW_VOLT_COUNT     = 2
+_FLOW_MODEL          = "VVX20"     # "VVX20" (cert) | "VVX15" (production)
+_FLOW_SCALE          = {           # (slope, intercept) for flow_lpm = slope*V + intercept
+    "VVX20": (25.0, -7.5),
+    "VVX15": (12.667, -4.333),
+}
 
 
 def _read_flow_lpm(pcb: PCB) -> tuple[float | None, float | None]:
-    """Read real per-loop flow rate (L1, L2) in LPM from the PCB pulse input.
+    """Read real per-loop flow rate (L1, L2) in LPM from the PCB ADC voltage input.
 
     Returns (None, None) until _FLOW_SENSOR_ENABLED is flipped on (sensor
-    installed + model-specific _PULSES_PER_LITER confirmed). The fallback in
-    poll_once() then keeps the duty-derived estimate.
+    installed + _FLOW_MODEL confirmed). The fallback in poll_once() then keeps
+    the duty-derived estimate.
     """
     if not _FLOW_SENSOR_ENABLED:
         return (None, None)
-    hz = pcb.read_input_registers(_FLOW_PULSE_IR_BASE, _FLOW_PULSE_COUNT)
-    if hz is None:
-        return (None, None)
-    scale = 60.0 / _PULSES_PER_LITER
-    return (hz[0] * scale, hz[1] * scale)
-
-
-def _to_float(raw) -> float:
+    raw = pcb.read_input_registers(_FLOW_VOLT_IR_BASE, _FLOW_VOLT_COUNT)
     if raw is None:
-        return 0.0
-    try:
-        return float(raw)
-    except (TypeError, ValueError):
-        return 0.0
+        return (None, None)
+    slope, intercept = _FLOW_SCALE[_FLOW_MODEL]
+    v1 = raw[0] / 100.0            # IR unit is 0.01 V
+    v2 = raw[1] / 100.0
+    # Clamp to 0: below the 0.5 V floor the linear fit goes negative (no flow).
+    f1 = max(0.0, slope * v1 + intercept)
+    f2 = max(0.0, slope * v2 + intercept)
+    return (f1, f2)

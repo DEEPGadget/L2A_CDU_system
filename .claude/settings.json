@@ -211,7 +211,13 @@
       "Bash(xargs -I{} git ls-tree -r {})",
       "Bash(git fetch *)",
       "Bash(git ls-remote *)",
-      "Bash(git ls-tree *)"
+      "Bash(git ls-tree *)",
+      "Bash(pdfinfo \"/home/gadgetini/L2A_CDU_system/docs/private/Flowmeter spec.pdf\")",
+      "Bash(python3 -c ' *)",
+      "Bash(redis-cli ping *)",
+      "Bash(python -c 'import ast; ast.parse\\(open\\('\\\\''__TRACKED_VAR__'\\\\''\\).read\\(\\)\\); print\\('\\\\''OK: __TRACKED_VAR__'\\\\''\\)')",
+      "Bash(python -c \"import src.mcg.polling, src.mcg.duty_mapper, src.fake_data.simulator, src.fake_data.scenarios; print\\('all modules import OK'\\)\")",
+      "Bash(/home/gadgetini/venv/bin/python -c \"import src.mcg.polling, src.mcg.duty_mapper, src.fake_data.simulator, src.fake_data.scenarios; print\\('all modules import OK \\(venv\\)'\\)\")"
     ],
     "additionalDirectories": [
       "/tmp"

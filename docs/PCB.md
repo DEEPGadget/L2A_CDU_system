@@ -140,40 +140,53 @@ Config Command(HR 17)에 0x01을 쓰거나, BT2 Factory Reset 시 자동 저장.
 
 ## 유량 추정
 
-Rev_C 부터 **각 루프 합류점에 실 유량 센서 1개씩 (총 2개)** 도입 예정. 채널/환산 계수 확정 시 [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` hook 을 채워 `sensor:flow_rate_1/2` 로 publish. 그 전까지는 아래 derived fallback 동작.
+Rev_C 부터 **각 루프 합류점에 실 유량 센서 1개씩 (총 2개)** 도입. [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` 가 IR 32/33(ADC 전압)을 읽어 `sensor:flow_rate_1/2` 로 publish. 유량은 **실측값**이며 펌프 추정이 아님 — 센서 미가용 시 미발행(아래 참고).
 
-### 실 센서: SIKA **VVX20** (Vortex)
+### 실 센서: SIKA **VVX20** (Vortex) — Analogue 전압 출력 방식
 
-카탈로그 수령 (docs/private/Flow meter spec1.pdf, spec2.pdf). **발주 모델 = VVX20 확정**. 실물 미도착 — 결선·환산은 아래대로 진행, 실물 도착 후 `_FLOW_SENSOR_ENABLED` 토글.
+카탈로그 수령 (docs/private/Flowmeter spec.pdf). **발주 모델 = VVX20 확정**. 실물 미도착 — 결선·환산은 아래대로 진행, 실물 도착 후 `_FLOW_SENSOR_ENABLED` 토글.
 
-| 항목 | 값 |
-|---|---|
-| 모델 | **VVX20** (DN20, G1) |
-| 유량 범위 | 4 ~ 80 L/min |
-| Pulse rate | **200 pulses/L** |
-| F_max (정격 상한) | 80 × 200 / 60 ≈ **267 Hz** |
-| F at 4 L/min | 4 × 200 / 60 ≈ 13.3 Hz |
-| 환산식 | `flow_lpm = Hz × 60 / 200 = Hz × 0.3` |
+> **측정 방식 = Analogue 전압 출력 (Pin 2, 0.5~3.5 V).** PCB 펄스 입력 채널이 모두 점유 상태라 Frequency 방식 대신 **ADC 전압 입력(AIN1~2)** 사용. 아날로그 전압은 풀업 저항·타이머 채널 불필요 → 배선 최단 (전원 + 신호, 총 3선).
 
-PCB 펄스 입력 한계 (0~10 kHz) 대비 1/37 수준 → **Frequency 출력 + 펄스 입력 채널** 조합이 최적 (아날로그 대비 분해능·노이즈 우위).
+#### Input / Output 요약
 
-**M12 핀맵 (VVX 4-pin)** — Spec PDF 3.1.1 참조
-- Pin 1: +UB (8~30 V DC, Push-Pull/NPN/PNP 시)
-- Pin 3: GND
-- Pin 4: Frequenz (Push-Pull / NPN OC / PNP OC 중 발주 시 택1)
+| 구분 | 핀 | 내용 |
+|---|---|---|
+| **Input (전원)** | Pin 1 = +U_B | **+12 V** (8~30 V 범위, 12 V 정상 동작) |
+| | Pin 3 = GND | 전원·신호 공통 기준 |
+| **Output (유량)** | Pin 2 = U_Flow | 아날로그 전압 **0.5~3.5 V** (유량 선형 비례) |
+| 미사용 | Pin 4, 5 | Frequency / 온도용 — 미결선 |
 
-**MCS_IO 결선 권장**
-- VVX Pin 1 → +24 V (펌프 전원 라인에서 분기, fuse 권장)
+> Pin 1(전원)은 **필수**. 센서는 능동 소자(소비전류 <15 mA)라 +U_B 없으면 Pin 2 에 출력 없음. Pin 3(GND)는 전원·신호 겸용.
+
+#### 모델별 환산 (0.5~3.5 V 선형)
+
+| 항목 | VVX20 (인증용) | VVX15 (양산) |
+|---|---|---|
+| 모델 | VVX20 (DN20, G1) | VVX15 (DN15, G¾) |
+| 유량 범위 | 5 ~ 80 L/min | 2 ~ 40 L/min |
+| 출력 스케일 | 0.5 V=5 / 3.5 V=80 LPM | 0.5 V=2 / 3.5 V=40 LPM |
+| rate | 0.04 V/(L/min) | 0.07895 V/(L/min) |
+| **환산식** | `flow_lpm = 25 × V − 7.5` | `flow_lpm = 12.67 × V − 4.33` |
+
+> ⚠ **모델별 환산식 분기 필수** (인증=VVX20, 양산=VVX15). 코드에서 모델 플래그로 선택.
+
+**M12 핀맵 (VVX 4-pin) — Spec PDF p.9 "Pin assignment" / p.9~10 "Flow U_Flow" 도식**
+- Pin 1: +U_B (전원)
+- Pin 2: U_Flow (아날로그 전압 출력 0.5~3.5 V)
+- Pin 3: GND (전원·신호 공통)
+- Pin 4, 5: 미사용
+
+**MCS_IO 결선**
+- VVX Pin 1 → +12 V (펌프 전원 라인에서 분기, fuse 권장)
 - VVX Pin 3 → GND (PCB GND 공통)
-- VVX Pin 4 → 펄스 입력 **CH1 (L1)** / **CH2 (L2)** — Fan tach가 CH5~8 점유, CH1~4 가용
-- Modbus 읽기 주소: **IR 13 (CH1, L1), IR 14 (CH2, L2)** — 단위 Hz
-- 환산: `flow_lpm = Hz × 60 / pulses_per_liter`
+- VVX Pin 2 → ADC 전압 입력 **AIN1 (L1)** / **AIN2 (L2)** = 전압 CH1 / CH2
+- Modbus 읽기 주소: **IR 32 (CH1, L1), IR 33 (CH2, L2)** — 단위 0.01 V (350 = 3.50 V)
+- 환산: `flow_lpm = 25 × (IR_value / 100) − 7.5` (VVX20)
 
-> ⚠ **펄스 입력 전압 레벨 미확인 (현장 검증 필요)**
-> MCS_IO 매뉴얼에 펄스 입력단의 허용 전압 레벨이 명시되지 않음. STM32G474 GPIO는 5 V tolerant 이나 PCB 입력단에 전치 보호회로가 있을 수 있음. VVX Push-Pull은 +UB 그대로 출력 → 24 V 공급 시 24 V 펄스가 PCB 입력으로 들어감.
-> **확인 전까지 NPN Open Collector + PCB 측 5 V 풀업** 구성을 권장 (R_L ≈ 5 kΩ, Spec PDF *3 권장). 이렇게 하면 펄스 진폭이 PCB 로직 레벨로 클램프됨.
-
-> ⚠ **출력 옵션 (Push-Pull vs NPN OC) 발주 시 확정 필요**. 4-pin 케이블이면 Pin4가 펄스 출력. 5-pin이면 Pin5에 온도(Pt1000/NTC) 동시 출력도 가능 (이 경우 NTC 채널 IR 28~31 의 외기 슬롯 활용 가능, 단 매핑 추가 필요).
+> ⚠ **ADC 입력 범위 / 분해능 (실물 검증 시 확인)**
+> PCB ADC 채널은 0~12 V 범위(12-bit, 4095 count). 0.5~3.5 V 신호는 범위의 ~29 %만 사용 → span 75 L/min ≈ 1024 count → 분해능 ≈ 0.073 L/min/count (충분). 최대 출력 3.5 V < ADC 상한 12 V → 클리핑 없음, 분압기 불필요.
+> ADC 게인 캘리브레이션이 9 V 기준이므로 저전압 구간(0.5~3.5 V) 정확도는 실물 도착 후 검증 권장.
 
 ### 펌프 배치 (L2A Rev_C)
 
@@ -227,15 +240,13 @@ Pump spec 4.2.1 동작 구간 (참고):
 - **17~85 % : Nmin ~ Nmax 선형** ← 위 매핑이 닿는 영역
 - 85~95 % : Nmax 포화 / 95~100 % : no use
 
-### 유량 산정 (실 센서 hook 비어 있을 때의 fallback)
+### 유량 = 실 센서 측정값 (펌프 추정 폐기)
 
-시스템 손실 마진 포함:
+유량은 **실 센서(SIKA VVX 아날로그 전압)로 측정한 값**이며, **펌프 duty 로부터 추정하지 않는다.** 센서 미가용(`_FLOW_SENSOR_ENABLED` off 또는 read 실패) 시 MCG 는 `sensor:flow_rate_*` 를 **발행하지 않으며**, UI 는 마지막 값 또는 no-data("--") 를 표시한다 (조작된 추정치를 만들지 않음).
 
-```
-flow_loop_lpm = 70 × (ui_duty / 100)        # 루프당 max 70 LPM (병렬 펌프 P1‖P2)
-```
-
-단일 펌프 (단독, 12V PWM 100%) 정격점 45 LPM — 시스템 저항 고려해 35 LPM 채택. UI 100 % 일 때 pump_input 85 % 로 운용하므로 정격(100 %) 대비 ~94 % 의 유량 ≈ 42 LPM 이 spec 상 예상치이나 **시스템 저항 보수 마진** 으로 35 LPM 채택. **병렬 2 펌프 → 루프당 70 LPM** (head 는 단일 펌프와 동일).
+> 과거에는 센서 hook 이 비기 전까지 `flow_loop_lpm = 70 × (ui_duty/100)` 펌프-추정 fallback 을 publish 했으나, 유량을 실측값으로 일원화하면서 **제거함** ([polling.py](../src/mcg/polling.py) `_read_flow_lpm()`).
+>
+> 참고 — 펌프 정격 유량(설계 검토용, 제어엔 미사용): 단일 펌프 12V PWM 100% 정격 45 LPM(시스템 저항 고려 35 LPM 채택), **병렬 2 펌프 → 루프당 ~70 LPM** (head 는 단일 펌프와 동일).
 
 ---
 
