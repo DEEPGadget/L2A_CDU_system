@@ -64,6 +64,8 @@
   {@const outlet = num(`sensor:coolant_temp_outlet_${loop}`)}
   {@const dt = delta(loop)}
   {@const flow = num(`sensor:flow_rate_${loop}`)}
+  {@const b1 = num(`sensor:flow_rate_${loop}_1`)}
+  {@const b2 = num(`sensor:flow_rate_${loop}_2`)}
   {@const pump = num(`sensor:pump_pwm_duty_${loop}`)}
   {@const fan = num(`sensor:fan_pwm_duty_${loop}`)}
   {@const rpm = num(`sensor:fan_rpm_${loop}`)}
@@ -75,7 +77,17 @@
     {@render metric('Inlet', fmt(inlet), '°C', th.statusInlet(inlet))}
     {@render metric('Outlet', fmt(outlet), '°C', th.statusOutlet(outlet))}
     {@render metric('ΔT', fmt(dt), '°C', th.statusDelta(dt))}
-    {@render metric('Flow', fmt(flow), 'L/min', flow == null ? 'nodata' : 'normal')}
+    <!-- Flow: loop total + per-branch split (1/2) -->
+    <div class="flex items-baseline justify-between py-1.5 border-b border-gray-100">
+      <span class="text-sm text-gray-500">Flow</span>
+      <span class="text-right">
+        <span class="font-mono text-lg font-semibold {flow == null ? 'text-gray-400' : 'text-gray-800'}">
+          {fmt(flow)}<span class="text-xs text-gray-400 ml-1">L/min</span>
+        </span>
+        <span class="block font-mono text-[11px] text-gray-400 leading-tight">1 : {fmt(b1)}</span>
+        <span class="block font-mono text-[11px] text-gray-400 leading-tight">2 : {fmt(b2)}</span>
+      </span>
+    </div>
     {@render metric('Pump duty', fmt(pump, 0), '%', pump == null ? 'nodata' : 'normal')}
     {@render metric('Fan duty', fmt(fan, 0), '%', fan == null ? 'nodata' : 'normal')}
     {@render metric('Fan RPM', fmt(rpm, 0), 'rpm', rpm == null ? 'nodata' : 'normal')}

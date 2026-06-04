@@ -109,8 +109,8 @@
 > **렌더링 방식**: SVG 템플릿 (`cooling_health.svg`) + `QSvgWidget`. 센서값 수신 시 플레이스홀더를 치환하여 리로드.
 > **참고 이미지**: `assets/UI example/dg5r dashboard.png` (Cooling Health 패널), `assets/UI example/l2a cdu structure 1~3.png` (CDU 실물 구조)
 
-> **냉각수 흐름** (루프별 독립): Reservoir → Pump → Flow → Inlet Manifold → Server → Outlet Manifold → Fan+Radiator → Reservoir (순환)
-> Loop 1 → Server 1, Loop 2 → Server 2 각 1:1 독립 연결. Reservoir는 CDU 내부 공유, Fan+Radiator는 루프별 독립.
+> **냉각수 흐름** (루프별 독립): Reservoir → Pump → Inlet Manifold → Server → Outlet Manifold → **Flow** → Fan+Radiator → Reservoir (순환). 유량계는 **귀환선(outlet↔fan 사이)** 에 위치.
+> Loop 1 → Server 1, Loop 2 → Server 2 각 1:1 독립 연결. Reservoir는 CDU 내부 공유, Fan+Radiator는 루프별 독립. 유량은 물리적으로 루프당 2분기(센서 2개)이나 UI 도식은 2유로를 하나로 합쳐 박스 1개로 표시.
 
 **다이어그램 배치 (좌→우, 2-lane)**
 
@@ -118,16 +118,16 @@
 |---|---|---|---|
 | 공유 (좌단) | Reservoir (Water Tank) | Coolant Level (레벨 바 + HIGH/MID/LOW 텍스트). pH / 전도도 placeholder 는 LTS v1 에서 `-` 로 고정 (미측정) | `sensor:water_level` (pH / 전도도 미사용 — LTS v1) |
 | Loop 1 → | Pump Loop1 (P1‖P2 병렬) | PWM duty (0–100 %) + `⚙` (Manual만) | `sensor:pump_pwm_duty_1` |
-| Loop 1 → | Flow Loop1 | 유량 (L/min) | `sensor:flow_rate_1` |
 | Loop 1 → | Coolant Inlet Manifold L1 | 입수 온도 (°C) | `sensor:coolant_temp_inlet_1` |
 | Loop 1 ↑ 분기 | Server 1 | (열원 표시, 센서 없음, CDU 외부 — 위로 분기) | — |
 | Loop 1 → | Coolant Outlet Manifold L1 | 출수 온도 (°C) | `sensor:coolant_temp_outlet_1` |
+| Loop 1 → | Flow Loop1 | 유량 총합 (L/min, 큰글씨) + 분기 1/2 (작은글씨) | `sensor:flow_rate_1` (+ `_1_1`, `_1_2`) |
 | Loop 1 → | Fan1 + Radiator | RPM (상단, read-only) + PWM duty (0–100 %, 하단) + `⚙` (Manual만) | `sensor:fan_rpm_1`, `sensor:fan_pwm_duty_1` |
 | Loop 2 → | Pump Loop2 (P3‖P4 병렬) | PWM duty (0–100 %) + `⚙` (Manual만) | `sensor:pump_pwm_duty_2` |
-| Loop 2 → | Flow Loop2 | 유량 (L/min) | `sensor:flow_rate_2` |
 | Loop 2 → | Coolant Inlet Manifold L2 | 입수 온도 (°C) | `sensor:coolant_temp_inlet_2` |
 | Loop 2 ↓ 분기 | Server 2 | (열원 표시, 센서 없음, CDU 외부 — 아래로 분기) | — |
 | Loop 2 → | Coolant Outlet Manifold L2 | 출수 온도 (°C) | `sensor:coolant_temp_outlet_2` |
+| Loop 2 → | Flow Loop2 | 유량 총합 (L/min, 큰글씨) + 분기 1/2 (작은글씨) | `sensor:flow_rate_2` (+ `_2_1`, `_2_2`) |
 | Loop 2 → | Fan2 + Radiator | RPM (상단, read-only) + PWM duty (0–100 %, 하단) + `⚙` (Manual만) | `sensor:fan_rpm_2`, `sensor:fan_pwm_duty_2` |
 
 > **Fan+Radiator 박스 레이아웃**: 이름 (상단) → RPM (read-only 피드백) → PWM duty % (편집 대상) → `⚙` (Manual만). RPM은 타코미터 피드백이라 사용자 편집 불가이므로 시각적으로 편집 값(%)과 분리해서 위에 배치.
@@ -325,8 +325,10 @@
 
 | 시리즈 | Prometheus 쿼리 | Redis Key | 단위 |
 |---|---|---|---|
-| Flow Rate L1 | `sensor_flow_rate{loop="1"}` | `sensor:flow_rate_1` | L/min |
-| Flow Rate L2 | `sensor_flow_rate{loop="2"}` | `sensor:flow_rate_2` | L/min |
+| Flow Rate L1 (총합) | `sensor_flow_rate{loop="1"}` | `sensor:flow_rate_1` | L/min |
+| Flow Rate L2 (총합) | `sensor_flow_rate{loop="2"}` | `sensor:flow_rate_2` | L/min |
+| Flow L1 분기1/2 | `sensor_flow_rate_branch{loop="1"}` | `sensor:flow_rate_1_1`, `_1_2` | L/min |
+| Flow L2 분기1/2 | `sensor_flow_rate_branch{loop="2"}` | `sensor:flow_rate_2_1`, `_2_2` | L/min |
 
 **시리즈 선택**
 

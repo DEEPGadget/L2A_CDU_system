@@ -155,9 +155,21 @@ class FakeDataSimulator:
                 pipe.set(publish_key, str(avg_rpm))
                 pipe.publish(publish_key, str(avg_rpm))
 
-        # Flow rate is a real measured sensor value (independent of pump duty),
-        # now simulated via the generic drift loop above (see scenarios.py
-        # sensor:flow_rate_1/2). No pump-derived computation here.
+        # Publish the 4 flow-sensor branch values + per-loop totals (sum of the
+        # loop's 2 branches), matching MCG real-mode polling (src/mcg/polling.py:
+        # IR 32~35 → Loop1=AIN1+AIN2, Loop2=AIN3+AIN4). Independent of pump duty.
+        for loop_id in (1, 2):
+            ch_keys = [f"_flow_l{loop_id}_{n}" for n in (1, 2)]
+            ch_vals = [self._current[k] for k in ch_keys if k in self._current]
+            if len(ch_vals) < 2:
+                continue
+            for n, val in enumerate(ch_vals, start=1):
+                bs = f"{val:.1f}"
+                pipe.set(f"sensor:flow_rate_{loop_id}_{n}", bs)
+                pipe.publish(f"sensor:flow_rate_{loop_id}_{n}", bs)
+            ts = f"{sum(ch_vals):.1f}"
+            pipe.set(f"sensor:flow_rate_{loop_id}", ts)
+            pipe.publish(f"sensor:flow_rate_{loop_id}", ts)
 
         pipe.execute()
 

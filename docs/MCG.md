@@ -77,14 +77,14 @@ UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서
   3. Manual 명령 적용 (Manual 모드일 때만):
        → sensor:pump_pwm_duty_x, sensor:fan_pwm_duty_x Redis GET
        → 직전 cycle 값과 다른 채널만 Modbus Write
-         (pump 측은 PCB.md A5 의 0.85× 매핑 적용 후 HR 8~11 burst write,
+         (pump 측은 duty_mapper 17~85% 매핑(0=정지) 후 HR 8~11 burst write,
           fan 측은 직접 매핑 후 HR 4~7 burst write)
 
   4. Polling (항상 실행)
        → Modbus Read (센서 레지스터)
        → 디코딩 → Redis SET + Pub/Sub
        → 알람 threshold 검사
-       → 실 유량 센서(IR 32/33, ADC 전압) 측정값 → sensor:flow_rate_1/2 publish (센서 미가용 시 미발행)
+       → 실 유량 센서(IR 32~35, ADC 전압 4ch) 루프별 합산 → sensor:flow_rate_1/2 publish (센서 미가용 시 미발행)
 
   5. if Auto: Stage 2 PI 알고리즘 (control:auto 파라미터 사용) → Modbus Write
 
@@ -108,7 +108,7 @@ UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서
 
 - Manual: UI 가 Redis `sensor:*_duty_x` 키에 SET → 메인 루프가 직전 cycle 값과 비교 후 변경분만 Modbus Write → Pushgateway POST (이력)
 - Auto: 알고리즘이 결정한 값 Write → POST 없음 (Exporter가 `sensor:*`로 수집)
-- 레지스터 매핑 상세: §9 Redis Key 참고. 펌프 측은 ui_duty → pump_input PWM 0.85× 매핑 필수 ([PCB.md "유량 추정"](PCB.md) 참고).
+- 레지스터 매핑 상세: §9 Redis Key 참고. 펌프 측은 ui_duty → pump_input PWM 17~85% 매핑(UI 0=정지) 필수 ([PCB.md "UI / MCG duty 매핑"](PCB.md) 참고).
 
 ### 모드 전환
 
@@ -155,7 +155,7 @@ sequenceDiagram
         Main->>Redis: GET sensor:*_duty_x
         Redis-->>Main: 현재 duty
         opt 직전 cycle 과 다른 채널
-            Main->>PCB: Modbus Write (UI duty → pump 0.85× 매핑)
+            Main->>PCB: Modbus Write (UI duty → pump 17~85% 매핑)
             PCB-->>Main: ACK
         end
     end
@@ -196,7 +196,7 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 | PWM Freq (TIM8) | Holding Register 14 | **1000 (Hz)** — MCG 시작 시 write (idempotent) | 펌프 CH 9~12. Flash 기본 1 kHz 와 동일하지만 명시 write 로 회복성 확보 (Johnson eModule typical). |
 
 > 듀티 register 포맷: 0~1000 (0.1 % 단위, Active Low) — 예: 60 % = 600, 15 % = 150. 주파수 register 포맷은 kHz 정수 (MCS_BE 매뉴얼 확인 필요).
-> 펌프 60 % 는 UI 도메인 값. MCG 가 PCB write 시 [PCB.md "유량 추정"](PCB.md) 의 `0.85 × ui_duty` 매핑 적용 → 실제 HR write 값 = 510 (51 %).
+> 펌프 60 % 는 UI 도메인 값. MCG 가 PCB write 시 [PCB.md "UI / MCG duty 매핑"](PCB.md) 적용 → HR = round((17+0.68×60)×10) = **578 (57.8 %)**.
 > Fan 15 % 초기값은 L2A UI 운용 하한 10 % 위로 유효. 기동 직후 Auto 루프 첫 cycle 에서 PI 출력값으로 덮어써짐.
 > 전원 재인가 시 MCG 재시작(systemd Restart=always)으로 초기값 자동 적용. 초기값 자체는 `config.yaml`이 source of truth.
 
@@ -269,18 +269,17 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 > **PWM 채널 매핑 (control_board 기준)**: HR 0~11 = PWM 12ch 전체 (TIM1/TIM2/TIM8 각 4ch). 자세한 표는 [PCB.md "Holding Registers"](PCB.md) 참고.
 > **L2A Rev_C 운용**: TIM1 (HR 0~3, CH 1~4) = 미사용. **TIM2 (HR 4~7, CH 5~8) = 팬 4채널** (L1 = HR 4,5 / L2 = HR 6,7, 루프당 2채널 동일 duty burst). **TIM8 (HR 8~11, CH 9~12) = 펌프 4채널** (L1 = HR 8,9 / L2 = HR 10,11, 루프당 2개 병렬 P1‖P2 / P3‖P4, 동일 duty burst). 펌프는 PWM 만 사용 (Tach 미연결), 팬은 PWM + Tach (Pulse CH 5~8 = IR 17~20) 모두 사용. 변형별 매핑 상세: §10.2.
 
-> **펌프 ui_duty → 펌프 입력 PWM 변환 (직접 비례 + 85% 캡)**
-> Redis 키 `sensor:pump_pwm_duty_x` 는 UI 도메인 (0~100%). MCG 가 PCB Holding Register 로 write 할 때 직접 비례 매핑 + 운용 상한 캡:
+> **펌프 ui_duty → 펌프 입력 PWM 변환 (사용구간 17~85%, 0=정지)**
+> Redis 키 `sensor:pump_pwm_duty_x` 는 UI 도메인 (0~100%). MCG 가 [duty_mapper.ui_to_pump_hr](../src/mcg/duty_mapper.py) 로 변환:
 > ```
-> hr_value = round(0.85 × ui_duty × 10)        # 0~1000 스케일
+> UI 0      → HR 120 (12%, 정지밴드 n=0)
+> UI (0,100] → HR = round((17 + 0.68 × ui) × 10)  clamp [170, 850]
 > ```
-> 즉 UI 100% → pump_input 85% (Pump spec 4.2.1 의 운용 선형 구간 상한), UI 0% → pump_input 0%.
+> 즉 UI 100% → 85%(Nmax), UI 60% → 57.8%, UI 1% → ≈17.7%(Nmin), **UI 0% → 정지(12%)**.
 >
-> **UI 입력 하한 = 20%** (pump_input 17% Nmin = `17 / 0.85`). UI 도메인 20% 미만 입력은 정지~Nmin 사이 회피 구간에 들어가므로 UI 단에서 거부. Auto PI 의 `out_min` 도 동일 하한을 강제.
+> **UI 하한 없음**: 0 = 정지가 유효값. clamp 하한(120)이 곧 stop 이라 0 이 어느 경로로 들어와도 **풀가동이 아니라 정지** — 과거 "UI 0% → 0~8% Nmax fallback" hazard 해소됨. 상세는 [PCB.md "UI / MCG duty 매핑"](PCB.md) 참고.
 >
-> Pump spec 4.2.1 동작 구간 (참고): **0~8% Nmax safety full-speed (PWM fallback)**, 8~13% 정지, 13~17% Nmin, 17~85% 선형, 85~95% 포화, 95~100% no use. 위 캡(85%) 이 마지막 세 위험 구간(85~100%) 을 회피한다. 자세한 표는 [PCB.md "유량 추정 > UI/MCG duty 매핑"](PCB.md) 참고.
->
-> ⚠ **MCG 구현 시 추가 가드레일**: ui_duty = 0 이 그대로 pump_input = 0 으로 변환되면 spec 0~8% 영역 → Nmax safety fallback 으로 펌프가 풀가동되는 hazard 가 있다. **현재는 PySide6 Local UI 가 단일 entry point 라 하한 20% 강제로 무해**하나, 향후 네트워크 (Web UI REST API, 원격 명령 등) 가 추가되어 redis 키에 직접 SET 가능해지면 우회 가능. 권장: PCB HR write 직전 `hr_value = clamp(round(0.85 × ui_duty × 10), 170, 850)` 로 hard clamp. 상세 hazard 분석과 mitigation 옵션은 [PCB.md "Hazard — UI 0 % bypass risk"](PCB.md) 참고.
+> ⚠ Auto 모드에서 pump fixed duty 0(정지)은 냉각 중단 — 운용 주의(코드 차단 없음).
 
 **팬 RPM 피드백 (Pulse Freq — Input Register 13~24)**
 
@@ -304,12 +303,16 @@ PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 co
 
 | Key | 설명 | Register |
 |---|---|---|
-| `sensor:flow_rate_1` | 유량 L1 (실 센서 측정값, 미가용 시 미발행) | **IR 32** (ADC 전압 CH1, 0.01V) |
-| `sensor:flow_rate_2` | 유량 L2 (위와 동일) | **IR 33** (ADC 전압 CH2, 0.01V) |
+| `sensor:flow_rate_1` | 유량 L1 총합 (AIN1+AIN2, 미가용 시 미발행) | **IR 32 + IR 33** (ADC 전압 CH1+CH2) |
+| `sensor:flow_rate_2` | 유량 L2 총합 (AIN3+AIN4) | **IR 34 + IR 35** (ADC 전압 CH3+CH4) |
+| `sensor:flow_rate_1_1` | 유량 L1 분기1 (AIN1) | **IR 32** (0.01V) |
+| `sensor:flow_rate_1_2` | 유량 L1 분기2 (AIN2) | **IR 33** (0.01V) |
+| `sensor:flow_rate_2_1` | 유량 L2 분기1 (AIN3) | **IR 34** (0.01V) |
+| `sensor:flow_rate_2_2` | 유량 L2 분기2 (AIN4) | **IR 35** (0.01V) |
 
-> **Rev_C+ 실 유량 센서**: SIKA **VVX20** (Vortex), 각 루프 합류점에 1개씩 (총 2개). **Analogue 전압 출력(0.5~3.5V)** 을 ADC 입력 AIN1/AIN2 로 받아 IR 32/33 (0.01V 단위) 으로 읽고 `flow_lpm = 25 × V − 7.5` (VVX20) 환산. 결선·환산 상세는 [PCB.md "유량 추정"](PCB.md) 참고. [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` 가 IR 32/33 을 읽으며, `_FLOW_SENSOR_ENABLED` 가 off(실물 미설치) 인 동안 `(None, None)` 반환 → 유량 키 **미발행**(펌프 추정 fallback 없음). 실물 설치 후 토글하면 Redis 키 / UI 무변경.
+> **Rev_C+ 실 유량 센서**: SIKA **VVX15 × 4** (Vortex). 각 루프의 병렬 분기마다 1개씩(루프당 2개). **Analogue 전압(0.5~3.5V)** 을 ADC 입력 AIN1~4 (IR 32~35) 로 읽어 센서별 `branch_lpm = 12.667 × V − 4.333`(0 clamp) 환산 후 **루프당 2개를 합산**: Loop1=AIN1+AIN2, Loop2=AIN3+AIN4. 결선·환산 상세는 [PCB.md "유량 추정"](PCB.md) 참고. [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` 가 IR 32~35 를 읽으며, `_FLOW_SENSOR_ENABLED` 가 off(실물 미설치) 인 동안 `(None, None)` 반환 → 유량 키 **미발행**(펌프 추정 fallback 없음). 실물 설치 후 토글하면 Redis 키 / UI 무변경.
 
-> **유량 = 실측값 (펌프 추정 폐기)**: 유량은 실 센서(IR 32/33) 측정값으로만 publish 한다. 센서 미가용 시 `sensor:flow_rate_*` 를 발행하지 않으며(조작된 추정치 없음), UI 는 no-data 를 표시. 과거의 펌프 duty 기반 추정 fallback(`70 × ui_duty/100`)은 제거됨 ([PCB.md "유량 = 실 센서 측정값"](PCB.md)).
+> **유량 = 실측값 (펌프 추정 폐기)**: 유량은 실 센서(IR 32~35, 루프별 합산) 측정값으로만 publish 한다. 센서 미가용 시 `sensor:flow_rate_*` 를 발행하지 않으며(조작된 추정치 없음), UI 는 no-data 를 표시. 과거의 펌프 duty 기반 추정 fallback(`70 × ui_duty/100`)은 제거됨 ([PCB.md "유량 = 실 센서 측정값"](PCB.md)).
 
 > **LTS v1 시점 — pH / Conductivity 미지원**: 현재 PCB revision 은 chemistry 측정용 analog 입력이 없어 `sensor:ph` / `sensor:conductivity` 자체를 emit 하지 않는다. 미래 PCB 업그레이드 + 호환 센서 확정 시 위 표에 추가하고 UI / 알람 / threshold 도 함께 재도입 (LTS 정책은 [ARCHITECTURE.md "Versioning"](../ARCHITECTURE.md) 참고).
 
@@ -346,7 +349,7 @@ publish 주기: 폴링 주기와 동일. `SET` + `PUBLISH` 모두 수행.
 | `comm:last_error` | string | no | 마지막 오류 |
 | `control:mode` | string | **yes** | 제어 모드 (manual / auto / emergency). UI 토글이 SET, MCG 가 매 cycle 읽기 |
 | `control:fan_curve` | hash | **yes** | Auto 모드 fan 제어 곡선 (2-point linear). UI Settings 페이지에서 편집. fields: `min_temp` (°C), `max_temp` (°C), `min_duty` (0~1000, ≥100 = ≥10% UI 하한), `max_duty` (0~1000). 동작: outlet 온도 ≤ min_temp → min_duty, ≥ max_temp → max_duty, 사이는 선형 보간. settings.js Fan Curve editor 와 동일 schema (별도 시스템이지만 의도적 정합). |
-| `control:pump_duty` | string | **yes** | Auto 모드 pump 고정 duty (Stage 1 정책 — auto_control.md §2). 값: 0~1000 (×10 정수, ≥200 = ≥20% UI 하한). UI Settings 페이지에서 편집. MCG 는 Auto 모드에서 매 cycle 이 값을 HR 8~11 (L2A Rev_C: 펌프 CH 9~12) 로 burst write (pump 4채널 동일 duty, 0.85× 매핑 적용 후). |
+| `control:pump_duty` | string | **yes** | Auto 모드 pump 고정 duty (Stage 1 정책 — auto_control.md §2). 값: 0~1000 (×10 정수, 0=정지). UI Settings 페이지에서 편집. MCG 는 Auto 모드에서 매 cycle 이 값을 HR 8~11 (L2A Rev_C: 펌프 CH 9~12) 로 burst write (pump 4채널 동일 duty, 17~85% 매핑 적용 후). |
 | `sensor:*_duty_*` (pump/fan) | string | **yes** | Manual 모드에서 UI 가 SET 하는 마지막 duty. 재시작 후 마지막 사용자 의도 복원. |
 | `sensor:*` (그 외 - 온도/유량/RPM/leak/level/ambient) | string | no | 매 cycle MCG polling 으로 갱신. 재시작 후 다음 cycle 에서 자동 채워짐. |
 

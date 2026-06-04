@@ -19,10 +19,20 @@ SENSOR_COOLANT_TEMP_OUTLET_2 = "sensor:coolant_temp_outlet_2"
 SENSOR_FAN_RPM_1 = "sensor:fan_rpm_1"
 SENSOR_FAN_RPM_2 = "sensor:fan_rpm_2"
 
-# Per-loop flow (Rev_C+ real sensor; derived fallback until hook is wired).
-# Single sensor per loop at the manifold confluence — see polling._read_flow_lpm().
-SENSOR_FLOW_RATE_1 = "sensor:flow_rate_1"
-SENSOR_FLOW_RATE_2 = "sensor:flow_rate_2"
+# Flow — 4 branch sensors (2 per loop, VVX15 on AIN1~4=IR 32~35), summed to
+# per-loop totals. Both the totals and the 4 branch values are published.
+# See polling._read_flow_lpm(). Loop1 = branch 1_1 + 1_2, Loop2 = 2_1 + 2_2.
+SENSOR_FLOW_RATE_1 = "sensor:flow_rate_1"      # loop 1 total
+SENSOR_FLOW_RATE_2 = "sensor:flow_rate_2"      # loop 2 total
+SENSOR_FLOW_RATE_1_1 = "sensor:flow_rate_1_1"  # loop 1 branch 1 (AIN1)
+SENSOR_FLOW_RATE_1_2 = "sensor:flow_rate_1_2"  # loop 1 branch 2 (AIN2)
+SENSOR_FLOW_RATE_2_1 = "sensor:flow_rate_2_1"  # loop 2 branch 1 (AIN3)
+SENSOR_FLOW_RATE_2_2 = "sensor:flow_rate_2_2"  # loop 2 branch 2 (AIN4)
+# (total_key, (branch1_key, branch2_key)) per loop — iteration helper
+FLOW_LOOPS = (
+    (SENSOR_FLOW_RATE_1, (SENSOR_FLOW_RATE_1_1, SENSOR_FLOW_RATE_1_2)),
+    (SENSOR_FLOW_RATE_2, (SENSOR_FLOW_RATE_2_1, SENSOR_FLOW_RATE_2_2)),
+)
 
 SENSOR_WATER_LEVEL = "sensor:water_level"
 SENSOR_LEAK        = "sensor:leak"

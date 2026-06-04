@@ -49,7 +49,7 @@ _PUMP_DUTY_KEY = "control:pump_duty"
 _PUMP_DUTY_CHANNEL = "control:pump_duty:update"
 
 # Operational UI lower bounds (see docs/auto_control.md "L2A UI lower bounds")
-PUMP_MIN_UI_DUTY = 20   # %  - pump_input 17% Nmin via 0.85x mapping
+PUMP_MIN_UI_DUTY = 0    # %  - 0 = stop (UI 0→pump 12% stop band; 1~100→17~85%)
 FAN_MIN_UI_DUTY  = 10   # %  - operational guideline only (fan spec allows 0-100%)
 
 # Default fan curve (same schema as settings.js; duty is x10 integer in 0-1000)
@@ -366,8 +366,8 @@ class PumpFixedCard(QWidget):
         body.addWidget(title)
 
         desc = QLabel(
-            f"In Auto mode the pump PWM duty runs at a fixed value. "
-            f"Lower bound {PUMP_MIN_UI_DUTY}% (Pump spec 4.2.1 Nmin)."
+            "In Auto mode the pump PWM duty runs at a fixed value. "
+            "UI 0% = stop; 1~100% maps to pump 17~85% (Nmin~Nmax)."
         )
         desc.setStyleSheet(f"color:{_C_TEXT_MUTED}; font-size:14pt; border:none;")
         desc.setWordWrap(True)
@@ -475,7 +475,7 @@ class ManualPanel(QWidget):
 
         hint = QLabel(
             "Set pump / fan duty directly from the Monitoring page.\n"
-            f"Lower bounds: Pump >= {PUMP_MIN_UI_DUTY} %, Fan >= {FAN_MIN_UI_DUTY} %."
+            f"Pump 0 % = stop (else 17~85 %); Fan >= {FAN_MIN_UI_DUTY} %."
         )
         hint.setStyleSheet(f"color:{_C_TEXT_MUTED}; font-size:14pt; border:none;")
         hint.setWordWrap(True)

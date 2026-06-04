@@ -52,7 +52,7 @@
 - Hysteresis 상태는 루프별로 독립 보관 (L1의 구간 전이가 L2에 영향 없음).
 - 제어 임계치와 [threshold.md](threshold.md)의 알람 임계치는 별도 (제어 vs 알람은 책임 분리). 제어 테이블 상한(100% 도달점)은 알람 warning 경계와 정합시킴.
 - Fan 완전 정지는 안 함. Idle 상태에서도 하한 유지 ([§3 Minimum duty floor](#minimum-duty-floor)).
-- **L2A UI 운용 하한**: Fan ≥ 10 %, Pump ≥ 20 % ([PCB.md "유량 추정"](PCB.md) 참고). Fan 10 % 는 Fan spec 무근거 운용 권장값(spec 자체는 PWM 0–100 % 전 구간 허용). Pump 20 % 는 spec 4.2.1 Nmin(17 %) ÷ 매핑계수(0.85) 산출값. waku-ctl 의 20 % 관성은 L2A 와 무관 — 본 lookup table 도 10 % 로 정합.
+- **L2A UI 운용 하한**: Fan ≥ 10 %, **Pump 0 = 정지 / 1~100 % → 펌프 17~85 %** ([PCB.md "UI / MCG duty 매핑"](PCB.md) 참고). Fan 10 % 는 Fan spec 무근거 운용 권장값(spec 자체는 PWM 0–100 % 전 구간 허용). Pump 는 사용구간 17~85 % 를 UI 1~100 % 에 선형 매핑, UI 0 = 정지(12 % PWM, n=0). waku-ctl 의 20 % 관성은 L2A 와 무관.
 
 **초기 구현 우선순위**: Stage 1만으로 Auto 모드 MVP 확보.
 

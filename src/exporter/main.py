@@ -51,6 +51,14 @@ _LOOP_METRICS: dict[str, tuple[str, str]] = {
     "sensor:fan_pwm_duty_2":        ("sensor_fan_pwm_duty", "2"),
 }
 
+# Branch flow keys → (loop, branch) labels for sensor_flow_rate_branch.
+_BRANCH_FLOW_METRICS: dict[str, tuple[str, str]] = {
+    "sensor:flow_rate_1_1": ("1", "1"),
+    "sensor:flow_rate_1_2": ("1", "2"),
+    "sensor:flow_rate_2_1": ("2", "1"),
+    "sensor:flow_rate_2_2": ("2", "2"),
+}
+
 # Scalar (no loop label) sensor keys → metric name.
 _SCALAR_METRICS: dict[str, str] = {
     "sensor:water_level":      "sensor_water_level",
@@ -66,6 +74,7 @@ _HELP = {
     "sensor_fan_rpm":             "Fan speed (RPM, per-loop average)",
     "sensor_pump_pwm_duty":       "Pump PWM duty (%)",
     "sensor_fan_pwm_duty":        "Fan PWM duty (%)",
+    "sensor_flow_rate_branch":    "Per-branch coolant flow rate (L/min)",
     "sensor_water_level":         "Coolant level (2=HIGH 1=MIDDLE 0=LOW)",
     "sensor_ambient_temp":        "Device-internal temperature (°C)",
     "sensor_ambient_humidity":    "Device-internal humidity (% RH)",
@@ -116,6 +125,23 @@ class RedisCollector:
                 families[metric] = fam
             fam.add_metric([loop], val)
         yield from families.values()
+
+        # ── Branch flow gauges (sensor_flow_rate_branch{loop,branch}) ──
+        branch_keys = list(_BRANCH_FLOW_METRICS)
+        branch_fam = GaugeMetricFamily(
+            "sensor_flow_rate_branch", _HELP["sensor_flow_rate_branch"],
+            labels=["loop", "branch"],
+        )
+        emitted = False
+        for key, raw in zip(branch_keys, r.mget(branch_keys)):
+            val = _to_float(raw)
+            if val is None:
+                continue
+            loop, branch = _BRANCH_FLOW_METRICS[key]
+            branch_fam.add_metric([loop, branch], val)
+            emitted = True
+        if emitted:
+            yield branch_fam
 
         # ── Scalar gauges ──
         scalar_keys = list(_SCALAR_METRICS)

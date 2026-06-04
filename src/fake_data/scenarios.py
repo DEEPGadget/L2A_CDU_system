@@ -32,11 +32,19 @@ _NORMAL_BASE: dict[str, _Value] = {
     "sensor:coolant_temp_inlet_2":  (29.5, T.INLET_TEMP_NORMAL_LO,  T.INLET_TEMP_NORMAL_HI),
     "sensor:coolant_temp_outlet_1": (44.0, T.OUTLET_TEMP_WARN_LO,   T.OUTLET_TEMP_NORMAL_HI),
     "sensor:coolant_temp_outlet_2": (43.5, T.OUTLET_TEMP_WARN_LO,   T.OUTLET_TEMP_NORMAL_HI),
-    # Flow is a real measured sensor value (SIKA VVX, analogue voltage) —
-    # independent of pump duty. Simulated as a slow-drift sensor like the
-    # temperatures, NOT derived from pump_pwm_duty. Per-loop nominal ~45 LPM.
-    "sensor:flow_rate_1":           (45.0, 40.0, 50.0),
-    "sensor:flow_rate_2":           (44.0, 40.0, 50.0),
+    # Flow: 4 physical VVX15 sensors on AIN1~4 (2 parallel-branch sensors per
+    # loop). simulator.py publishes each branch as sensor:flow_rate_{loop}_{n}
+    # AND the per-loop total sensor:flow_rate_{loop} (sum), matching real-mode
+    # polling (Loop1=AIN1+AIN2, Loop2=AIN3+AIN4). These underscore keys are the
+    # internal branch drift state and are never published directly.
+    # Design reference (Pump spec.pdf §2.3 + assumed system resistance):
+    # per-branch UPPER BOUND ~35 LPM at 100% (Nmax) → loop ≤70 LPM. This is an
+    # ESTIMATE — actual flow is the pump∩system operating point, confirmed by
+    # the VVX15 reading at bring-up.
+    "_flow_l1_1":                   (30.0, 24.0, 35.0),
+    "_flow_l1_2":                   (30.0, 24.0, 35.0),
+    "_flow_l2_1":                   (29.0, 24.0, 35.0),
+    "_flow_l2_2":                   (29.0, 24.0, 35.0),
     "sensor:water_level":            "2",
     # NOTE: sensor:ph / sensor:conductivity are NOT measured in the current
     # PCB revision (no compatible sensors yet). They are intentionally NOT

@@ -16,20 +16,22 @@ Register map (docs/PCB.md "Modbus Registers"):
   - Input Register 25     : DIN Status (bit0~5) - water level / leak inputs
                              (bit assignment TBD until PCB bring-up;
                              currently published as raw integer only)
-  - Input Register 32~33  : ADC Voltage CH1/CH2 (0.01 V unit) - real flow
-                             sensor analogue output (SIKA VVX, 0.5~3.5 V).
-                             L1 = CH1 (IR 32), L2 = CH2 (IR 33).
+  - Input Register 32~35  : ADC Voltage CH1~4 (0.01 V unit) - real flow
+                             sensor analogue output (SIKA VVX15, 0.5~3.5 V),
+                             4 sensors on AIN1~4. Two per loop (parallel
+                             branches): Loop1 = AIN1+AIN2 (IR 32,33),
+                             Loop2 = AIN3+AIN4 (IR 34,35).
 
 Flow rate (PCB.md "유량 추정"):
-  Rev_C introduces real flow sensors on the PCB (one per loop at the
-  manifold confluence). The sensor (SIKA VVX20) emits a 0.5~3.5 V analogue
-  signal proportional to flow; it is wired to the PCB ADC voltage inputs
-  AIN1/AIN2 and read back as IR 32/33 (0.01 V). `_read_flow_lpm()` reads
-  those registers and applies the model-specific linear scaling. Flow is a
-  *measured* value — it is never derived from pump duty. It returns
-  (None, None) until `_FLOW_SENSOR_ENABLED` is flipped on at bring-up; while
-  it returns None the flow keys are simply not published (no fabricated
-  estimate — the UI shows no-data).
+  Rev_C introduces real flow sensors on the PCB. There are 4 sensors (one per
+  parallel pump branch); each loop has 2, summed to the loop's total flow.
+  Each SIKA VVX15 emits a 0.5~3.5 V analogue signal proportional to flow,
+  wired to ADC inputs AIN1~4 and read back as IR 32~35 (0.01 V).
+  `_read_flow_lpm()` converts each branch with the model-specific linear
+  scaling and sums the two branches per loop. Flow is a *measured* value —
+  never derived from pump duty. It returns (None, None) until
+  `_FLOW_SENSOR_ENABLED` is flipped on at bring-up; while it returns None the
+  flow keys are simply not published (the UI shows no-data, no fabrication).
 """
 
 from __future__ import annotations
@@ -112,57 +114,65 @@ def poll_once(pcb: PCB, r: redis.Redis) -> bool:
         # wiring is confirmed; for now keep the raw value reachable for ops.
         _publish(pipe, "sensor:din_raw", str(din[0]))
 
-    # 4. Flow rate per loop — real PCB flow sensor only (SIKA VVX, analogue
-    #    voltage on IR 32/33). Flow is a measured value; it is NOT derived from
-    #    pump duty. When the sensor is unavailable (_FLOW_SENSOR_ENABLED off, or
-    #    read failure) we publish nothing — the key keeps its last value / the
-    #    UI shows no-data rather than a fabricated estimate.
-    f1_real, f2_real = _read_flow_lpm(pcb)
-    if f1_real is not None and f2_real is not None:
-        _publish(pipe, K.SENSOR_FLOW_RATE_1, f"{f1_real:.1f}")
-        _publish(pipe, K.SENSOR_FLOW_RATE_2, f"{f2_real:.1f}")
+    # 4. Flow rate — real PCB flow sensors only (4× SIKA VVX15 on AIN1~4 =
+    #    IR 32~35). Publishes per-loop totals AND the 4 branch values:
+    #    Loop1 = AIN1+AIN2, Loop2 = AIN3+AIN4. Flow is measured, NOT derived
+    #    from pump duty. When sensors are unavailable (_FLOW_SENSOR_ENABLED off
+    #    or read failure) we publish nothing — UI shows no-data.
+    branches = _read_flow_lpm(pcb)
+    if branches is not None:
+        b11, b12, b21, b22 = branches
+        for (total_key, (b1_key, b2_key)), b1, b2 in (
+            (K.FLOW_LOOPS[0], b11, b12),
+            (K.FLOW_LOOPS[1], b21, b22),
+        ):
+            _publish(pipe, b1_key, f"{b1:.1f}")
+            _publish(pipe, b2_key, f"{b2:.1f}")
+            _publish(pipe, total_key, f"{b1 + b2:.1f}")
 
     pipe.execute()
     return True
 
 
-# ── Real flow sensor (SIKA VVX, analogue voltage output) ─────────────────────
+# ── Real flow sensors (4× SIKA VVX15, analogue voltage output) ───────────────
 # Config — see docs/PCB.md "유량 추정".
-# - Sensor outputs an analogue voltage proportional to flow (0.5~3.5 V),
-#   wired to the PCB ADC voltage inputs AIN1 (L1) / AIN2 (L2) and read back
-#   as IR 32 / IR 33 (0.01 V unit, e.g. 350 = 3.50 V).
-# - Linear scaling is model-specific (0.5 V = min flow, 3.5 V = max flow):
-#       VVX20 (cert):  0.5 V→5 LPM,  3.5 V→80 LPM  ->  flow = 25.0  * V - 7.5
-#       VVX15 (prod):  0.5 V→2 LPM,  3.5 V→40 LPM  ->  flow = 12.667 * V - 4.333
-# - Flip _FLOW_SENSOR_ENABLED = True once the physical sensor is installed
-#   and the ADC channels are confirmed at PCB bring-up; set _FLOW_MODEL to
-#   match the fitted sensor.
+# - 4 sensors on ADC inputs AIN1~4 = IR 32~35 (0.01 V unit, e.g. 350 = 3.50 V).
+#   Each loop has 2 parallel-branch sensors; the loop's total flow is their SUM:
+#       Loop 1 = AIN1 (IR 32) + AIN2 (IR 33)
+#       Loop 2 = AIN3 (IR 34) + AIN4 (IR 35)
+# - Per-sensor linear scaling (0.5 V = min flow, 3.5 V = max flow). Unified to
+#   VVX15 (cert + production):
+#       VVX15:  0.5 V→2 LPM,  3.5 V→40 LPM  ->  flow = 12.667 * V - 4.333
+#   (VVX20 kept for reference: 0.5 V→5, 3.5 V→80 -> flow = 25.0 * V - 7.5)
+# - Flip _FLOW_SENSOR_ENABLED = True once the sensors are installed and the ADC
+#   channels are confirmed at PCB bring-up.
 _FLOW_SENSOR_ENABLED = False
-_FLOW_VOLT_IR_BASE   = 32          # IR 32 = ADC voltage CH1 (L1), IR 33 = CH2 (L2)
-_FLOW_VOLT_COUNT     = 2
-_FLOW_MODEL          = "VVX20"     # "VVX20" (cert) | "VVX15" (production)
+_FLOW_VOLT_IR_BASE   = 32          # IR 32~35 = ADC voltage CH1~4 = AIN1~4
+_FLOW_VOLT_COUNT     = 4
+_FLOW_MODEL          = "VVX15"     # unified (cert + production)
 _FLOW_SCALE          = {           # (slope, intercept) for flow_lpm = slope*V + intercept
-    "VVX20": (25.0, -7.5),
     "VVX15": (12.667, -4.333),
+    "VVX20": (25.0, -7.5),
 }
 
 
-def _read_flow_lpm(pcb: PCB) -> tuple[float | None, float | None]:
-    """Read real per-loop flow rate (L1, L2) in LPM from the PCB ADC voltage input.
+def _read_flow_lpm(pcb: PCB) -> tuple[float, float, float, float] | None:
+    """Read the 4 branch flow rates (LPM) from the PCB ADC inputs IR 32~35.
 
-    Returns (None, None) until _FLOW_SENSOR_ENABLED is flipped on (sensor
-    installed + _FLOW_MODEL confirmed). The fallback in poll_once() then keeps
-    the duty-derived estimate.
+    Returns (b1_1, b1_2, b2_1, b2_2) — loop1 branches then loop2 branches
+    (AIN1, AIN2, AIN3, AIN4). poll_once() sums each loop's two branches.
+    Returns None until _FLOW_SENSOR_ENABLED is on, or on read failure.
     """
     if not _FLOW_SENSOR_ENABLED:
-        return (None, None)
+        return None
     raw = pcb.read_input_registers(_FLOW_VOLT_IR_BASE, _FLOW_VOLT_COUNT)
-    if raw is None:
-        return (None, None)
+    if raw is None or len(raw) < 4:
+        return None
     slope, intercept = _FLOW_SCALE[_FLOW_MODEL]
-    v1 = raw[0] / 100.0            # IR unit is 0.01 V
-    v2 = raw[1] / 100.0
-    # Clamp to 0: below the 0.5 V floor the linear fit goes negative (no flow).
-    f1 = max(0.0, slope * v1 + intercept)
-    f2 = max(0.0, slope * v2 + intercept)
-    return (f1, f2)
+
+    def _branch_lpm(reg: int) -> float:
+        # IR unit is 0.01 V; clamp ≥0 (below the 0.5 V floor the fit goes negative).
+        return max(0.0, slope * (reg / 100.0) + intercept)
+
+    return (_branch_lpm(raw[0]), _branch_lpm(raw[1]),
+            _branch_lpm(raw[2]), _branch_lpm(raw[3]))

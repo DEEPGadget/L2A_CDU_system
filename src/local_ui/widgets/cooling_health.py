@@ -163,6 +163,7 @@ _DEFAULT_VALUES: dict[str, str] = {
     "FAN_DUTY_1": "--", "FAN_DUTY_2": "--",
     "FAN_RPM_1": "--", "FAN_RPM_2": "--",
     "FLOW_1": "--", "FLOW_2": "--",
+    "FLOW_1_1": "--", "FLOW_1_2": "--", "FLOW_2_1": "--", "FLOW_2_2": "--",
     "WATER_LEVEL": "--",
     # pH / Conductivity not measured in current PCB revision (LTS v1).
     "PH": "-", "CONDUCTIVITY": "-",
@@ -197,6 +198,10 @@ _KEY_TO_PLACEHOLDER: dict[str, str] = {
     "sensor:fan_rpm_2":             "FAN_RPM_2",
     "sensor:flow_rate_1":           "FLOW_1",
     "sensor:flow_rate_2":           "FLOW_2",
+    "sensor:flow_rate_1_1":         "FLOW_1_1",
+    "sensor:flow_rate_1_2":         "FLOW_1_2",
+    "sensor:flow_rate_2_1":         "FLOW_2_1",
+    "sensor:flow_rate_2_2":         "FLOW_2_2",
     "sensor:water_level":           "WATER_LEVEL",
     # sensor:ph / sensor:conductivity intentionally unmapped — not measured
     # in current PCB revision. Placeholders {PH} / {CONDUCTIVITY} stay at "-".
@@ -331,13 +336,12 @@ class CoolingHealthWidget(QWidget):
         if self._current_mode != "manual":
             return
         current = self._current_duty.get(slot, 0)
-        # Operational lower bound per actuator (see PCB.md "Flow estimation" +
-        # Fan spec review):
-        #   pump: 20% (= pump_input 17% Nmin, MCG maps with 0.85x factor)
+        # Operational lower bound per actuator (see PCB.md "UI / MCG duty 매핑"):
+        #   pump: 0% = stop; 1~100% maps to pump 17~85% (Nmin~Nmax)
         #   fan:  10% (spec allows 0-100%, operational guideline only)
         is_pump = slot.startswith("pump")
-        min_value = 20 if is_pump else 10
-        title_suffix = " - Pump (>=20%)" if is_pump else " - Fan (>=10%)"
+        min_value = 0 if is_pump else 10
+        title_suffix = " - Pump (0=stop)" if is_pump else " - Fan (>=10%)"
         dlg = NumpadDialog(current, parent=self,
                            min_value=min_value, max_value=100,
                            title_suffix=title_suffix)

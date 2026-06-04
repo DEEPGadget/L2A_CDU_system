@@ -14,9 +14,9 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 # Operational lower bounds (docs/auto_control.md "L2A UI lower bounds"):
-#   pump_input 17 % Nmin via 0.85x mapping -> UI 20 %  -> 200 raw
+#   pump: UI 0 % = stop (MCG maps to 12 % stop band); 1~100 % -> 17~85 % -> raw 0 allowed
 #   fan operational guideline                          -> UI 10 %  -> 100 raw
-PUMP_DUTY_MIN_RAW = 200
+PUMP_DUTY_MIN_RAW = 0
 FAN_DUTY_MIN_RAW  = 100
 DUTY_MAX_RAW      = 1000
 
