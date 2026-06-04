@@ -1,5 +1,3 @@
-mode: real   # fake | real
-
 # ── Modbus RTU (PCB connection, MCS_IO Board REV_C) ───────────────────────────
 # PCB DIP switches expected: DIP 6 ON (115200 baud), DIP 1~5 OFF (slave ID = 1)
 # Interface candidates -- tried in order, first responding port is used:

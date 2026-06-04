@@ -95,6 +95,6 @@ RedisSubscriber (QThread)
 | File | Role |
 |---|---|
 | `src/thresholds.py` | Sensor threshold constants (single source of truth for alarm boundaries) |
-| `src/config.py` | App mode loader (`fake` / `real`) from `config/config.yaml` |
+| `src/config.py` | Config loader (modbus / loop) from `config/config.yaml` |
 | `docs/UI_Design.md` | UI layout spec, design principles, component data mapping |
 | `docs/threshold.md` | Human-readable threshold reference and code update pipeline |

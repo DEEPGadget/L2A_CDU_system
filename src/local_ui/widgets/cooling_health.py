@@ -10,7 +10,7 @@ Color placeholders: {INLET_1_C}, {OUTLET_1_C}, etc.
 
 Pump/Fan inline control:
   Transparent QPushButton overlays are positioned over the SVG.
-  Tapping opens NumpadDialog → Apply sends to Redis (fake) or MCG (real).
+  Tapping opens NumpadDialog → Apply writes the duty to Redis; MCG applies it.
 
   Mode gating (docs/UI_Design.md §1-1):
     - Manual mode: overlays enabled, {GEAR} placeholder → "⚙"
@@ -234,9 +234,9 @@ class CoolingHealthWidget(QWidget):
     def _load_initial_values(self) -> None:
         """Read current sensor values from Redis on startup.
 
-        Pub/Sub is fire-and-forget: if the simulator's initial publish fires
-        before the subscriber connects, the message is lost. Duty keys are
-        never re-published after init, so a direct GET is used as a fallback.
+        Pub/Sub is fire-and-forget: if MCG's publish fires before the
+        subscriber connects, the message is lost. Duty keys are not re-published
+        every cycle, so a direct GET is used as a fallback on mount.
         """
         try:
             sensor_keys = list(_KEY_TO_PLACEHOLDER.keys())

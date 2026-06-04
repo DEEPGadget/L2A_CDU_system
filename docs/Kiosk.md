@@ -20,7 +20,6 @@
 | redis-server 서비스 | 3.4 | ✅ 완료 | enabled |
 | prometheus 서비스 | 3.4 | ✅ 완료 | enabled |
 | pushgateway 서비스 | 3.4 | ✅ 완료 | |
-| cdu-fake-simulator 서비스 | — | ✅ 완료 | fake 모드 전용 |
 | **cdu-local-ui 서비스 (X+UI 직접 기동)** | 3.1 | ✅ 완료 | xinit으로 X 서버 + 세션 스크립트 동시 실행 |
 | MCG 서비스 | 3.2 | ❌ 미완 | 서비스 파일 없음 (real 모드 구현 시 추가 예정) |
 | FastAPI 서비스 | 3.3 | ❌ 미완 | 서비스 파일 없음 |
@@ -233,7 +232,6 @@ sudo systemctl daemon-reload
 | Prometheus | apt 패키지 — systemd 자동 등록 | `prometheus` |
 | Pushgateway | 수동 설치 — systemd 등록 필요 | 바이너리: `/home/gadgetini/pushgateway/pushgateway` |
 | **cdu-local-ui** | 레포 → 배포 (섹션 3.1) | **xinit으로 X 서버 + PySide6 동시 기동** |
-| cdu-fake-simulator | 레포 → 배포 | fake 모드 전용 시뮬레이터 |
 | MCG | 수동 등록 (섹션 3.2) | real 모드 구현 시 |
 | FastAPI | 수동 등록 (섹션 3.3) | 원격 WEB UI 접속용 |
 
@@ -416,7 +414,7 @@ sudo systemctl enable fastapi.service   # WEB UI 사용 시
     ├─ redis-server.service
     ├─ prometheus.service
     ├─ pushgateway.service
-    ├─ cdu-fake-simulator.service (fake 모드) 또는 mcg.service (real 모드)
+    ├─ cdu-mcg.service (Modbus Control Gateway)
     ├─ fastapi.service (원격 WEB UI 접속용)
     └─ plymouth-quit.service → plymouth quit --retain-splash
                               (스플래시 이미지가 프레임버퍼에 잔류)
@@ -444,7 +442,7 @@ sudo systemctl enable fastapi.service   # WEB UI 사용 시
 | UI 실행 | `scripts/cdu_session.sh`의 PySide6 while 루프 (`xinit`이 실행) |
 | 앱 재시작 | 세션 스크립트 while 루프 (X 서버 유지, 앱만 2초 후 재시작) |
 | 서비스 재시작 | systemd `Restart=always` (X 서버 자체가 죽은 경우만) |
-| 백엔드 서비스 | Redis, Prometheus, Pushgateway, cdu-fake-simulator(또는 MCG), FastAPI |
+| 백엔드 서비스 | Redis, Prometheus, cdu-mcg, cdu-exporter, FastAPI |
 | 화면 절전 비활성화 | xset (세션 스크립트) |
 | 커서 숨김 | unclutter (세션 스크립트) + `xinit -nocursor` |
 | 부트 스플래시 | Plymouth (l2a-cdu 테마, 로고 중앙 배치, 배경 검정) |

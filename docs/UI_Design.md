@@ -97,7 +97,7 @@
 | Fan Loop1 | 〃 | 〃 | 〃 | 〃 |
 | Fan Loop2 | 〃 | 〃 | 〃 | 〃 |
 
-> **Manual 모드 조작 흐름**: 다이어그램 내 Pump/Fan 노드 탭 (`⚙` 표시로 편집 가능 인지) → 숫자 키패드 팝업 (0–100, Range validation) → 입력 후 **Apply** → MCG 전송 (real mode) / Redis 직접 쓰기 (fake mode) → SVG 값 갱신.
+> **Manual 모드 조작 흐름**: 다이어그램 내 Pump/Fan 노드 탭 (`⚙` 표시로 편집 가능 인지) → 숫자 키패드 팝업 (0–100, Range validation) → 입력 후 **Apply** → Redis duty 키 SET (MCG 가 다음 cycle 에 PCB 적용) → SVG 값 갱신.
 > PySide6 구현: `QSvgWidget` 위에 투명 `QPushButton` 오버레이 (절대 위치), 팝업은 `QDialog` + `QGridLayout` 키패드.
 >
 > **Auto 모드**: 오버레이 버튼 비활성 (`setEnabled(False)`), `⚙` 아이콘 숨김 (SVG 템플릿의 `{GEAR}` 플레이스홀더가 `""`로 치환). `_apply_duty()` 진입부에 mode guard를 두어 혹시 탭 이벤트가 들어와도 Redis write 차단. PWM 값은 MCG가 자동 계산한 값이 실시간 표시됨 (읽기 전용).

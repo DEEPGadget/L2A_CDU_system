@@ -5,7 +5,6 @@ Keep in sync with docs/threshold.md whenever values change.
 
 Referenced by:
   - src/local_ui/widgets/cooling_health.py  (UI color logic)
-  - src/fake_data/scenarios.py              (simulator drift ranges)
 """
 
 # ── Coolant Temperature — Inlet ───────────────────────────────────────────────

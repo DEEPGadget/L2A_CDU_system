@@ -3,7 +3,7 @@
 Subscribes to:
   - Pub/Sub channels  : sensor:*, comm:*, control:* (mode + fan_curve:update +
                         pump_duty:update — for cross-UI settings sync with the
-                        Web UI; simulator publishes sensor:*/comm:*)
+                        Web UI; MCG publishes sensor:*/comm:* each poll cycle)
   - Keyspace events   : __keyevent@0__:set, __keyevent@0__:del
                         (used to detect alarm:* key creation / deletion)
 

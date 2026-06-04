@@ -1,8 +1,8 @@
 """Application config loader.
 
 Reads config/config.yaml from the project root and exposes typed accessors.
-get_config() / get_modbus_config() / get_loop_config() are all cached
-(lru_cache(1)) from the same file read.
+get_modbus_config() / get_loop_config() are cached (lru_cache(1)) from the
+same file read.
 """
 
 from __future__ import annotations
@@ -10,17 +10,11 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Literal
 
 import yaml
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _CONFIG_PATH = os.path.join(_PROJECT_ROOT, "config", "config.yaml")
-
-
-@dataclass(frozen=True)
-class AppConfig:
-    mode: Literal["fake", "real"]
 
 
 @dataclass(frozen=True)
@@ -46,15 +40,6 @@ class LoopConfig:
 def _load_raw() -> dict:
     with open(_CONFIG_PATH, "r") as f:
         return yaml.safe_load(f) or {}
-
-
-@lru_cache(maxsize=1)
-def get_config() -> AppConfig:
-    data = _load_raw()
-    mode = data.get("mode", "fake")
-    if mode not in ("fake", "real"):
-        raise ValueError(f"config.yaml: invalid mode '{mode}'. Must be 'fake' or 'real'.")
-    return AppConfig(mode=mode)
 
 
 @lru_cache(maxsize=1)

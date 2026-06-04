@@ -2,7 +2,7 @@
 
 센서별 Normal / Warning / Critical 임계값 정의.
 
-코드 반영: `src/thresholds.py` — 이 파일의 상수를 수정하면 UI 색상 판정(`cooling_health.py`)과 시뮬레이터(`scenarios.py`)에 자동 반영.
+코드 반영: `src/thresholds.py` — 이 파일의 상수를 수정하면 UI 색상 판정(`cooling_health.py`)에 자동 반영.
 
 ---
 

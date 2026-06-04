@@ -12,7 +12,6 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SERVICES_SRC="$PROJECT_ROOT/scripts/services"
 SERVICES_DST="/etc/systemd/system"
-CONFIG_FILE="$PROJECT_ROOT/config/config.yaml"
 USER="gadgetini"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -23,18 +22,6 @@ die()  { echo "[install] ERROR: $*" >&2; exit 1; }
 
 require_root() {
     [ "$EUID" -eq 0 ] || die "Run with sudo: sudo bash $0"
-}
-
-read_mode() {
-    # Simple grep (PyYAML may not be installed for sudo's system python3).
-    # config.yaml top-level `mode:` is always a single token, no quoting.
-    if [ -f "$CONFIG_FILE" ]; then
-        local m
-        m=$(grep -E '^mode:' "$CONFIG_FILE" | awk '{print $2}' | tr -d "'\"")
-        echo "${m:-fake}"
-    else
-        echo "fake"
-    fi
 }
 
 # ── Install ───────────────────────────────────────────────────────────────────
@@ -63,16 +50,14 @@ do_install() {
         nginx \
         2>/dev/null || warn "apt-get failed — install packages manually if needed"
 
-    MODE=$(read_mode)
-    log "Config mode: $MODE"
-
     # Web UI frontend build (best-effort; backend still works without it).
     build_web_frontend
 
-    # Always install web backend + local UI (kiosk) + exporter services
+    # Install services: web backend + local UI (kiosk) + exporter + MCG.
     install_service "cdu-web-backend.service"
     install_service "cdu-local-ui.service"
     install_service "cdu-exporter.service"
+    install_service "cdu-mcg.service"
 
     # Pushgateway: only install if its binary actually exists. The pushgateway
     # binary is not implemented yet (see docs / memory), so enabling the
@@ -84,15 +69,6 @@ do_install() {
         warn "Pushgateway binary missing ($PUSHGATEWAY_BIN) — skipping service (re-run install once implemented)."
     fi
 
-    # Mode-specific services
-    if [ "$MODE" = "fake" ]; then
-        install_service "cdu-fake-simulator.service"
-        log "Fake simulator service installed."
-    else
-        install_service "cdu-mcg.service"
-        log "MCG service installed."
-    fi
-
     systemctl daemon-reload
     log "systemd daemon reloaded."
 
@@ -100,13 +76,8 @@ do_install() {
     enable_service "cdu-web-backend.service"
     enable_service "cdu-local-ui.service"
     enable_service "cdu-exporter.service"
+    enable_service "cdu-mcg.service"
     [ -x "$PUSHGATEWAY_BIN" ] && enable_service "pushgateway.service"
-
-    if [ "$MODE" = "fake" ]; then
-        enable_service "cdu-fake-simulator.service"
-    else
-        enable_service "cdu-mcg.service"
-    fi
 
     # Kiosk: the X session + PySide6 UI is managed by cdu-local-ui.service
     # (xinit -> scripts/cdu_session.sh). No .bash_profile/.xinitrc needed.
@@ -117,11 +88,7 @@ do_install() {
     log ""
     log "Installation complete."
     log "Web UI:  http://<rpi-ip>/   (also http://<rpi-ip>:8000/ direct)"
-    if [ "$MODE" = "fake" ]; then
-        log "Start: sudo systemctl start cdu-fake-simulator"
-    else
-        log "Start: sudo systemctl start cdu-mcg"
-    fi
+    log "Start: sudo systemctl start cdu-mcg"
 }
 
 build_web_frontend() {
@@ -188,7 +155,7 @@ install_nginx() {
 # ── Status ────────────────────────────────────────────────────────────────────
 
 do_status() {
-    for svc in pushgateway.service cdu-fake-simulator.service cdu-mcg.service cdu-local-ui.service cdu-web-backend.service cdu-exporter.service; do
+    for svc in pushgateway.service cdu-mcg.service cdu-local-ui.service cdu-web-backend.service cdu-exporter.service; do
         echo "─── $svc ───────────────────────────"
         systemctl status "$svc" --no-pager -l 2>/dev/null || echo "  (not installed)"
     done
@@ -198,7 +165,7 @@ do_status() {
 
 do_stop() {
     require_root
-    for svc in cdu-fake-simulator.service cdu-mcg.service cdu-web-backend.service cdu-local-ui.service cdu-exporter.service; do
+    for svc in cdu-mcg.service cdu-web-backend.service cdu-local-ui.service cdu-exporter.service; do
         systemctl stop "$svc" 2>/dev/null && log "Stopped $svc" || warn "$svc not running"
     done
 }
@@ -207,7 +174,7 @@ do_stop() {
 
 do_remove() {
     require_root
-    for svc in cdu-fake-simulator.service cdu-mcg.service pushgateway.service cdu-web-backend.service cdu-local-ui.service cdu-exporter.service; do
+    for svc in cdu-mcg.service pushgateway.service cdu-web-backend.service cdu-local-ui.service cdu-exporter.service; do
         systemctl stop    "$svc" 2>/dev/null || true
         systemctl disable "$svc" 2>/dev/null || true
         rm -f "$SERVICES_DST/$svc"

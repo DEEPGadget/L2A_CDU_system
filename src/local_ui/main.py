@@ -1,15 +1,14 @@
 """Local UI entry point.
 
 Startup sequence:
-  1. Load config/config.yaml → confirm mode
-  2. Enable Redis keyspace notifications (required for alarm:* events)
-  3. Seed startup defaults via SETNX (UI owns control state; preserved across
+  1. Enable Redis keyspace notifications (required for alarm:* events)
+  2. Seed startup defaults via SETNX (UI owns control state; preserved across
      restarts): mode=manual, pump UI 78 % (≈ PWM 70 %), fan 100 %
-  4. Start RedisSubscriber thread
-  5. Build MainWindow (TopBar + QStackedWidget[Monitoring, History, Settings])
-  6. Wire signals from RedisSubscriber → widgets
-  7. Show window (fullscreen on RPi, normal window on desktop)
-  8. On exit: stop subscriber thread
+  3. Start RedisSubscriber thread
+  4. Build MainWindow (TopBar + QStackedWidget[Monitoring, History, Settings])
+  5. Wire signals from RedisSubscriber → widgets
+  6. Show window (fullscreen on RPi, normal window on desktop)
+  7. On exit: stop subscriber thread
 
 Run:
     python src/local_ui/main.py
@@ -36,7 +35,6 @@ from PySide6.QtWidgets import (
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from src.config import get_config
 from src.local_ui.pages.history_page import HistoryPage
 from src.local_ui.pages.monitoring_page import MonitoringPage
 from src.local_ui.pages.settings_page import SettingsPage
@@ -167,8 +165,7 @@ class MainWindow(QMainWindow):
 
 def main() -> None:
     _phase("main() entered")
-    cfg = get_config()
-    log.info("Starting local UI — mode=%s", cfg.mode)
+    log.info("Starting local UI")
 
     r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
     _enable_keyspace_notifications(r)

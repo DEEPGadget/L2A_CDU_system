@@ -2,8 +2,6 @@
 
 Boot sequence:
   1. Load config/config.yaml
-     - mode must be "real" (otherwise exit 1 so systemd Restart=on-failure
-       does not loop)
      - read modbus port/baud/slave/timeout + loop cycle/comm thresholds
   2. Connect to Redis
   3. Try each Modbus serial port in config order; first one that responds
@@ -28,7 +26,7 @@ import redis
 # Allow running directly: python src/mcg/main.py
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from src.config import get_config, get_loop_config, get_modbus_config
+from src.config import get_loop_config, get_modbus_config
 from src.mcg import redis_keys as K
 from src.mcg.main_loop import run as run_main_loop
 from src.mcg.modbus_client import open_pcb
@@ -46,12 +44,6 @@ REDIS_DB = 0
 
 def main() -> int:
     t0 = time.monotonic()
-
-    cfg = get_config()
-    if cfg.mode != "real":
-        log.info("config.mode is '%s', not 'real'. MCG exits without starting.",
-                 cfg.mode)
-        return 1
 
     modbus_cfg = get_modbus_config()
     loop_cfg = get_loop_config()
