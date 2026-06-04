@@ -3,8 +3,8 @@
 Startup sequence:
   1. Load config/config.yaml → confirm mode
   2. Enable Redis keyspace notifications (required for alarm:* events)
-  3. Initialise control:mode to "auto" via SETNX (UI owns mode key; preserves
-     user's prior manual/auto selection across restarts)
+  3. Seed startup defaults via SETNX (UI owns control state; preserved across
+     restarts): mode=manual, pump UI 78 % (≈ PWM 70 %), fan 100 %
   4. Start RedisSubscriber thread
   5. Build MainWindow (TopBar + QStackedWidget[Monitoring, History, Settings])
   6. Wire signals from RedisSubscriber → widgets
@@ -72,18 +72,30 @@ def _enable_keyspace_notifications(r: redis.Redis) -> None:
         log.warning("Could not enable keyspace notifications: %s", e)
 
 
+# Default startup driving condition (SETNX — first boot only, preserved after):
+#   mode = manual, pump UI 78 % (≈ pump PWM 70 %), fan 100 %.
+_STARTUP_DEFAULTS = {
+    "control:mode": "manual",
+    "sensor:pump_pwm_duty_1": "78",
+    "sensor:pump_pwm_duty_2": "78",
+    "sensor:fan_pwm_duty_1": "100",
+    "sensor:fan_pwm_duty_2": "100",
+}
+
+
 def _init_control_mode(r: redis.Redis) -> None:
-    # SETNX: first-ever boot → "auto"; subsequent restarts preserve user choice.
+    # SETNX: first-ever boot seeds the default driving condition (manual,
+    # pump 78 %, fan 100 %); subsequent restarts preserve the user's last choice.
     try:
-        created = r.set("control:mode", "auto", nx=True)
+        for key, value in _STARTUP_DEFAULTS.items():
+            if r.set(key, value, nx=True):
+                r.publish(key, value)
+                log.info("startup default %s = %s (key was absent).", key, value)
         current = r.get("control:mode")
         current = current.decode() if isinstance(current, bytes) else current
-        if created:
-            log.info("control:mode initialised to 'auto' (key was absent).")
-        else:
-            log.info("control:mode already set to '%s' — preserved.", current)
+        log.info("control:mode = '%s'", current)
     except Exception as e:
-        log.warning("Could not initialise control:mode: %s", e)
+        log.warning("Could not initialise startup defaults: %s", e)
 
 
 class MainWindow(QMainWindow):

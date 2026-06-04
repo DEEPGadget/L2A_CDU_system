@@ -37,11 +37,11 @@ UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서
 
 | 모드 | 동작 | 진입 |
 |---|---|---|
-| **Manual** | UI 가 Redis duty 키 (`sensor:pump_pwm_duty_x`, `sensor:fan_pwm_duty_x`) 에 직접 SET → 메인 루프가 다음 cycle 에서 직전 cycle 값과 비교 후 변경분만 Modbus Write + Polling | UI 요청 (모드 전환) |
-| **Auto** (기본값) | Polling 후 알고리즘으로 PWM 결정 → Write | UI 요청 (모드 전환) |
+| **Manual** (기동 default) | UI 가 Redis duty 키 (`sensor:pump_pwm_duty_x`, `sensor:fan_pwm_duty_x`) 에 직접 SET → 메인 루프가 다음 cycle 에서 직전 cycle 값과 비교 후 변경분만 Modbus Write + Polling | UI 요청 (모드 전환) |
+| **Auto** | Polling 후 알고리즘으로 PWM 결정 → Write | UI 요청 (모드 전환) |
 | **Emergency** | TODO — 시스템 안정화 후 설계 | TODO |
 
-> `control:mode` key 초기화는 **UI 서비스 담당**. UI 최초 기동 시 key가 비어있으면 `auto`로 SETNX. MCG는 mode key에 쓰지 않고 읽기만 함 (mode 관리 주체 = UI).
+> `control:mode` key 초기화는 **UI 서비스 담당**. UI 최초 기동 시 key가 비어있으면 `manual`로 SETNX (기동 default = manual + Pump UI 78 % + Fan 100 %, §7). 이후 재시작은 사용자 마지막 값 보존. MCG는 mode key에 쓰지 않고 읽기만 함.
 
 ### 전환 규칙
 
@@ -182,23 +182,17 @@ sequenceDiagram
 
 ## 7. 서비스 초기화
 
-PCB 펌웨어에 초기값 Flash 저장이 미구현이므로, MCG 시작 시 config.yaml에서 로드한 값을 PCB에 Write.
+**기동 default 구동 조건 (manual 모드)**: 시스템 시작 시 **manual 모드 + Pump UI 78 % (≈ PWM 70 %) + Fan 100 %**. Redis `control:*` / `sensor:*_duty_*` 는 persistent 라, 최초 부팅에 Local UI 가 SETNX 로 시드하고([src/local_ui/main.py](../src/local_ui/main.py) `_STARTUP_DEFAULTS`) 이후 재시작은 사용자 마지막 값을 보존. manual 모드라 MCG 는 매 cycle `sensor:*_pwm_duty_*` 를 읽어 PCB write.
 
-| 대상 | HR 주소 | 초기값 | 비고 |
+| 대상 | HR 주소 | 기동 default | 비고 |
 |---|---|---|---|
-| Pump L1 PWM (P1) | Holding Register 8 | **60 %** (DGX A100 최소 40 % + 기동 여유 20 %) | CH9, TIM8 (1 kHz 운용), L1 병렬 P1 |
-| Pump L1 PWM (P2) | Holding Register 9 | **60 %** (L1과 동일 값) | CH10, TIM8 (1 kHz 운용), L1 병렬 P2 |
-| Pump L2 PWM (P3) | Holding Register 10 | **60 %** | CH11, TIM8 (1 kHz 운용), L2 병렬 P3 |
-| Pump L2 PWM (P4) | Holding Register 11 | **60 %** (L2와 동일 값) | CH12, TIM8 (1 kHz 운용), L2 병렬 P4 |
-| Fan L1 PWM | Holding Register 4~5 (2ch burst) | **15 %** (저속 기동, PID 수렴 대기) | CH5~6, TIM2 (25 kHz 운용). 그룹 내 동일 duty. |
-| Fan L2 PWM | Holding Register 6~7 (2ch burst) | **15 %** | CH7~8, TIM2 (25 kHz 운용). 그룹 내 동일 duty. |
-| PWM Freq (TIM2) | Holding Register 13 | **25000 (Hz)** — MCG 시작 시 write | 팬 CH 5~8. Flash 기본 1 kHz 를 25 kHz 로 끌어올림 (Cooltron 팬 정격). |
-| PWM Freq (TIM8) | Holding Register 14 | **1000 (Hz)** — MCG 시작 시 write (idempotent) | 펌프 CH 9~12. Flash 기본 1 kHz 와 동일하지만 명시 write 로 회복성 확보 (Johnson eModule typical). |
+| Pump L1/L2 PWM (P1~P4) | HR 8~11 | **UI 78 %** → HR round((17+0.68×78)×10)=**700 (PWM 70 %)** | TIM8 (1 kHz). 루프당 2채널 동일 duty |
+| Fan L1/L2 PWM | HR 4~7 (2ch burst) | **UI 100 %** → HR **1000 (PWM 100 %)** | TIM2 (25 kHz). 그룹 내 동일 duty |
+| PWM Freq (TIM2) | HR 13 | **25000 (Hz)** — MCG 시작 시 write | 팬 CH 5~8. Flash 기본 1 kHz 를 25 kHz 로 (Cooltron 팬 정격). |
+| PWM Freq (TIM8) | HR 14 | **1000 (Hz)** — MCG 시작 시 write (idempotent) | 펌프 CH 9~12 (Johnson eModule typical). |
 
-> 듀티 register 포맷: 0~1000 (0.1 % 단위, Active Low) — 예: 60 % = 600, 15 % = 150. 주파수 register 포맷은 kHz 정수 (MCS_BE 매뉴얼 확인 필요).
-> 펌프 60 % 는 UI 도메인 값. MCG 가 PCB write 시 [PCB.md "UI / MCG duty 매핑"](PCB.md) 적용 → HR = round((17+0.68×60)×10) = **578 (57.8 %)**.
-> Fan 15 % 초기값은 L2A UI 운용 하한 10 % 위로 유효. 기동 직후 Auto 루프 첫 cycle 에서 PI 출력값으로 덮어써짐.
-> 전원 재인가 시 MCG 재시작(systemd Restart=always)으로 초기값 자동 적용. 초기값 자체는 `config.yaml`이 source of truth.
+> 듀티 register 포맷: 0~1000 (0.1 % 단위) — UI % ×10. 펌프는 [PCB.md "UI / MCG duty 매핑"](PCB.md) 적용(UI 78 → PWM 70 %). 주파수 register 는 Hz 정수 (MCS_BE 매뉴얼 확인 필요).
+> PWM 주파수는 MCG main.py 가 매 부팅 write. duty/mode default 는 Local UI SETNX (persistent → 사용자 변경 보존). 전원 재인가 시 systemd Restart=always 로 서비스 자동 복귀.
 
 ---
 

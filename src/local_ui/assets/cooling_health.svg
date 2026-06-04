@@ -195,17 +195,17 @@
   <text x="975" y="414" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#555555">1 : {FLOW_2_1}</text>
   <text x="975" y="435" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#555555">2 : {FLOW_2_2}</text>
 
-  <!-- ── Fan+Radiator L1 (cx=1175) — 수치 하향: duty 를 매니폴드 값선(240)에 정렬 ── -->
-  <text x="1175" y="120" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Fan +</text>
-  <text x="1175" y="145" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Radiator</text>
-  <text x="1175" y="198" text-anchor="middle" font-family="sans-serif" font-size="30" fill="#000000">{FAN_RPM_1}<tspan dx="6" font-size="18"> RPM</tspan></text>
-  <text x="1175" y="240" text-anchor="middle" font-family="sans-serif" font-size="38" fill="#000000">{FAN_DUTY_1}<tspan dx="6" font-size="20"> %</tspan></text>
-  <text x="1175" y="274" text-anchor="middle" font-family="sans-serif" font-size="32" fill="#2980b9">{GEAR}</text>
-  <!-- ── Fan+Radiator L2 (duty 를 매니폴드 값선(420)에 정렬) ── -->
-  <text x="1175" y="335" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Fan +</text>
-  <text x="1175" y="360" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Radiator</text>
-  <text x="1175" y="388" text-anchor="middle" font-family="sans-serif" font-size="30" fill="#000000">{FAN_RPM_2}<tspan dx="6" font-size="18"> RPM</tspan></text>
-  <text x="1175" y="420" text-anchor="middle" font-family="sans-serif" font-size="38" fill="#000000">{FAN_DUTY_2}<tspan dx="6" font-size="20"> %</tspan></text>
-  <text x="1175" y="454" text-anchor="middle" font-family="sans-serif" font-size="32" fill="#2980b9">{GEAR}</text>
+  <!-- ── Fan+Radiator L1 (cx=1175) — 제목 원위치, 값(RPM/duty/gear) y+12 하향 ── -->
+  <text x="1175" y="95" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Fan +</text>
+  <text x="1175" y="120" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Radiator</text>
+  <text x="1175" y="177" text-anchor="middle" font-family="sans-serif" font-size="30" fill="#000000">{FAN_RPM_1}<tspan dx="6" font-size="18"> RPM</tspan></text>
+  <text x="1175" y="222" text-anchor="middle" font-family="sans-serif" font-size="38" fill="#000000">{FAN_DUTY_1}<tspan dx="6" font-size="20"> %</tspan></text>
+  <text x="1175" y="270" text-anchor="middle" font-family="sans-serif" font-size="40" fill="#2980b9">{GEAR}</text>
+  <!-- ── Fan+Radiator L2 ── -->
+  <text x="1175" y="355" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Fan +</text>
+  <text x="1175" y="380" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#000000">Radiator</text>
+  <text x="1175" y="437" text-anchor="middle" font-family="sans-serif" font-size="30" fill="#000000">{FAN_RPM_2}<tspan dx="6" font-size="18"> RPM</tspan></text>
+  <text x="1175" y="482" text-anchor="middle" font-family="sans-serif" font-size="38" fill="#000000">{FAN_DUTY_2}<tspan dx="6" font-size="20"> %</tspan></text>
+  <text x="1175" y="530" text-anchor="middle" font-family="sans-serif" font-size="40" fill="#2980b9">{GEAR}</text>
 
 </svg>

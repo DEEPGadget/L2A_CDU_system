@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/control", tags=["control"])
 
 _DEFAULT_FAN_CURVE = {"min_temp": 25, "max_temp": 60, "min_duty": 100, "max_duty": 1000}
 _DEFAULT_PUMP_DUTY = 600
-_DEFAULT_MODE = "auto"
+_DEFAULT_MODE = "manual"   # startup default (see local_ui _STARTUP_DEFAULTS)
 
 
 @router.get("")

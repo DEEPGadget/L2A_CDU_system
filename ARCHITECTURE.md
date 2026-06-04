@@ -109,7 +109,7 @@
 - UI 명령은 Redis 키에 SET (예: `sensor:pump_pwm_duty_x`, `control:mode`, `control:auto`) → 메인 루프가 다음 cycle 에서 변경분 픽업 후 Modbus Write. 별도 큐/IPC 소켓 없음.
 - **제어 모드 (Manual / Auto)**:
   - **Manual**: 사람이 UI에서 Pump/Fan PWM을 직접 설정. 시스템은 감지·알람만 담당.
-  - **Auto** (기본값): MCG가 냉각수온·유량 기반으로 지정된 알고리즘에 의해 Pump/Fan PWM을 자동 계산 → Modbus write. 사람은 모드 전환·모니터링 담당.
+  - **Auto**: MCG가 냉각수온·유량 기반으로 지정된 알고리즘에 의해 Pump/Fan PWM을 자동 계산 → Modbus write. 사람은 모드 전환·모니터링 담당. (**기동 default 는 Manual + Pump UI 78 % / Fan 100 %** — MCG.md §7)
   - 모드 전환은 UI 요청으로만 발생
   - 현재 모드는 Redis `control:mode` 키로 관리 (`manual` / `auto` / `emergency`). 쓰기 주체는 UI 서비스 (최초 기동 시 `auto`로 SETNX, 이후 토글 시 직접 SET). MCG는 읽기만 함.
   - MCG가 제어 주체. PCB는 단순 R/W Slave (OP_MODE/Watchdog 미구현 — 향후 펌웨어 업데이트 필요)
