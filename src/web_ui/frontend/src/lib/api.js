@@ -18,7 +18,7 @@ export const api = {
   getControl()                  { return request('/api/control'); },
   putMode(mode)                 { return request('/api/control/mode',      { method: 'PUT', body: JSON.stringify({ mode }) }); },
   putFanCurve(fanCurve)         { return request('/api/control/fan_curve', { method: 'PUT', body: JSON.stringify(fanCurve) }); },
-  putPumpDuty(duty)             { return request('/api/control/pump_duty', { method: 'PUT', body: JSON.stringify({ duty }) }); },
+  putPumpDuty(payload)         { return request('/api/control/pump_duty', { method: 'PUT', body: JSON.stringify(payload) }); },
   // Manual per-actuator PWM duty (UI %). Pass any subset: {pump_1,pump_2,fan_1,fan_2}
   putDuty(duty)                 { return request('/api/control/duty',      { method: 'PUT', body: JSON.stringify(duty) }); },
   getState()                    { return request('/api/state'); },

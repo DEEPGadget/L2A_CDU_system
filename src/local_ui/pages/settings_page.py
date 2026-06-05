@@ -45,7 +45,10 @@ REDIS_DB = 0
 
 _FAN_CURVE_KEY = "control:fan_curve"
 _FAN_CURVE_CHANNEL = "control:fan_curve:update"
-_PUMP_DUTY_KEY = "control:pump_duty"
+# Auto-mode pump fixed duty — per loop (independent). Legacy single key kept as
+# a read fallback so a previously-saved value carries over on upgrade.
+_PUMP_DUTY_KEYS = ("control:pump_duty_1", "control:pump_duty_2")
+_PUMP_DUTY_LEGACY_KEY = "control:pump_duty"
 _PUMP_DUTY_CHANNEL = "control:pump_duty:update"
 
 # Operational UI lower bounds (see docs/auto_control.md "L2A UI lower bounds")
@@ -336,13 +339,13 @@ class FanCurveCard(QWidget):
 
 
 class PumpFixedCard(QWidget):
-    """Pump fixed-duty editor card (single value, Stage 1 policy)."""
+    """Pump fixed-duty editor card — independent L1/L2 (Auto mode)."""
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._redis = _redis_client()
         self._dirty = False
-        self._duty = _DEFAULT_PUMP_DUTY  # 0~1000 scale
+        self._duty = [_DEFAULT_PUMP_DUTY, _DEFAULT_PUMP_DUTY]  # per loop, 0~1000
         self._build_ui()
         self._load_from_redis()
 
@@ -366,18 +369,20 @@ class PumpFixedCard(QWidget):
         body.addWidget(title)
 
         desc = QLabel(
-            "In Auto mode the pump PWM duty runs at a fixed value. "
-            "UI 0% = stop; 1~100% maps to pump 17~85% (Nmin~Nmax)."
+            "In Auto mode each loop's pump runs at its own fixed duty (L1/L2 "
+            "independent). UI 0% = stop; 1~100% maps to pump 17~85% (Nmin~Nmax)."
         )
         desc.setStyleSheet(f"color:{_C_TEXT_MUTED}; font-size:14pt; border:none;")
         desc.setWordWrap(True)
         body.addWidget(desc)
 
-        self._field = _CurveField("Pump Duty", "%",
-                                   self._duty // 10,
-                                   PUMP_MIN_UI_DUTY, 100)
-        self._field.on_changed(lambda v: self._mark_dirty(v * 10))
-        group = _GroupCard("Pump", _C_PUMP_DOT, [self._field])
+        self._fields = [
+            _CurveField("Pump L1", "%", self._duty[0] // 10, PUMP_MIN_UI_DUTY, 100),
+            _CurveField("Pump L2", "%", self._duty[1] // 10, PUMP_MIN_UI_DUTY, 100),
+        ]
+        for i, fld in enumerate(self._fields):
+            fld.on_changed(lambda v, idx=i: self._mark_dirty(idx, v * 10))
+        group = _GroupCard("Pump", _C_PUMP_DOT, self._fields)
         body.addWidget(group)
 
         save_row = QHBoxLayout()
@@ -390,8 +395,8 @@ class PumpFixedCard(QWidget):
         root.addWidget(card)
         self._refresh_save_state()
 
-    def _mark_dirty(self, hash_value: int) -> None:
-        self._duty = hash_value
+    def _mark_dirty(self, idx: int, hash_value: int) -> None:
+        self._duty[idx] = hash_value
         self._dirty = True
         self._refresh_save_state()
 
@@ -399,7 +404,8 @@ class PumpFixedCard(QWidget):
         self._save_btn.setEnabled(self._dirty)
 
     def set_editable(self, editable: bool) -> None:
-        self._field.set_enabled(editable)
+        for fld in self._fields:
+            fld.set_enabled(editable)
         self._save_btn.setEnabled(editable and self._dirty)
 
     def reload(self) -> None:
@@ -408,27 +414,31 @@ class PumpFixedCard(QWidget):
         self._load_from_redis()
 
     def _load_from_redis(self) -> None:
-        try:
-            raw = self._redis.get(_PUMP_DUTY_KEY)
-            if raw is not None:
-                self._duty = int(raw)
-        except Exception as e:
-            log.warning("control:pump_duty get failed: %s", e)
-        self._field.set_value(self._duty // 10)
+        for i, key in enumerate(_PUMP_DUTY_KEYS):
+            try:
+                raw = self._redis.get(key)
+                if raw is None:
+                    raw = self._redis.get(_PUMP_DUTY_LEGACY_KEY)  # migration fallback
+                if raw is not None:
+                    self._duty[i] = int(raw)
+            except Exception as e:
+                log.warning("%s get failed: %s", key, e)
+            self._fields[i].set_value(self._duty[i] // 10)
         self._dirty = False
         self._refresh_save_state()
 
     def _on_save(self) -> None:
         try:
             pipe = self._redis.pipeline()
-            pipe.set(_PUMP_DUTY_KEY, str(self._duty))
-            pipe.publish(_PUMP_DUTY_CHANNEL, str(self._duty))
+            for key, duty in zip(_PUMP_DUTY_KEYS, self._duty):
+                pipe.set(key, str(duty))
+            pipe.publish(_PUMP_DUTY_CHANNEL, "1")
             pipe.execute()
-            log.info("control:pump_duty saved %s", self._duty)
+            log.info("pump fixed duty saved L1=%s L2=%s", self._duty[0], self._duty[1])
             self._dirty = False
             self._refresh_save_state()
         except Exception as e:
-            log.warning("Could not save control:pump_duty: %s", e)
+            log.warning("Could not save pump fixed duty: %s", e)
 
 
 class AutoControlPanel(QWidget):

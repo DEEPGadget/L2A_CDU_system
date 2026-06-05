@@ -58,7 +58,11 @@ COMM_LAST_ERROR           = "comm:last_error"
 # ── Control (mode + auto params) — persistent ─────────────────────────────────
 CONTROL_MODE       = "control:mode"               # string: manual / auto / emergency
 CONTROL_FAN_CURVE  = "control:fan_curve"          # hash: min_temp/max_temp/min_duty/max_duty
-CONTROL_PUMP_DUTY  = "control:pump_duty"          # string: 0~1000 (x10 integer)
+# Auto-mode pump fixed duty — per loop, independent (0~1000 x10 integer).
+CONTROL_PUMP_DUTY_1 = "control:pump_duty_1"        # loop 1
+CONTROL_PUMP_DUTY_2 = "control:pump_duty_2"        # loop 2
+CONTROL_PUMP_DUTY_KEYS = (CONTROL_PUMP_DUTY_1, CONTROL_PUMP_DUTY_2)
+CONTROL_PUMP_DUTY  = "control:pump_duty"          # legacy single value (read-only fallback)
 
 # ── Pub/Sub channels (control updates) ────────────────────────────────────────
 CH_CONTROL_MODE              = "control:mode"

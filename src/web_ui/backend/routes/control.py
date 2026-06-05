@@ -37,10 +37,19 @@ _DUTY_DEFAULTS = {"pump_1": 78, "pump_2": 78, "fan_1": 100, "fan_2": 100}
 async def get_all(r: Redis = Depends(get_redis)) -> dict:
     """Snapshot of every control:* key — used by Settings page on mount."""
     mode = await r.get(K.CONTROL_MODE) or _DEFAULT_MODE
-    pump_raw = await r.get(K.CONTROL_PUMP_DUTY)
+    legacy_pump = await r.get(K.CONTROL_PUMP_DUTY)
     fan_raw = await r.hgetall(K.CONTROL_FAN_CURVE)
 
-    pump_duty = int(pump_raw) if pump_raw is not None else _DEFAULT_PUMP_DUTY
+    # Per-loop pump fixed duty (legacy single key as migration fallback).
+    pump_duty: dict[str, int] = {}
+    for loop, key in (("1", K.CONTROL_PUMP_DUTY_1), ("2", K.CONTROL_PUMP_DUTY_2)):
+        raw = await r.get(key)
+        if raw is None:
+            raw = legacy_pump
+        try:
+            pump_duty[loop] = int(raw) if raw is not None else _DEFAULT_PUMP_DUTY
+        except (ValueError, TypeError):
+            pump_duty[loop] = _DEFAULT_PUMP_DUTY
 
     fan_curve = dict(_DEFAULT_FAN_CURVE)
     for k in fan_curve:
@@ -87,11 +96,20 @@ async def put_fan_curve(
 async def put_pump_duty(
     payload: PumpDutyPayload, r: Redis = Depends(get_redis),
 ) -> dict:
+    """Per-loop pump fixed duty → control:pump_duty_1/_2 (x10). Any subset."""
+    applied: dict[str, int] = {}
     pipe = r.pipeline()
-    pipe.set(K.CONTROL_PUMP_DUTY, str(payload.duty))
-    pipe.publish(K.CH_CONTROL_PUMP_DUTY_UPDATE, str(payload.duty))
+    for loop, key, value in (
+        ("1", K.CONTROL_PUMP_DUTY_1, payload.duty_1),
+        ("2", K.CONTROL_PUMP_DUTY_2, payload.duty_2),
+    ):
+        if value is None:
+            continue
+        pipe.set(key, str(value))
+        applied[loop] = value
+    pipe.publish(K.CH_CONTROL_PUMP_DUTY_UPDATE, "1")
     await pipe.execute()
-    return {"pump_duty": payload.duty}
+    return {"pump_duty": applied}
 
 
 @router.put("/duty")

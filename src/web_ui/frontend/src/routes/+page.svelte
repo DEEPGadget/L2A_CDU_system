@@ -42,7 +42,7 @@
   // ── control state (from /api/control, re-synced on every control:* change) ──
   let mode      = $state('auto');
   let fanCurve  = $state({ min_temp: 25, max_temp: 60, min_duty: 100, max_duty: 1000 });
-  let pumpDuty  = $state(600);
+  let pumpDuty  = $state({ '1': 600, '2': 600 });
   let loaded    = $state(false);
   let loadError = $state('');
 

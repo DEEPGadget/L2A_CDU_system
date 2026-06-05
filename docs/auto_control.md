@@ -34,7 +34,7 @@
 |---|---|---|
 | Fan L1 | `sensor:coolant_temp_outlet_1` | 아래 lookup (독립) |
 | Fan L2 | `sensor:coolant_temp_outlet_2` | 아래 lookup (독립, 동일 테이블) |
-| Pump L1 / L2 | — | 고정 `60 %`. 독립 제어는 Stage 3에서 도입. |
+| Pump L1 / L2 | — | **루프별 독립** 고정 duty (기본 `60 %`). Settings 에서 L1/L2 따로 설정(`control:pump_duty_1` / `_2`). |
 
 > **Pump 60% 근거**: Vertiv CoolChip CDU100 공식 하한 15% (motor cooling, 기본 flow/DP 확보), Grundfos/업계 VFD 최소 30% of BEP 권고 대비 안전 마진 충분. NVIDIA DGX A100 최소 운용 40% + 기동 여유 20%도 함께 만족. 완전 정지는 센서 feedback 붕괴·stagnation·응결·재기동 지연 때문에 금지 ([§5 참고자료](#5-참고자료)).
 
@@ -79,7 +79,7 @@ fan_pwm  = clamp(base_duty + Kp·error + Ki·∫error, 10, 100)
 | `Kp` | 5.0 | 1 °C 초과 시 +5 %P |
 | `Ki` | 0.5 | 1 Hz 기준 — 현장 튜닝 |
 
-**Pump**: 여전히 고정 60 %. (ΔT 기반 trim은 Stage 3로 이월.)
+**Pump**: 루프별 고정 duty (기본 60 %, L1/L2 독립). ΔT 기반 trim은 Stage 3로 이월.
 
 **라이브러리**: `simple-pid` (MIT, [m-lundberg/simple-pid](https://github.com/m-lundberg/simple-pid))
 - `output_limits=(10, 100)` 설정 시 anti-windup 자동 + 하한 floor.

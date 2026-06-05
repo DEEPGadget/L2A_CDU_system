@@ -184,17 +184,16 @@ def run(
                 outlet_l1 = _read_outlet(r, K.SENSOR_COOLANT_TEMP_OUTLET_1)
                 outlet_l2 = _read_outlet(r, K.SENSOR_COOLANT_TEMP_OUTLET_2)
                 fan_ui = controller.fan_duty_ui(outlet_l1, outlet_l2)
-                pump_ui = controller.pump_duty_ui()
-                _write_pumps(pcb, pump_ui, pump_ui)
+                pump_ui_1, pump_ui_2 = controller.pump_duty_ui()
+                _write_pumps(pcb, pump_ui_1, pump_ui_2)
                 _write_fans(pcb, fan_ui, fan_ui)
                 # Mirror the applied duties back to redis so UI shows the
                 # value that is actually driving the PCB (Auto-mode feedback).
-                pump_str = f"{pump_ui:.0f}"
                 fan_str  = f"{fan_ui:.0f}"
                 pipe = r.pipeline()
                 for k, v in (
-                    (K.SENSOR_PUMP_PWM_DUTY_1, pump_str),
-                    (K.SENSOR_PUMP_PWM_DUTY_2, pump_str),
+                    (K.SENSOR_PUMP_PWM_DUTY_1, f"{pump_ui_1:.0f}"),
+                    (K.SENSOR_PUMP_PWM_DUTY_2, f"{pump_ui_2:.0f}"),
                     (K.SENSOR_FAN_PWM_DUTY_1,  fan_str),
                     (K.SENSOR_FAN_PWM_DUTY_2,  fan_str),
                 ):

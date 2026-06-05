@@ -2,16 +2,16 @@
 
 Stage 1 per docs/auto_control.md. The Settings UI (Local + Web) edits the
 following Redis state:
-    control:fan_curve   hash  min_temp/max_temp/min_duty/max_duty   (duty x10)
-    control:pump_duty   str   integer 0~1000 (= 0.0~100.0 %)
+    control:fan_curve     hash  min_temp/max_temp/min_duty/max_duty   (duty x10)
+    control:pump_duty_1   str   integer 0~1000 (= 0.0~100.0 %)  — loop 1
+    control:pump_duty_2   str   integer 0~1000 (= 0.0~100.0 %)  — loop 2
 
 `AutoController` keeps an in-memory copy of those values; `reload()` is called
 by the main loop whenever it drains a `control:fan_curve:update` or
 `control:pump_duty:update` Pub/Sub message.
 
-Per L1/L2 sync policy (matching the UI's pump/fan duty mirror), Auto uses
-`max(outlet_L1, outlet_L2)` as the driving temperature so both fans receive
-the same target duty.
+Pump L1/L2 are independent (each loop has its own fixed duty). Fans still share
+a target: Auto drives both fans off `max(outlet_L1, outlet_L2)`.
 """
 
 from __future__ import annotations
@@ -60,8 +60,26 @@ class AutoController:
     def __init__(self, r: redis.Redis) -> None:
         self._r = r
         self._fan_curve = FanCurve(**_DEFAULT_FAN_CURVE)
-        self._pump_duty_ui = _DEFAULT_PUMP_DUTY / 10.0
+        self._pump_duty_ui_1 = _DEFAULT_PUMP_DUTY / 10.0
+        self._pump_duty_ui_2 = _DEFAULT_PUMP_DUTY / 10.0
         self.reload()
+
+    def _read_pump_duty_ui(self, key: str, legacy: str | None) -> float:
+        """Per-loop pump duty (UI %); fall back to the legacy single key, then
+        the default, when the per-loop key is absent."""
+        raw = None
+        try:
+            raw = self._r.get(key)
+            if raw is None and legacy is not None:
+                raw = self._r.get(legacy)
+        except Exception as exc:
+            log.warning("%s get failed: %s", key, exc)
+        if raw is None:
+            return _DEFAULT_PUMP_DUTY / 10.0
+        try:
+            return int(raw) / 10.0
+        except (ValueError, TypeError):
+            return _DEFAULT_PUMP_DUTY / 10.0
 
     # ---------- state I/O ----------
 
@@ -69,7 +87,7 @@ class AutoController:
         """Re-read control:fan_curve + control:pump_duty from Redis.
         Returns True if any value changed since the previous reload."""
         prev_fan = self._fan_curve
-        prev_pump = self._pump_duty_ui
+        prev_pump = (self._pump_duty_ui_1, self._pump_duty_ui_2)
 
         try:
             raw = self._r.hgetall(K.CONTROL_FAN_CURVE)
@@ -86,23 +104,15 @@ class AutoController:
                     pass
         self._fan_curve = FanCurve(**merged)
 
-        try:
-            raw_pump = self._r.get(K.CONTROL_PUMP_DUTY)
-        except Exception as exc:
-            log.warning("control:pump_duty get failed: %s", exc)
-            raw_pump = None
-        if raw_pump is None:
-            self._pump_duty_ui = _DEFAULT_PUMP_DUTY / 10.0
-        else:
-            try:
-                self._pump_duty_ui = int(raw_pump) / 10.0
-            except (ValueError, TypeError):
-                self._pump_duty_ui = _DEFAULT_PUMP_DUTY / 10.0
+        # Per-loop pump duty (legacy single key as fallback during migration).
+        self._pump_duty_ui_1 = self._read_pump_duty_ui(K.CONTROL_PUMP_DUTY_1, K.CONTROL_PUMP_DUTY)
+        self._pump_duty_ui_2 = self._read_pump_duty_ui(K.CONTROL_PUMP_DUTY_2, K.CONTROL_PUMP_DUTY)
 
-        changed = (prev_fan != self._fan_curve) or (prev_pump != self._pump_duty_ui)
+        changed = (prev_fan != self._fan_curve) or (
+            prev_pump != (self._pump_duty_ui_1, self._pump_duty_ui_2))
         if changed:
-            log.info("AutoController reloaded: fan_curve=%s pump_duty_ui=%.1f%%",
-                     self._fan_curve, self._pump_duty_ui)
+            log.info("AutoController reloaded: fan_curve=%s pump_duty_ui=(L1 %.1f%%, L2 %.1f%%)",
+                     self._fan_curve, self._pump_duty_ui_1, self._pump_duty_ui_2)
         return changed
 
     # ---------- compute ----------
@@ -114,5 +124,6 @@ class AutoController:
             return self._fan_curve.min_duty / 10.0
         return self._fan_curve.fan_duty_ui(max(candidates))
 
-    def pump_duty_ui(self) -> float:
-        return self._pump_duty_ui
+    def pump_duty_ui(self) -> tuple[float, float]:
+        """Per-loop fixed pump duty (UI %): (loop1, loop2)."""
+        return self._pump_duty_ui_1, self._pump_duty_ui_2

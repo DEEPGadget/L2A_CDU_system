@@ -1,63 +1,55 @@
 <script>
-  // Pump fixed-duty editor. Same data contract as
-  // src/local_ui/pages/settings_page.py PumpFixedCard:
-  //   control:pump_duty = string (x10 integer, 0~1000). UI works in percent.
-  // Lower bound 20 % (Pump spec 4.2.1 Nmin via 0.85x mapping).
+  // Auto-mode pump fixed-duty editor — independent L1/L2.
+  // Writes control:pump_duty_1/_2 (x10) via PUT /api/control/pump_duty.
+  // The UI works in percent; the parent supplies {"1": x10, "2": x10}.
   import { api } from '$lib/api.js';
   import DutyField from './DutyField.svelte';
   import Card from './Card.svelte';
 
-  let { pumpDuty, disabled = false, onsaved = () => {} } = $props();
+  let { pumpDuty = {}, disabled = false, onsaved = () => {} } = $props();
 
-  let dutyPct = $state(pumpDuty / 10);
-  let lastSeen = $state(pumpDuty);
+  const toPct = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n / 10 : 60; };
+
+  let d1 = $state(toPct(pumpDuty['1']));
+  let d2 = $state(toPct(pumpDuty['2']));
+
+  // Reset locals only when a value actually changes (cross-UI sync).
+  let lastSeen = $state(null);
   $effect(() => {
-    if (pumpDuty !== lastSeen) {
-      dutyPct  = pumpDuty / 10;
-      lastSeen = pumpDuty;
-    }
+    const a = toPct(pumpDuty['1']), b = toPct(pumpDuty['2']);
+    if (!lastSeen || lastSeen.a !== a || lastSeen.b !== b) { d1 = a; d2 = b; lastSeen = { a, b }; }
   });
 
-  const dirty  = $derived(dutyPct !== pumpDuty / 10);
-  let saving   = $state(false);
-  let error    = $state('');
+  const dirty = $derived(d1 !== toPct(pumpDuty['1']) || d2 !== toPct(pumpDuty['2']));
+  let saving = $state(false);
+  let error = $state('');
 
   async function save() {
-    saving = true;
-    error  = '';
+    saving = true; error = '';
     try {
-      await api.putPumpDuty(dutyPct * 10);
-      onsaved(dutyPct * 10);
-    } catch (e) {
-      error = String(e);
-    } finally {
-      saving = false;
-    }
+      const payload = { duty_1: Math.round(d1 * 10), duty_2: Math.round(d2 * 10) };
+      await api.putPumpDuty(payload);
+      onsaved({ '1': payload.duty_1, '2': payload.duty_2 });
+    } catch (e) { error = String(e); }
+    finally { saving = false; }
   }
 </script>
 
 <Card title="Pump Fixed Duty (Auto)"
-      info="In Auto mode the pump PWM duty runs at a fixed value. Lower bound 20 % (Pump spec 4.2.1 Nmin)."
+      info="In Auto mode each loop's pump runs at its own fixed duty (L1/L2 independent). Lower bound 20 % (Pump spec 4.2.1 Nmin)."
       class={disabled ? 'opacity-60' : ''} bodyClass="px-4 py-3 space-y-3">
-  <fieldset class="border border-gray-200 rounded-md p-3">
-    <legend class="px-1.5 text-[10px] font-bold text-blue-700 tracking-widest uppercase">Pump</legend>
-    <DutyField caption="Pump Duty" suffix="%"
-               bind:value={dutyPct} min={20} max={100}
-               dotColor="#3b82f6" {disabled} />
-  </fieldset>
+  <div class="grid grid-cols-2 gap-3">
+    <DutyField caption="Pump L1" suffix="%" bind:value={d1} min={20} max={100} dotColor="#1f77b4" {disabled} />
+    <DutyField caption="Pump L2" suffix="%" bind:value={d2} min={20} max={100} dotColor="#9467bd" {disabled} />
+  </div>
 
-  {#if error}
-    <div class="text-[11px] text-cdu-critical break-all">{error}</div>
-  {/if}
+  {#if error}<div class="text-[11px] text-cdu-critical break-all">{error}</div>{/if}
 
   <div class="flex justify-end">
-    <button
-      type="button"
-      onclick={save}
+    <button type="button" onclick={save}
       disabled={disabled || !dirty || saving}
       class="px-4 py-1.5 rounded-md text-[13px] font-semibold bg-cdu-l1 text-white
-             hover:bg-cdu-l1/90 disabled:bg-gray-300 disabled:cursor-not-allowed"
-    >
+             hover:bg-cdu-l1/90 disabled:bg-gray-300 disabled:cursor-not-allowed">
       {saving ? 'Saving…' : 'Save'}
     </button>
   </div>

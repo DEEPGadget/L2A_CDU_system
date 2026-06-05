@@ -39,9 +39,10 @@ class FanCurvePayload(BaseModel):
 
 
 class PumpDutyPayload(BaseModel):
-    """control:pump_duty single integer (x10 scale)."""
+    """control:pump_duty_1 / _2 (x10 scale), per loop. Any subset may be sent."""
 
-    duty: int = Field(ge=PUMP_DUTY_MIN_RAW, le=DUTY_MAX_RAW)
+    duty_1: int | None = Field(default=None, ge=PUMP_DUTY_MIN_RAW, le=DUTY_MAX_RAW)
+    duty_2: int | None = Field(default=None, ge=PUMP_DUTY_MIN_RAW, le=DUTY_MAX_RAW)
 
 
 class ModePayload(BaseModel):

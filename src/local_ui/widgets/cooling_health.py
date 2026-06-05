@@ -353,28 +353,18 @@ class CoolingHealthWidget(QWidget):
         if self._current_mode != "manual":
             log.warning("Ignoring duty write for %s: mode is %s", slot, self._current_mode)
             return
-        # L1/L2 mirror: pump1<->pump2 and fan1<->fan2 must stay in lock-step.
-        # Two physical loops share the same target duty -- editing one slot
-        # writes both Redis keys + updates both cached slot values.
-        if slot.startswith("pump"):
-            slots = ("pump1", "pump2")
-        elif slot.startswith("fan"):
-            slots = ("fan1", "fan2")
-        else:
-            slots = (slot,)
+        # Per-loop independent: write only the tapped slot (L1 and L2 are
+        # separate Redis keys and separate PCB channels).
         try:
+            k = _DUTY_KEYS[slot]
             pipe = self._redis.pipeline()
-            for s in slots:
-                k = _DUTY_KEYS[s]
-                pipe.set(k, str(value))
-                pipe.publish(k, str(value))
+            pipe.set(k, str(value))
+            pipe.publish(k, str(value))
             pipe.execute()
-            for s in slots:
-                self._current_duty[s] = value
-            log.info("Set %s = %d%% (mirrored slots: %s)",
-                     _DUTY_KEYS[slot], value, ",".join(slots))
+            self._current_duty[slot] = value
+            log.info("Set %s = %d%%", k, value)
         except Exception as exc:
-            log.error("Redis write failed for slot %s (mirrored): %s", slot, exc)
+            log.error("Redis write failed for slot %s: %s", slot, exc)
 
     # ------------------------------------------------------------------
     # Mode gating
