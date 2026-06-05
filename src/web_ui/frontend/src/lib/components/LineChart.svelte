@@ -86,13 +86,13 @@
        onmousemove={onMove} onmouseleave={onLeave}>
     <!-- gridlines + y labels -->
     {#each yTicks as ty}
-      <line x1={M.l} y1={yOf(ty)} x2={W - M.r} y2={yOf(ty)} stroke="#f0f0f0" stroke-width="1" />
-      <text x={M.l - 5} y={yOf(ty) + 3} text-anchor="end" font-size="9.5" fill="#999">{ty.toFixed(dec)}</text>
+      <line x1={M.l} y1={yOf(ty)} x2={W - M.r} y2={yOf(ty)} stroke="#eee" stroke-width="0.4" />
+      <text x={M.l - 5} y={yOf(ty) + 2.5} text-anchor="end" font-size="7.5" fill="#999">{ty.toFixed(dec)}</text>
     {/each}
     <!-- vertical gridlines + x labels -->
     {#each xTicks as tx}
-      <line x1={xOf(tx)} y1={M.t} x2={xOf(tx)} y2={height - M.b} stroke="#f6f6f6" stroke-width="1" />
-      <text x={xOf(tx)} y={height - 5} text-anchor="middle" font-size="9.5" fill="#999">{hhmm(tx)}</text>
+      <line x1={xOf(tx)} y1={M.t} x2={xOf(tx)} y2={height - M.b} stroke="#f4f4f4" stroke-width="0.4" />
+      <text x={xOf(tx)} y={height - 5} text-anchor="middle" font-size="7.5" fill="#999">{hhmm(tx)}</text>
     {/each}
 
     {#if hasData}

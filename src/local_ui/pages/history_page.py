@@ -52,6 +52,19 @@ from PySide6.QtWidgets import (
 try:
     import pyqtgraph as pg
     _HAS_PYQTGRAPH = True
+
+    class _TimeAxis(pg.DateAxisItem):
+        """Bottom time axis showing HH:MM only (no weekday/date — the range
+        label above the charts carries the date)."""
+
+        def tickStrings(self, values, scale, spacing):
+            out = []
+            for v in values:
+                try:
+                    out.append(datetime.fromtimestamp(v).strftime("%H:%M"))
+                except (ValueError, OSError, OverflowError):
+                    out.append("")
+            return out
 except ImportError:
     _HAS_PYQTGRAPH = False
 
@@ -165,7 +178,7 @@ class ChartPanel(QWidget):
             v.addWidget(self._build_legend())
 
     def _build_plot(self, v: QVBoxLayout) -> None:
-        axis = pg.DateAxisItem(orientation="bottom")
+        axis = _TimeAxis(orientation="bottom")
         self._plot = pg.PlotWidget(axisItems={"bottom": axis})
         self._plot.setBackground("#ffffff")
         self._plot.setMinimumHeight(190)

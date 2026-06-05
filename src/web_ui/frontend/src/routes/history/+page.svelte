@@ -73,8 +73,10 @@
 
   function rangeOpts() {
     if (rangeKey === 'custom') {
-      const start = Math.floor(new Date(customFrom).getTime() / 1000);
-      const end = Math.floor(new Date(customTo).getTime() / 1000);
+      // Accept "YYYY-MM-DD HH:MM" (space or T) as local time.
+      const parse = (s) => Math.floor(new Date(String(s).trim().replace(' ', 'T')).getTime() / 1000);
+      const start = parse(customFrom);
+      const end = parse(customTo);
       const step = Math.max(60, Math.ceil((end - start) / 10000)); // 1-min, capped for long spans
       return { start, end, step, valid: Number.isFinite(start) && Number.isFinite(end) && end > start };
     }
@@ -162,9 +164,11 @@
       <option value="custom">Custom…</option>
     </select>
     {#if rangeKey === 'custom'}
-      <input type="datetime-local" bind:value={customFrom} class="border border-gray-300 rounded-md px-2 py-1.5 text-[13px]" />
+      <input type="text" bind:value={customFrom} placeholder="YYYY-MM-DD HH:MM"
+        class="border border-gray-300 rounded-md px-2 py-1.5 text-[13px] w-40 font-mono" />
       <span class="text-gray-400">~</span>
-      <input type="datetime-local" bind:value={customTo} class="border border-gray-300 rounded-md px-2 py-1.5 text-[13px]" />
+      <input type="text" bind:value={customTo} placeholder="YYYY-MM-DD HH:MM"
+        class="border border-gray-300 rounded-md px-2 py-1.5 text-[13px] w-40 font-mono" />
     {/if}
 
     <button class="border border-gray-300 rounded-md px-3 py-1.5 text-[13px] font-medium hover:bg-gray-100 disabled:opacity-40"
