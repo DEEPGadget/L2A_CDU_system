@@ -4,7 +4,7 @@
   // → read-only). Pump min 0 (=stop), fan min 10.
   import { api } from '$lib/api.js';
   import DutyField from './DutyField.svelte';
-  import InfoTip from './InfoTip.svelte';
+  import Card from './Card.svelte';
 
   let { duty, disabled = false, onsaved = () => {},
         info = 'Set pump/fan PWM directly in manual mode. Pump 0 % = stop (1–100 → 17–85 %), fan ≥ 10 %.' } = $props();
@@ -45,20 +45,15 @@
   }
 </script>
 
-<div class="bg-white border border-gray-200 rounded-md p-4 space-y-3 {disabled ? 'opacity-60' : ''}">
-  <div class="flex items-center gap-2">
-    <h2 class="text-[14px] font-semibold text-gray-700">Manual PWM</h2>
-    <InfoTip text={info} />
-  </div>
-
-  <div class="grid grid-cols-2 gap-3">
+<Card title="Manual PWM" {info} class={disabled ? 'opacity-60' : ''} bodyClass="px-4 py-3 space-y-3">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
     <DutyField caption="Pump L1" suffix="%" bind:value={pump1} min={0}  max={100} dotColor="#1f77b4" {disabled} />
     <DutyField caption="Pump L2" suffix="%" bind:value={pump2} min={0}  max={100} dotColor="#9467bd" {disabled} />
     <DutyField caption="Fan L1"  suffix="%" bind:value={fan1}  min={10} max={100} dotColor="#1f77b4" {disabled} />
     <DutyField caption="Fan L2"  suffix="%" bind:value={fan2}  min={10} max={100} dotColor="#9467bd" {disabled} />
   </div>
 
-  {#if error}<div class="text-xs text-cdu-critical break-all">{error}</div>{/if}
+  {#if error}<div class="text-[11px] text-cdu-critical break-all">{error}</div>{/if}
 
   <div class="flex justify-end">
     <button type="button" onclick={save}
@@ -68,4 +63,4 @@
       {saving ? 'Saving…' : 'Save'}
     </button>
   </div>
-</div>
+</Card>

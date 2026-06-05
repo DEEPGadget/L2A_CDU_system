@@ -13,14 +13,15 @@ function num(data, key) {
 const f1 = (v) => (v == null ? '--' : v.toFixed(1));
 const i0 = (v) => (v == null ? '--' : String(Math.round(v)));
 
-// mode: 'manual' shows the ⚙ editable indicator (like Local UI).
+// The Web diagram is display-only — the ⚙ control indicator is always hidden
+// (control lives in the Control cards). `mode` is accepted for signature parity.
 export function buildTokens(data, mode = 'manual') {
   const inlet1 = num(data, 'sensor:coolant_temp_inlet_1');
   const inlet2 = num(data, 'sensor:coolant_temp_inlet_2');
   const outlet1 = num(data, 'sensor:coolant_temp_outlet_1');
   const outlet2 = num(data, 'sensor:coolant_temp_outlet_2');
   const wl = data['sensor:water_level'];
-  const gear = mode === 'manual' ? '⚙' : '';
+  const gear = '';
 
   return {
     // Reservoir

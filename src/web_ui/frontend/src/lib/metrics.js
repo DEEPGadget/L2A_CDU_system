@@ -10,7 +10,7 @@ export const METRICS = [
   { id: 'coolant_outlet', group: 'Coolant Temp', label: 'Outlet',  unit: '°C',    query: 'sensor_coolant_temp_outlet', dash: true  },
   { id: 'flow_total',     group: 'Flow',         label: 'Flow',    unit: 'L/min', query: 'sensor_flow_rate',           dash: false },
   { id: 'flow_branch',    group: 'Flow',         label: 'Flow',    unit: 'L/min', query: 'sensor_flow_rate_branch',    dash: true  },
-  { id: 'fan_rpm',        group: 'Fan',          label: 'Fan RPM', unit: 'rpm',   query: 'sensor_fan_rpm',             dash: false },
+  { id: 'fan_rpm',        group: 'Fan',          label: 'Fan RPM', unit: 'RPM',   query: 'sensor_fan_rpm',             dash: false },
   { id: 'pump_duty',      group: 'PWM Duty',     label: 'Pump',    unit: '%',     query: 'sensor_pump_pwm_duty',       dash: false },
   { id: 'fan_duty',       group: 'PWM Duty',     label: 'Fan',     unit: '%',     query: 'sensor_fan_pwm_duty',        dash: true  },
   { id: 'ambient_temp',   group: 'Ambient',      label: 'Amb Temp', unit: '°C',   query: 'sensor_ambient_temp',        dash: false, color: '#e377c2' },

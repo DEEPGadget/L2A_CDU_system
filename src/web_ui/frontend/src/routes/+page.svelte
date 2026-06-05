@@ -7,6 +7,7 @@
   import { api } from '$lib/api.js';
   import * as th from '$lib/thresholds.js';
   import Card from '$lib/components/Card.svelte';
+  import InfoTip from '$lib/components/InfoTip.svelte';
   import CoolingDiagram from '$lib/components/CoolingDiagram.svelte';
   import ModeToggle from '$lib/components/ModeToggle.svelte';
   import FanCurveCard from '$lib/components/FanCurveCard.svelte';
@@ -16,6 +17,7 @@
   onMount(startLive);
 
   const S = $derived(live.data);
+  const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
   // ── live read helpers ──
   function num(key) {
@@ -67,10 +69,14 @@
   const manualDisabled = $derived(mode !== 'manual');
 
   const INFO = {
-    diagram: 'Live cooling structure. Boxes show measured temperature, flow and fan RPM; ' +
+    diagram: 'Live system structure. Boxes show measured temperature, flow and fan RPM; ' +
              'colour follows the alarm thresholds. Display only — use the Control cards to drive actuators.',
-    mode: 'Auto: fan follows the temperature curve and the pump holds a fixed duty. ' +
-          'Manual: set pump/fan PWM directly. Emergency: actuators forced, controls locked.',
+    mode: 'How to operate:\n' +
+          '1. Use the Control Mode toggle to switch Auto ↔ Manual.\n' +
+          '2. Manual — set pump/fan PWM per loop in "Manual PWM". Pump 0 % = stop (1–100 maps to 17–85 %), fan ≥ 10 %.\n' +
+          '3. Auto — the pump holds "Pump Fixed Duty"; the fan follows "Fan Curve" (idle PWM below idle temp, max PWM above warning temp, linear between).\n' +
+          '4. Emergency — actuators are forced and the mode toggle and controls are locked.\n' +
+          'Changes apply immediately and stay in sync with the Local touch UI.',
     auto: 'Active in Auto mode only. Fan duty interpolates between min/max temperature; the pump runs at the fixed duty.',
     manual: 'Active in Manual mode only. Set pump/fan PWM per loop. Pump 0 % = stop (1–100 → 17–85 %), fan ≥ 10 %.'
   };
@@ -87,32 +93,34 @@
 
 <div class="p-5 space-y-4">
 
-  {#if alarms.length}
-    <div class="bg-rose-50 border border-rose-200 rounded-md p-3">
-      <div class="text-[13px] font-semibold text-rose-800 mb-2">Active alarms ({alarms.length})</div>
-      <div class="flex flex-wrap gap-2">
-        {#each alarms as a}
-          <span class="px-2 py-0.5 rounded text-[11px] font-medium
-            {alarmLevel(a) === 'critical' ? 'bg-cdu-critical text-white' : 'bg-cdu-warning text-white'}">
-            {a}
-          </span>
-        {/each}
-      </div>
-    </div>
-  {/if}
-
-  <!-- Row 1: diagram (wide) + system summary -->
-  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-    <Card title="Cooling Structure" info={INFO.diagram} class="xl:col-span-2" bodyClass="p-3">
+  <!-- Row 1: diagram (wide) + system summary + active alarms (side by side) -->
+  <div class="grid grid-cols-1 xl:grid-cols-4 gap-4">
+    <Card title="System Structure" class="xl:col-span-2" bodyClass="p-2">
       <CoolingDiagram />
     </Card>
 
     <Card title="System">
       {@render kv('Control mode', mode === 'auto' ? 'Auto' : mode === 'manual' ? 'Manual' : 'Emergency',
                   '', mode === 'emergency' ? 'critical' : 'normal')}
-      {@render kv('PCB link', comm, '', comm === 'ok' ? 'normal' : 'critical')}
+      {@render kv('PCB link', cap(comm), '', comm === 'ok' ? 'normal' : 'critical')}
       {@render kv('Data link', live.connected ? 'Connected' : 'Reconnecting', '', live.connected ? 'normal' : 'warning')}
       {@render kv('Active alarms', String(alarms.length), '', alarms.length ? 'warning' : 'normal')}
+    </Card>
+
+    <Card title="Active alarms">
+      {#if alarms.length}
+        <div class="space-y-1.5">
+          {#each alarms as a}
+            <div class="flex items-center gap-2 text-[13px]">
+              <span class="w-2 h-2 rounded-full shrink-0
+                {alarmLevel(a) === 'critical' ? 'bg-cdu-critical' : 'bg-cdu-warning'}"></span>
+              <span class="text-gray-700">{a}</span>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <div class="text-[13px] text-gray-400">No active alarms</div>
+      {/if}
     </Card>
   </div>
 
@@ -139,9 +147,9 @@
             <span class="block text-[10px] text-gray-400 leading-tight">2 : {fmt(num(`sensor:flow_rate_${loop}_2`))}</span>
           </span>
         </div>
-        {@render kv('Pump duty', fmt(num(`sensor:pump_pwm_duty_${loop}`), 0), '%', num(`sensor:pump_pwm_duty_${loop}`) == null ? 'nodata' : 'normal')}
-        {@render kv('Fan duty', fmt(num(`sensor:fan_pwm_duty_${loop}`), 0), '%', num(`sensor:fan_pwm_duty_${loop}`) == null ? 'nodata' : 'normal')}
-        {@render kv('Fan RPM', fmt(num(`sensor:fan_rpm_${loop}`), 0), 'rpm', num(`sensor:fan_rpm_${loop}`) == null ? 'nodata' : 'normal')}
+        {@render kv('Pump Duty', fmt(num(`sensor:pump_pwm_duty_${loop}`), 0), '%', num(`sensor:pump_pwm_duty_${loop}`) == null ? 'nodata' : 'normal')}
+        {@render kv('Fan Duty', fmt(num(`sensor:fan_pwm_duty_${loop}`), 0), '%', num(`sensor:fan_pwm_duty_${loop}`) == null ? 'nodata' : 'normal')}
+        {@render kv('Fan RPM', fmt(num(`sensor:fan_rpm_${loop}`), 0), 'RPM', num(`sensor:fan_rpm_${loop}`) == null ? 'nodata' : 'normal')}
         </div>
       </div>
     {/each}
@@ -160,6 +168,7 @@
   <!-- Row 3: control -->
   <div class="flex items-center gap-2 pt-1">
     <h2 class="text-[15px] font-semibold text-gray-800">Control</h2>
+    <InfoTip text={INFO.mode} />
   </div>
 
   {#if !loaded}

@@ -5,7 +5,7 @@
   //   *_duty stored as x10 integer (0~1000). UI works in percent (0~100).
   import { api } from '$lib/api.js';
   import DutyField from './DutyField.svelte';
-  import InfoTip from './InfoTip.svelte';
+  import Card from './Card.svelte';
 
   let { fanCurve, disabled = false, onsaved = () => {},
         info = 'Below idle temp → idle PWM. Above warning temp → max PWM. Linear interpolation between.' } = $props();
@@ -65,15 +65,10 @@
   }
 </script>
 
-<div class="bg-white border border-gray-200 rounded-md p-4 space-y-3 {disabled ? 'opacity-60' : ''}">
-  <div class="flex items-center gap-2">
-    <h2 class="text-[14px] font-semibold text-gray-700">Fan Curve (Auto)</h2>
-    <InfoTip text={info} />
-  </div>
-
+<Card title="Fan Curve (Auto)" {info} class={disabled ? 'opacity-60' : ''} bodyClass="px-4 py-3 space-y-3">
   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-    <fieldset class="bg-emerald-50/50 border border-emerald-200 rounded-xl p-3 space-y-3">
-      <legend class="px-2 text-xs font-bold text-emerald-700 tracking-widest uppercase">Idle</legend>
+    <fieldset class="border border-gray-200 rounded-md p-3 space-y-2">
+      <legend class="px-1.5 text-[10px] font-bold text-emerald-700 tracking-widest uppercase">Idle</legend>
       <DutyField caption="Idle Temp" suffix="°C"
                  bind:value={minTemp} min={0} max={100}
                  dotColor="#10b981" {disabled} />
@@ -82,8 +77,8 @@
                  dotColor="#10b981" {disabled} />
     </fieldset>
 
-    <fieldset class="bg-rose-50/50 border border-rose-200 rounded-xl p-3 space-y-3">
-      <legend class="px-2 text-xs font-bold text-rose-700 tracking-widest uppercase">Warning</legend>
+    <fieldset class="border border-gray-200 rounded-md p-3 space-y-2">
+      <legend class="px-1.5 text-[10px] font-bold text-rose-700 tracking-widest uppercase">Warning</legend>
       <DutyField caption="Warning Temp" suffix="°C"
                  bind:value={maxTemp} min={0} max={100}
                  dotColor="#f43f5e" {disabled} />
@@ -94,10 +89,10 @@
   </div>
 
   {#if validationError && dirty}
-    <div class="text-xs text-cdu-critical">{validationError}</div>
+    <div class="text-[11px] text-cdu-critical">{validationError}</div>
   {/if}
   {#if error}
-    <div class="text-xs text-cdu-critical break-all">{error}</div>
+    <div class="text-[11px] text-cdu-critical break-all">{error}</div>
   {/if}
 
   <div class="flex justify-end">
@@ -111,4 +106,4 @@
       {saving ? 'Saving…' : 'Save'}
     </button>
   </div>
-</div>
+</Card>
