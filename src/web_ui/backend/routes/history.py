@@ -32,12 +32,19 @@ async def history(
     query: str = Query(..., description="PromQL metric selector, e.g. sensor_flow_rate"),
     minutes: int = Query(60, ge=1, le=7 * 24 * 60),
     step: int = Query(30, ge=1, le=3600),
+    start: float | None = Query(None, description="custom range start (unix seconds)"),
+    end: float | None = Query(None, description="custom range end (unix seconds)"),
 ) -> dict:
     if not _QUERY_RE.match(query):
         raise HTTPException(status_code=400, detail=f"unsupported query: {query!r}")
 
-    end = time.time()
-    start = end - minutes * 60
+    # Custom absolute range (start & end) takes precedence; else relative `minutes`.
+    if start is not None and end is not None:
+        if end <= start:
+            raise HTTPException(status_code=400, detail="end must be after start")
+    else:
+        end = time.time()
+        start = end - minutes * 60
     params = {"query": query, "start": start, "end": end, "step": step}
 
     try:

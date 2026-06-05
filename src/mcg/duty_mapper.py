@@ -7,7 +7,7 @@ UI domain
 PCB Holding Register value
     0~1000 = 0.0~100.0 % (per PCB.md "Holding Registers", spec stores as x10).
 
-Pump mapping (PCB.md "UI / MCG duty 매핑"):
+Pump mapping (PCB.md UI / MCG duty mapping):
     The pump's usable band is 17~85 % PWM (Pump spec 4.2.1: 17 %=Nmin,
     85 %=Nmax linear upper bound). The UI 0~100 % maps onto it as:
         UI 0      -> 12 % PWM  (STOP — spec 8~13 % band gives n=0)

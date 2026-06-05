@@ -27,7 +27,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.web_ui.backend.redis_client import close_redis, get_redis
-from src.web_ui.backend.routes import control, history, state
+from src.web_ui.backend.routes import control, diagram, history, state
 
 log = logging.getLogger(__name__)
 
@@ -55,6 +55,7 @@ app = FastAPI(title="L2A CDU Web UI", lifespan=lifespan)
 app.include_router(state.router)
 app.include_router(control.router)
 app.include_router(history.router)
+app.include_router(diagram.router)
 
 
 @app.websocket("/ws")

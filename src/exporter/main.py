@@ -12,7 +12,7 @@ schema in docs/UI_Design.md (History section):
     sensor_leak          alarm_state{alarm}
 
 Redis is the live-state DB; Prometheus is the history DB (pull path). This is
-the Exporter side of docs/MCG.md §9 "Prometheus (이력)". pH/conductivity are
+the Exporter side of docs/MCG.md §9 Prometheus (history). pH/conductivity are
 intentionally not emitted (not measured in the current PCB revision).
 
 Run: python -m src.exporter.main   (see scripts/services/cdu-exporter.service)

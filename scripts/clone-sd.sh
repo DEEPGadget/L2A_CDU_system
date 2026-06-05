@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# 라즈베리파이 운용 SD를 USB SD 리더에 꽂힌 SD로 안전 복제.
-# rpi-clone 의 boot 파티션 누락 + cmdline.txt PARTUUID 미치환 이슈를 자동 보정.
-# 자세한 배경/수동 절차는 docs/SD_CLONE.md 참조.
+# Safely clone the running Raspberry Pi SD to an SD in a USB SD reader.
+# Auto-fixes rpi-clone's missing boot partition + unsubstituted cmdline.txt PARTUUID.
+# See docs/SD_CLONE.md for background and the manual procedure.
 #
-# 사용: sudo ./clone-sd.sh sdX     (예: sudo ./clone-sd.sh sdb)
+# Usage: sudo ./clone-sd.sh sdX     (e.g. sudo ./clone-sd.sh sdb)
 
 set -euo pipefail
 
 DEST="${1:-}"
-# 디스크명만 허용 (sda, sdb, ...). sdb1 같은 파티션명은 거부.
+# Accept a disk name only (sda, sdb, ...). Reject partition names like sdb1.
 if [[ -z "$DEST" || ! "$DEST" =~ ^sd[a-z]+$ ]]; then
     if [[ "$DEST" =~ ^sd[a-z]+[0-9]+$ ]]; then
         echo "ERROR: '$DEST' is a partition name. Use the whole disk (e.g., ${DEST%%[0-9]*})." >&2
@@ -48,13 +48,13 @@ read -rp "All data on $DEST_DEV will be ERASED. Proceed? [y/N] " ans
 echo ">>> Running rpi-clone (force init, unattended)..."
 /usr/local/sbin/rpi-clone "$DEST" -f -U
 
-# rpi-clone 이 source /boot/firmware 를 unmount 해버리는 경우가 있어 재마운트
+# rpi-clone sometimes unmounts the source /boot/firmware — re-mount it.
 if ! findmnt -q /boot/firmware; then
     echo ">>> Re-mounting source /boot/firmware (rpi-clone left it unmounted)..."
     mount /boot/firmware
 fi
 
-# 대상 파티션 테이블 재인식
+# Re-read the destination partition table.
 blockdev --rereadpt "$DEST_DEV" || true
 partprobe "$DEST_DEV" || true
 sleep 1
@@ -71,7 +71,7 @@ trap cleanup EXIT
 mount "$DEST_P1" "$TMP_BOOT"
 mount "$DEST_P2" "$TMP_ROOT"
 
-# boot 파티션 누락 보정 (rpi-clone 의 알려진 실패 모드)
+# Fix the missing boot partition (a known rpi-clone failure mode).
 BOOT_COUNT=$(find "$TMP_BOOT" -maxdepth 1 -mindepth 1 | wc -l)
 if [[ "$BOOT_COUNT" -lt 5 ]]; then
     echo ">>> Dest boot partition is empty/incomplete ($BOOT_COUNT entries). Running manual rsync..."
@@ -79,7 +79,7 @@ if [[ "$BOOT_COUNT" -lt 5 ]]; then
     sync
 fi
 
-# cmdline.txt 의 root=PARTUUID 를 fstab 의 새 PARTUUID 와 정합
+# Align cmdline.txt's root=PARTUUID with fstab's new PARTUUID.
 NEW_UUID=$(grep -oE 'PARTUUID=[a-f0-9]{8}' "$TMP_ROOT/etc/fstab" | head -1 | cut -d= -f2)
 OLD_UUID=$(grep -oE 'PARTUUID=[a-f0-9]{8}' "$TMP_BOOT/cmdline.txt" | head -1 | cut -d= -f2)
 if [[ -n "$NEW_UUID" && -n "$OLD_UUID" && "$OLD_UUID" != "$NEW_UUID" ]]; then

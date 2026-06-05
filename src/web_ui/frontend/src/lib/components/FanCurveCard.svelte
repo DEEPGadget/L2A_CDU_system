@@ -5,8 +5,10 @@
   //   *_duty stored as x10 integer (0~1000). UI works in percent (0~100).
   import { api } from '$lib/api.js';
   import DutyField from './DutyField.svelte';
+  import InfoTip from './InfoTip.svelte';
 
-  let { fanCurve, disabled = false, onsaved = () => {} } = $props();
+  let { fanCurve, disabled = false, onsaved = () => {},
+        info = 'Below idle temp → idle PWM. Above warning temp → max PWM. Linear interpolation between.' } = $props();
 
   // Local working copy, in percent for duty fields.
   let minTemp     = $state(fanCurve.min_temp);
@@ -63,13 +65,10 @@
   }
 </script>
 
-<div class="bg-white border border-gray-200 rounded-2xl p-6 space-y-4 {disabled ? 'opacity-60' : ''}">
-  <div>
-    <h2 class="text-lg font-bold text-gray-900">Fan Curve (Auto)</h2>
-    <p class="text-sm text-gray-500 mt-1">
-      Below idle temp &rarr; idle PWM. Above warning temp &rarr; max PWM.
-      Linear interpolation between.
-    </p>
+<div class="bg-white border border-gray-200 rounded-md p-4 space-y-3 {disabled ? 'opacity-60' : ''}">
+  <div class="flex items-center gap-2">
+    <h2 class="text-[14px] font-semibold text-gray-700">Fan Curve (Auto)</h2>
+    <InfoTip text={info} />
   </div>
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -106,7 +105,7 @@
       type="button"
       onclick={save}
       disabled={disabled || !dirty || saving || !!validationError}
-      class="px-5 py-2 rounded-lg font-semibold bg-cdu-l1 text-white
+      class="px-4 py-1.5 rounded-md text-[13px] font-semibold bg-cdu-l1 text-white
              hover:bg-cdu-l1/90 disabled:bg-gray-300 disabled:cursor-not-allowed"
     >
       {saving ? 'Saving…' : 'Save'}

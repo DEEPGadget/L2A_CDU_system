@@ -24,10 +24,10 @@
   const isAuto      = $derived(mode === 'auto');
 </script>
 
-<div class="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center gap-5">
-  <div class="text-xs font-bold text-gray-500 tracking-widest uppercase">Control Mode</div>
+<div class="bg-white border border-gray-200 rounded-md px-4 py-3 flex items-center gap-4">
+  <div class="text-[11px] font-bold text-gray-500 tracking-widest uppercase">Control Mode</div>
 
-  <div class="text-lg font-bold {isEmergency ? 'text-cdu-critical' : 'text-gray-900'}">
+  <div class="text-[15px] font-bold {isEmergency ? 'text-cdu-critical' : 'text-gray-900'}">
     {isEmergency ? 'Emergency' : isAuto ? 'Auto' : 'Manual'}
   </div>
 

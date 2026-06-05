@@ -85,7 +85,7 @@ def main() -> int:
              port, modbus_cfg.baud, modbus_cfg.slave)
 
     # PWM frequency init. PCB Flash default is 1 kHz for all three timers
-    # (PCB.md "Flash 저장 항목"). For L2A Rev_C: fans on TIM2 need 25 kHz,
+    # (PCB.md flash-stored items). For L2A Rev_C: fans on TIM2 need 25 kHz,
     # pumps on TIM8 need 1 kHz (Johnson eModule spec). TIM1 is unused.
     # Idempotent — safe to re-write every boot.
     try:

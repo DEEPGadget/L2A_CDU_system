@@ -46,3 +46,16 @@ class PumpDutyPayload(BaseModel):
 
 class ModePayload(BaseModel):
     mode: Literal["auto", "manual", "emergency"]
+
+
+class DutyPayload(BaseModel):
+    """Manual per-actuator PWM duty (UI domain 0~100). Any subset may be sent.
+
+    Pump min 0 (= stop; 1~100 maps to pump 17~85 % in MCG). Fan min 10.
+    These set sensor:pump_pwm_duty_* / sensor:fan_pwm_duty_* (UI %, not x10).
+    """
+
+    pump_1: int | None = Field(default=None, ge=0, le=100)
+    pump_2: int | None = Field(default=None, ge=0, le=100)
+    fan_1: int | None = Field(default=None, ge=10, le=100)
+    fan_2: int | None = Field(default=None, ge=10, le=100)

@@ -12,11 +12,11 @@
   } = $props();
 </script>
 
-<label class="flex flex-col gap-1 bg-white border border-gray-200 rounded-xl px-4 py-3
+<label class="flex flex-col gap-0.5 bg-white border border-gray-200 rounded-md px-3 py-2
                hover:border-cdu-l1/40 transition-colors cursor-text
                {disabled ? 'opacity-50 pointer-events-none' : ''}">
-  <span class="flex items-center gap-2 text-[11px] font-bold text-gray-500 tracking-widest uppercase">
-    <span class="inline-block w-2.5 h-2.5 rounded-full" style:background={dotColor}></span>
+  <span class="flex items-center gap-1.5 text-[10px] font-bold text-gray-500 tracking-widest uppercase">
+    <span class="inline-block w-2 h-2 rounded-full" style:background={dotColor}></span>
     {caption}
   </span>
   <span class="flex items-baseline gap-1">
@@ -27,9 +27,9 @@
       {max}
       step="1"
       {disabled}
-      class="w-full text-2xl font-bold text-gray-900 bg-transparent border-0 outline-none
+      class="w-full text-lg font-bold text-gray-900 bg-transparent border-0 outline-none
              focus:ring-0 p-0"
     />
-    {#if suffix}<span class="text-base text-gray-500">{suffix}</span>{/if}
+    {#if suffix}<span class="text-sm text-gray-500">{suffix}</span>{/if}
   </span>
 </label>

@@ -336,7 +336,7 @@ class CoolingHealthWidget(QWidget):
         if self._current_mode != "manual":
             return
         current = self._current_duty.get(slot, 0)
-        # Operational lower bound per actuator (see PCB.md "UI / MCG duty 매핑"):
+        # Operational lower bound per actuator (see PCB.md UI / MCG duty mapping):
         #   pump: 0% = stop; 1~100% maps to pump 17~85% (Nmin~Nmax)
         #   fan:  10% (spec allows 0-100%, operational guideline only)
         is_pump = slot.startswith("pump")

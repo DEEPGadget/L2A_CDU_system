@@ -22,7 +22,7 @@ Register map (docs/PCB.md "Modbus Registers"):
                              branches): Loop1 = AIN1+AIN2 (IR 32,33),
                              Loop2 = AIN3+AIN4 (IR 34,35).
 
-Flow rate (PCB.md "유량 추정"):
+Flow rate (PCB.md flow-rate estimation):
   Rev_C introduces real flow sensors on the PCB. There are 4 sensors (one per
   parallel pump branch); each loop has 2, summed to the loop's total flow.
   Each SIKA VVX15 emits a 0.5~3.5 V analogue signal proportional to flow,
@@ -135,7 +135,7 @@ def poll_once(pcb: PCB, r: redis.Redis) -> bool:
 
 
 # ── Real flow sensors (4× SIKA VVX15, analogue voltage output) ───────────────
-# Config — see docs/PCB.md "유량 추정".
+# Config — see docs/PCB.md flow-rate estimation.
 # - 4 sensors on ADC inputs AIN1~4 = IR 32~35 (0.01 V unit, e.g. 350 = 3.50 V).
 #   Each loop has 2 parallel-branch sensors; the loop's total flow is their SUM:
 #       Loop 1 = AIN1 (IR 32) + AIN2 (IR 33)

@@ -451,10 +451,17 @@ class AutoControlPanel(QWidget):
 
 
 class ManualPanel(QWidget):
-    """Minimal Manual-mode panel."""
+    """Manual-mode pump/fan PWM duty editor (UI %). Writes sensor:*_pwm_duty_*
+    directly (same keys the Monitoring overlay uses → auto cross-UI sync)."""
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
+        self._redis = _redis_client()
+        self._fields: dict[str, _CurveField] = {}
+        self._build_ui()
+        self._load_from_redis()
+
+    def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 12, 16, 12)
         outer.setSpacing(0)
@@ -465,24 +472,75 @@ class ManualPanel(QWidget):
         )
         body = QVBoxLayout(card)
         body.setContentsMargins(22, 20, 22, 20)
-        body.setSpacing(12)
+        body.setSpacing(16)
 
-        title_font = QFont(); title_font.setPointSize(18); title_font.setBold(True)
-        title = QLabel("Manual mode")
+        title_font = QFont(); title_font.setPointSize(16); title_font.setBold(True)
+        title = QLabel("Manual PWM Duty")
         title.setFont(title_font)
         title.setStyleSheet(f"color:{_C_TEXT}; border:none;")
         body.addWidget(title)
 
-        hint = QLabel(
-            "Set pump / fan duty directly from the Monitoring page.\n"
-            f"Pump 0 % = stop (else 17~85 %); Fan >= {FAN_MIN_UI_DUTY} %."
+        desc = QLabel(
+            f"Pump 0 % = stop (else 1~100 % → 17~85 %); Fan >= {FAN_MIN_UI_DUTY} %. "
+            "Tap a value to edit; saved immediately."
         )
-        hint.setStyleSheet(f"color:{_C_TEXT_MUTED}; font-size:14pt; border:none;")
-        hint.setWordWrap(True)
-        body.addWidget(hint)
+        desc.setStyleSheet(f"color:{_C_TEXT_MUTED}; font-size:14pt; border:none;")
+        desc.setWordWrap(True)
+        body.addWidget(desc)
+
+        f_p1 = _CurveField("Pump L1", "%", 78,  PUMP_MIN_UI_DUTY, 100)
+        f_p2 = _CurveField("Pump L2", "%", 78,  PUMP_MIN_UI_DUTY, 100)
+        f_f1 = _CurveField("Fan L1",  "%", 100, FAN_MIN_UI_DUTY,  100)
+        f_f2 = _CurveField("Fan L2",  "%", 100, FAN_MIN_UI_DUTY,  100)
+        self._fields = {
+            "sensor:pump_pwm_duty_1": f_p1, "sensor:pump_pwm_duty_2": f_p2,
+            "sensor:fan_pwm_duty_1":  f_f1, "sensor:fan_pwm_duty_2":  f_f2,
+        }
+        for key, fld in self._fields.items():
+            fld.on_changed(lambda v, k=key: self._save(k, v))
+
+        pump_card = _GroupCard("Pump", _C_PUMP_DOT, [f_p1, f_p2])
+        fan_card  = _GroupCard("Fan",  _C_IDLE_DOT, [f_f1, f_f2])
+        groups = QHBoxLayout()
+        groups.setSpacing(14)
+        groups.addWidget(pump_card, stretch=1)
+        groups.addWidget(fan_card, stretch=1)
+        body.addLayout(groups)
 
         outer.addWidget(card)
         outer.addStretch(1)
+
+    def _save(self, key: str, ui_value: int) -> None:
+        try:
+            pipe = self._redis.pipeline()
+            pipe.set(key, str(ui_value))
+            pipe.publish(key, str(ui_value))
+            pipe.execute()
+            log.info("manual duty %s = %s", key, ui_value)
+        except Exception as e:
+            log.warning("Could not save %s: %s", key, e)
+
+    def _load_from_redis(self) -> None:
+        for key, fld in self._fields.items():
+            try:
+                raw = self._redis.get(key)
+                if raw is not None:
+                    fld.set_value(int(float(raw)))
+            except Exception:
+                pass
+
+    def on_sensor_updated(self, key: str, value: str) -> None:
+        """Live cross-UI sync: another UI changed a duty key."""
+        fld = self._fields.get(key)
+        if fld is not None:
+            try:
+                fld.set_value(int(float(value)))
+            except (ValueError, TypeError):
+                pass
+
+    def set_editable(self, editable: bool) -> None:
+        for fld in self._fields.values():
+            fld.set_enabled(editable)
 
 
 class SettingsPage(QWidget):
@@ -564,6 +622,11 @@ class SettingsPage(QWidget):
     def on_pump_duty_updated(self, *_args) -> None:
         self.auto_panel.pump_card.reload()
 
+    def on_sensor_updated(self, key: str, value: str) -> None:
+        # Forward manual duty changes to the ManualPanel (cross-UI sync).
+        if key.endswith("_pwm_duty_1") or key.endswith("_pwm_duty_2"):
+            self.manual_panel.on_sensor_updated(key, value)
+
     def on_mode_updated(self, mode: str) -> None:
         self._current_mode = mode
         if mode == "emergency":
@@ -572,6 +635,7 @@ class SettingsPage(QWidget):
             self._mode_switch.set_emergency(True)
             self._stack.setCurrentIndex(1)
             self.auto_panel.set_editable(False)
+            self.manual_panel.set_editable(False)
         elif mode == "auto":
             self._mode_label.setText("Auto")
             self._mode_label.setStyleSheet("color:#111827; border:none;")
@@ -579,6 +643,7 @@ class SettingsPage(QWidget):
             self._mode_switch.set_checked(True)
             self._stack.setCurrentIndex(0)
             self.auto_panel.set_editable(True)
+            self.manual_panel.set_editable(False)
         else:
             self._mode_label.setText("Manual")
             self._mode_label.setStyleSheet("color:#111827; border:none;")
@@ -586,3 +651,4 @@ class SettingsPage(QWidget):
             self._mode_switch.set_checked(False)
             self._stack.setCurrentIndex(1)
             self.auto_panel.set_editable(False)
+            self.manual_panel.set_editable(True)

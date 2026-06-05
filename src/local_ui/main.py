@@ -134,8 +134,9 @@ class MainWindow(QMainWindow):
     def _connect_signals(self) -> None:
         sub = self._subscriber
 
-        # Sensor updates → monitoring page
+        # Sensor updates → monitoring page + settings manual-duty sync
         sub.sensor_updated.connect(self._monitoring_page.on_sensor_updated)
+        sub.sensor_updated.connect(self._settings_page.on_sensor_updated)
 
         # Comm updates → top bar
         sub.comm_updated.connect(self._top_bar.on_comm_updated)

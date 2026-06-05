@@ -150,6 +150,8 @@
 
 ### 1-2. History Page
 
+> **구현 (2026-06-05, Local·Web 공통)**: Prometheus 탐색기 형식으로 단순화·통일. **컨트롤** = 시간 select(15m/30m/1h/24h, Web 은 Custom start/end 추가) · **메트릭 멀티셀렉트**(그룹 체크박스) · **그래프형태 radio(Line/Table/Timeline)**. **메트릭 = 인증 센싱 수치값만**(연속수치): 수온 inlet/outlet, 유량 총합+분기, fan rpm, pump/fan duty, ambient — **수위·누수·알람·pH·전도도·Control/Alarm History 제외**. 선택 폼이 메트릭 type 과 맞지 않으면(현재 numeric 뿐이라 Timeline 선택 시) **"호환되지 않는 그래프 형태" 배너**. Web 은 선택 시간·메트릭 **CSV 다운로드**. 데이터: Prometheus `query_range`(Local 직접, Web 은 `/api/history` 프록시), 라벨(loop/branch)별 시리즈 분리. 아래의 8그룹/Timeline(수위)/Dual-Y/Control·Alarm History 는 **원 설계 의도**로, 상태·이벤트 메트릭 도입 시 확장 기준.
+
 **레이아웃 구조**
 
 | 영역 | 위치 | 내용 |
@@ -558,9 +560,23 @@
 
 ---
 
-## 2. Web UI (Svelte)
+## 2. Web UI (Svelte + FastAPI)
 
-> 당분간 설계 보류. 구현 시점에 작성 예정.
+**Environment**: 노트북/모니터 브라우저 — 1280px+ 가로, 마우스+키보드. 백엔드(:8000)가 REST + `/ws`(WebSocket) + SvelteKit 정적 빌드를 통합 서빙. nginx 가 IP:80 → :8000 프록시.
 
-**Environment**: 노트북/모니터 브라우저 — 1280px+ 가로, 마우스+키보드
-**Reference**: `assets/UI example/ui layout 1~4.png`
+**셸(2026-06-05 재설계, NETGEAR형)**: **좌측 사이드바 네비**(`Sidebar.svelte`, `TopBar` 대체) + 밝은 회색 배경 + 흰 카드 그리드. **2 탭: Dashboard / History**. 강조색은 L2A 블루(`cdu-l1`). **모든 텍스트 영어**(코드 한글 제거). 설명문은 인라인 대신 **제목 옆 ⓘ 아이콘**(`InfoTip.svelte`, 클릭 시 팝오버).
+
+### 2-1. Dashboard (Monitoring + Settings 통합, 2026-06-05)
+- **냉각 구조도**(표시 전용): Local UI 와 **동일한 SVG**(`/api/diagram` 가 `cooling_health.svg` 단일 소스 서빙). 라이브 값/색을 `{TOKEN}` 치환(`lib/diagramTokens.js`). 카드 안에서 **반응형**(주입 SVG `width:100%` → 1280px 고정 오버플로/오버레이 어긋남 해소). 제어 오버레이 제거 — 제어는 아래 카드에서.
+- **라이브 카드**: 루프별 수치(inlet/outlet/ΔT/flow 총합+분기/duty/rpm) + Ambient/Status + mode·PCB·alarm 배지.
+- **제어 섹션**: ModeToggle(manual/auto) + Auto 제어(FanCurve·PumpFixed, auto 전용) + **Manual PWM**(`ManualDutyCard`: 펌프 L1/L2·팬 L1/L2, **manual 전용**) → `PUT /api/control/duty`. 각 섹션 설명은 ⓘ.
+- Local UI 와 **양방향 동기화**: 모든 제어가 `control:*` / `sensor:*_pwm_duty_*` 키 경유 → `/ws`·redis_subscriber 로 즉시 반영.
+
+### 2-2. History
+- **컨트롤**: 시간 select(15m/30m/1h/24h) + **Custom**(datetime-local start/end) · **메트릭 멀티셀렉트**(그룹 체크박스) · **그래프형태 radio**(Line/Table/Timeline).
+- **메트릭 = 인증 수치값만**(§1-2 와 동일 집합, 연속수치): 수온 inlet/outlet, 유량 총합+분기, fan rpm, pump/fan duty, ambient. **수위/누수/알람/pH/전도도 제외.**
+- **호환성**: 선택 메트릭 type vs 폼. numeric 은 Line/Table 호환, **Timeline 비호환 → 안내 배너**.
+- **CSV 다운로드**: 현재 시간·메트릭 시리즈를 timestamp + 시리즈별 열 wide CSV 로 내보냄.
+- 백엔드 `/api/history`(Prometheus `query_range` 프록시, `minutes` 또는 `start/end`).
+
+> 데이터 소스/실시간: `lib/live.svelte.js`(`/api/state`+`/ws`). 차트: 자체 SVG `LineChart.svelte` + `DataTable.svelte`(의존성 없음).
