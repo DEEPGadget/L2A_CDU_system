@@ -106,6 +106,15 @@ class StatusStripWidget(QWidget):
             except ValueError:
                 self._hum_val.setText("--")
 
+    def on_comm_updated(self, status: str) -> None:
+        """PCB link lost → coolant ΔT shows no-data (ambient is external)."""
+        if status != "disconnected":
+            return
+        self._inlet1 = self._inlet2 = "--"
+        self._outlet1 = self._outlet2 = "--"
+        self._refresh_delta(1)
+        self._refresh_delta(2)
+
     # ------------------------------------------------------------------
     # Internal helpers
 

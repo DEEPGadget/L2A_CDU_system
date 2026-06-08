@@ -138,8 +138,9 @@ class MainWindow(QMainWindow):
         sub.sensor_updated.connect(self._monitoring_page.on_sensor_updated)
         sub.sensor_updated.connect(self._settings_page.on_sensor_updated)
 
-        # Comm updates → top bar
+        # Comm updates → top bar + monitoring (clear sensed displays on link loss)
         sub.comm_updated.connect(self._top_bar.on_comm_updated)
+        sub.comm_updated.connect(self._monitoring_page.on_comm_updated)
 
         # Mode updates → top bar + cooling health (gear icon / overlay enable) + settings
         sub.mode_updated.connect(self._top_bar.on_mode_updated)

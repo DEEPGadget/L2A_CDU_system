@@ -304,7 +304,7 @@ sequenceDiagram
 | `sensor:flow_rate_2_1` | 유량 L2 분기1 (AIN3) | **IR 34** (0.01V) |
 | `sensor:flow_rate_2_2` | 유량 L2 분기2 (AIN4) | **IR 35** (0.01V) |
 
-> **Rev_C+ 실 유량 센서**: SIKA **VVX15 × 4** (Vortex). 각 루프의 병렬 분기마다 1개씩(루프당 2개). **Analogue 전압(0.5~3.5V)** 을 ADC 입력 AIN1~4 (IR 32~35) 로 읽어 센서별 `branch_lpm = 12.667 × V − 4.333`(0 clamp) 환산 후 **루프당 2개를 합산**: Loop1=AIN1+AIN2, Loop2=AIN3+AIN4. 결선·환산 상세는 [PCB.md "유량 추정"](PCB.md) 참고. [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` 가 IR 32~35 를 읽으며, `_FLOW_SENSOR_ENABLED` 가 off(실물 미설치) 인 동안 `(None, None)` 반환 → 유량 키 **미발행**(펌프 추정 fallback 없음). 실물 설치 후 토글하면 Redis 키 / UI 무변경.
+> **Rev_C+ 실 유량 센서**: SIKA **VVX15 × 4** (Vortex, 출력 버전 ③). 각 루프의 병렬 분기마다 1개씩(루프당 2개). **Analogue 0…10 V** 를 ADC 입력 AIN1~4 (IR 32~35) 로 읽어 센서별 `branch_lpm = 4.0 × V`(0 clamp) 환산 후 **루프당 2개를 합산**: Loop1=AIN1+AIN2, Loop2=AIN3+AIN4. 결선·환산 상세는 [PCB.md "유량 추정"](PCB.md) 참고. [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` 가 IR 32~35 를 읽으며 **별도 enable 플래그 없이** PCB read 성공(link up) 시 발행, 실패(link 없음) 시 미발행(펌프 추정 fallback 없음).
 
 > **유량 = 실측값 (펌프 추정 폐기)**: 유량은 실 센서(IR 32~35, 루프별 합산) 측정값으로만 publish 한다. 센서 미가용 시 `sensor:flow_rate_*` 를 발행하지 않으며(조작된 추정치 없음), UI 는 no-data 를 표시. 과거의 펌프 duty 기반 추정 fallback(`70 × ui_duty/100`)은 제거됨 ([PCB.md "유량 = 실 센서 측정값"](PCB.md)).
 

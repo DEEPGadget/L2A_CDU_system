@@ -424,6 +424,25 @@ class CoolingHealthWidget(QWidget):
         self._update_colors()
         self._reload_svg()
 
+    # Sensed placeholders cleared on PCB link loss (commanded duty + ambient
+    # + pH/conductivity persist — they are not PCB-polled live readings).
+    _SENSED_PLACEHOLDERS = (
+        "INLET_1", "INLET_2", "OUTLET_1", "OUTLET_2",
+        "FAN_RPM_1", "FAN_RPM_2",
+        "FLOW_1", "FLOW_2", "FLOW_1_1", "FLOW_1_2", "FLOW_2_1", "FLOW_2_2",
+        "WATER_LEVEL", "LEAK",
+    )
+
+    def on_comm_updated(self, status: str) -> None:
+        """PCB link state. On 'disconnected' reset the sensed displays to
+        no-data (MCG clears the redis keys; this clears the diagram)."""
+        if status != "disconnected":
+            return
+        for ph in self._SENSED_PLACEHOLDERS:
+            self._values[ph] = _DEFAULT_VALUES[ph]
+        self._update_colors()
+        self._reload_svg()
+
     # ------------------------------------------------------------------
     # Computed values
 

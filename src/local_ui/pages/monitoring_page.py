@@ -86,6 +86,11 @@ class MonitoringPage(QWidget):
         self.cooling_health.on_sensor_updated(key, value)
         self.status_strip.on_sensor_updated(key, value)
 
+    def on_comm_updated(self, status: str) -> None:
+        # PCB link lost → clear sensed displays (no stale values).
+        self.cooling_health.on_comm_updated(status)
+        self.status_strip.on_comm_updated(status)
+
     def on_alarm_set(self, key: str) -> None:
         self._alarm_overlay.on_alarm_set(key)
 

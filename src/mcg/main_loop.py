@@ -98,7 +98,7 @@ def _update_comm_state(
     fail_count: int,
     timeout_n: int,
     disconnect_n: int,
-) -> None:
+) -> str:
     if fail_count == 0:
         status = "ok"
     elif fail_count >= disconnect_n:
@@ -112,6 +112,32 @@ def _update_comm_state(
     pipe.set(K.COMM_CONSECUTIVE_FAILURES, str(fail_count))
     pipe.publish(K.COMM_STATUS, status)
     pipe.execute()
+    return status
+
+
+# Continuously-sensed keys published from PCB polling. Cleared on link loss so
+# the UI shows no-data instead of stale last values. Excludes commanded duty
+# (sensor:*_pwm_duty_*), control:*, comm:*, and ambient (external source).
+_SENSED_KEYS = (
+    K.SENSOR_COOLANT_TEMP_INLET_1, K.SENSOR_COOLANT_TEMP_INLET_2,
+    K.SENSOR_COOLANT_TEMP_OUTLET_1, K.SENSOR_COOLANT_TEMP_OUTLET_2,
+    K.SENSOR_FAN_RPM_1, K.SENSOR_FAN_RPM_2,
+    "sensor:din_raw", K.SENSOR_WATER_LEVEL, K.SENSOR_LEAK,
+    K.SENSOR_FLOW_RATE_1, K.SENSOR_FLOW_RATE_2,
+    K.SENSOR_FLOW_RATE_1_1, K.SENSOR_FLOW_RATE_1_2,
+    K.SENSOR_FLOW_RATE_2_1, K.SENSOR_FLOW_RATE_2_2,
+)
+
+
+def _clear_sensed_keys(r: redis.Redis) -> None:
+    """Delete the polled sensor values on PCB link loss. The DELETE fires a
+    redis keyspace `:del` event → Web /ws pushes value=null → UI no-data.
+    (Local UI clears its displays via comm:status — see monitoring_page.)"""
+    pipe = r.pipeline()
+    for key in _SENSED_KEYS:
+        pipe.delete(key)
+    pipe.execute()
+    log.warning("PCB link lost (disconnected) — cleared %d sensed keys", len(_SENSED_KEYS))
 
 
 # ── Main loop ────────────────────────────────────────────────────────────────
@@ -126,7 +152,15 @@ def run(
     """Block forever. Caller stops on KeyboardInterrupt / SIGTERM."""
     controller = AutoController(r)
 
+    # Ensure keyspace `:del` events are emitted so clearing sensed keys on link
+    # loss propagates to the Web /ws (idempotent; Local UI also sets this).
+    try:
+        r.config_set("notify-keyspace-events", "KEA")
+    except Exception as exc:
+        log.warning("Could not enable keyspace notifications: %s", exc)
+
     consecutive_fail = 0
+    prev_comm_status = "ok"
     log.info("MCG main loop entering at %.2f s cadence", cycle_seconds)
 
     while True:
@@ -172,9 +206,14 @@ def run(
             log.warning("PCB poll failed (consecutive %d)", consecutive_fail)
 
         try:
-            _update_comm_state(r, consecutive_fail,
-                                timeout_after_failures,
-                                disconnected_after_failures)
+            comm_status = _update_comm_state(r, consecutive_fail,
+                                             timeout_after_failures,
+                                             disconnected_after_failures)
+            # On the ok/timeout → disconnected transition, clear stale sensed
+            # values once so the UI shows no-data (not the last reading).
+            if comm_status == "disconnected" and prev_comm_status != "disconnected":
+                _clear_sensed_keys(r)
+            prev_comm_status = comm_status
         except Exception:
             log.exception("comm state update failed")
 
