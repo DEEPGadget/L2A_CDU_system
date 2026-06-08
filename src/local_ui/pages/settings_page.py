@@ -594,6 +594,7 @@ class SettingsPage(QWidget):
 
         self._mode_switch = ToggleSwitch(checked=True)
         self._mode_switch.toggled.connect(self._on_toggle)
+        self._mode_switch.setEnabled(False)  # 인증(cert): 모드 변경 잠금
         mode_layout.addWidget(self._mode_switch)
 
         layout.addWidget(mode_bar)

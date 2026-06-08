@@ -35,7 +35,6 @@
 
   {#if !isEmergency}
     <!-- 인증(cert): 모드 변경 잠금 — 토글 비활성화 -->
-    <span class="text-[11px] text-gray-400">인증: 모드 변경 잠금</span>
     <button
       type="button"
       onclick={toggle}
