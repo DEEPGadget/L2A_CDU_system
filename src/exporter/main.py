@@ -126,6 +126,22 @@ class RedisCollector:
             fam.add_metric([loop], val)
         yield from families.values()
 
+        # ── Coolant ΔT (outlet − inlet) per loop — derived gauge ──
+        dt_fam = GaugeMetricFamily(
+            "sensor_coolant_temp_delta", "Coolant temperature delta outlet-inlet (C)",
+            labels=["loop"],
+        )
+        dt_emitted = False
+        for loop in ("1", "2"):
+            iv = _to_float(r.get(f"sensor:coolant_temp_inlet_{loop}"))
+            ov = _to_float(r.get(f"sensor:coolant_temp_outlet_{loop}"))
+            if iv is None or ov is None:
+                continue
+            dt_fam.add_metric([loop], ov - iv)
+            dt_emitted = True
+        if dt_emitted:
+            yield dt_fam
+
         # ── Branch flow gauges (sensor_flow_rate_branch{loop,branch}) ──
         branch_keys = list(_BRANCH_FLOW_METRICS)
         branch_fam = GaugeMetricFamily(
