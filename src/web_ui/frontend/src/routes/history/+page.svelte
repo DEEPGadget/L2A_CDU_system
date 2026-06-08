@@ -7,6 +7,7 @@
   import LineChart from '$lib/components/LineChart.svelte';
   import DataTable from '$lib/components/DataTable.svelte';
   import InfoTip from '$lib/components/InfoTip.svelte';
+  import DateTimeSelect from '$lib/components/DateTimeSelect.svelte';
 
   // Distinct colour per selected series (no dashes).
   const PALETTE = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b',
@@ -164,11 +165,9 @@
       <option value="custom">Custom…</option>
     </select>
     {#if rangeKey === 'custom'}
-      <input type="datetime-local" lang="en" bind:value={customFrom}
-        class="border border-gray-300 rounded-md px-2 py-1.5 text-[13px]" />
+      <DateTimeSelect bind:value={customFrom} />
       <span class="text-gray-400">~</span>
-      <input type="datetime-local" lang="en" bind:value={customTo}
-        class="border border-gray-300 rounded-md px-2 py-1.5 text-[13px]" />
+      <DateTimeSelect bind:value={customTo} />
     {/if}
 
     <button class="border border-gray-300 rounded-md px-3 py-1.5 text-[13px] font-medium hover:bg-gray-100 disabled:opacity-40"
