@@ -447,17 +447,14 @@ class CoolingHealthWidget(QWidget):
     # Computed values
 
     def _update_colors(self) -> None:
+        # Certification period: threshold/alarm COLORING disabled — every value
+        # renders neutral (black), no warning/critical colours. The _color_*
+        # helpers are kept (unused) for the post-cert alarm rework. Values
+        # (numbers) still display normally.
         v = self._values
-        v["INLET_1_C"]      = _color_inlet_temp(v["INLET_1"])
-        v["INLET_2_C"]      = _color_inlet_temp(v["INLET_2"])
-        v["OUTLET_1_C"]     = _color_outlet_temp(v["OUTLET_1"])
-        v["OUTLET_2_C"]     = _color_outlet_temp(v["OUTLET_2"])
-        v["WATER_LEVEL_C"]  = _color_water_level(v["WATER_LEVEL"])
-        v["LEAK_C"]         = _color_leak(v["LEAK"])
-        v["AMBIENT_TEMP_C"] = _color_ambient_temp(v["AMBIENT_TEMP"])
-        v["AMBIENT_HUM_C"]  = _color_ambient_hum(v["AMBIENT_HUM"])
-        # PH_C / CONDUCTIVITY_C stay at _C_NO_DATA (set in _DEFAULT_VALUES).
-        # Not measured in current PCB revision (LTS v1).
+        for key in ("INLET_1_C", "INLET_2_C", "OUTLET_1_C", "OUTLET_2_C",
+                    "WATER_LEVEL_C", "LEAK_C", "AMBIENT_TEMP_C", "AMBIENT_HUM_C"):
+            v[key] = _C_NO_DATA   # neutral (black) — no threshold colour
 
     # ------------------------------------------------------------------
     # SVG reload

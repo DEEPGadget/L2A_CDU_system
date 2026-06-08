@@ -65,7 +65,10 @@ const TEXT_CLASS = {
   nodata: 'text-gray-400',
 };
 export function textClass(status) {
-  return TEXT_CLASS[status] ?? TEXT_CLASS.nodata;
+  // Certification period: threshold/alarm COLORING disabled — all values render
+  // neutral (no warning/critical colours). The status* helpers are kept for the
+  // post-cert alarm rework. Restore `TEXT_CLASS[status] ?? TEXT_CLASS.nodata`.
+  return 'text-gray-800';
 }
 
 export const WATER_LABEL = { '2': 'HIGH', '1': 'MIDDLE', '0': 'LOW' };

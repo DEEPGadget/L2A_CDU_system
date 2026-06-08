@@ -4,7 +4,10 @@
 import * as th from './thresholds.js';
 
 const HEX = { normal: '#27ae60', warning: '#e67e22', critical: '#e74c3c', nodata: '#000000' };
-const hex = (status) => HEX[status] ?? HEX.nodata;
+// Certification period: threshold/alarm COLORING disabled — diagram values
+// render neutral (black), no warning/critical colours. Restore
+// `HEX[status] ?? HEX.nodata` for the post-cert alarm rework.
+const hex = () => HEX.nodata;
 
 function num(data, key) {
   const n = parseFloat(data[key]);

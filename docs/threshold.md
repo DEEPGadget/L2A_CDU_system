@@ -1,5 +1,7 @@
 # Sensor Thresholds
 
+> ⚠ **인증기간 동안 색상/알람 비활성화 상태** — 모든 센서 값은 **중립색(검정)** 으로 표시되고 `alarm:*` 는 미발행입니다. 인증 테스트는 일부러 고온 냉각수를 주입하는 특수 목적이라 임계 기반 경고가 false positive 가 되기 때문. 코드: Local `cooling_health._update_colors` 중립화, Web `thresholds.js textClass`/`diagramTokens.js hex` 중립화(`status*`/`_color_*` 로직은 남겨둠). **알람·임계 시스템은 인증 종료 후 재설계·재구현 예정** — 아래 표는 그 참고용으로 유지.
+
 센서별 Normal / Warning / Critical 임계값 정의.
 
 코드 반영: `src/thresholds.py` — 이 파일의 상수를 수정하면 UI 색상 판정(`cooling_health.py`)에 자동 반영.
