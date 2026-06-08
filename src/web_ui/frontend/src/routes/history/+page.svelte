@@ -38,7 +38,7 @@
   let customFrom = $state('');                  // datetime-local strings
   let customTo = $state('');
   let form = $state('Line');
-  let selectedIds = $state(new Set(['coolant_inlet', 'coolant_outlet', 'flow_1', 'flow_2']));
+  let selectedIds = $state(new Set(['coolant_inlet', 'coolant_outlet', 'delta_t', 'flow_1', 'flow_2', 'flow_branch']));
   let allSeries = $state([]);
   let loading = $state(false);
   let error = $state('');
