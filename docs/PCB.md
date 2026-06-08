@@ -142,55 +142,58 @@ Config Command(HR 17)에 0x01을 쓰거나, BT2 Factory Reset 시 자동 저장.
 
 Rev_C 부터 **유량 센서 4개 (병렬 분기당 1개, 루프당 2개)** 도입. [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` 가 IR 32~35(ADC 전압 4ch)을 읽어 **루프별로 2개를 합산** → `sensor:flow_rate_1/2` 로 publish. 유량은 **실측값**이며 펌프 추정이 아님 — 센서 미가용 시 미발행(아래 참고).
 
-### 실 센서: SIKA **VVX15** × 4 (Vortex) — Analogue 전압 출력 방식
+### 실 센서: SIKA **VVX15** × 4 (Vortex) — Output 버전 ③ (0…10 V / 4…20 mA + Frequency)
 
-카탈로그 수령 (docs/private/Flowmeter spec.pdf). **모델 = VVX15 로 통일** (인증·양산 동일). 각 루프의 **병렬 펌프 2 분기에 센서 1개씩 = 루프당 2개 = 총 4개**. 실물 미도착 — 결선·환산은 아래대로 진행, 실물 도착 후 `_FLOW_SENSOR_ENABLED` 토글.
+카탈로그 + 벤더 회신 (docs/private/Flowmeter spec.pdf **p.5 "Output signals"**). **모델 = VVX15**, **출력 = 버전 ③ "Analogue 0…10 V or 4…20 mA and frequency output", Temp 출력 없음**. (p.5 에 4개 버전: ① Frequency / ② 0.5–3.5 V + freq / ③ **0–10 V·4–20 mA + freq** / ④ IO-Link. 이전 문서가 쓰던 0.5–3.5 V 는 **버전 ②** 로 우리 센서와 다름 → 환산식 교체.) 각 루프 병렬 2분기에 1개씩 = 루프당 2개 = 총 4개. 실물 미도착 — 결선·환산 아래대로, 도착 후 `_FLOW_SENSOR_ENABLED` 토글.
 
-> **측정 방식 = Analogue 전압 출력 (각 센서 Pin 2, 0.5~3.5 V).** Frequency 대신 **ADC 전압 입력(AIN1~4)** 사용. 풀업·타이머 채널 불필요 → 센서당 3선 (전원+신호).
+> **채택 = Analogue 0…10 V (Pin 2 → ADC 전압 입력 AIN1~4).** PCB ADC 가 **0~12 V 전압 입력**이라 0…10 V 출력이 **직접 호환**(burden 저항·분압 불필요). 4…20 mA 도 지원하나 ADC 가 전압만 읽으므로 burden 저항(예 250 Ω → 1…5 V) 이 필요 → **0…10 V 채택**. Frequency(push-pull, 500 pulse/L)는 펄스 입력 채널이 fan tach 로 점유돼 미사용.
 >
-> **루프 유량 = 두 분기 센서의 합.** Loop1 = AIN1 + AIN2, Loop2 = AIN3 + AIN4. (병렬 분기 각각 ~절반 유량 → 합 = 루프 총유량. 단일 펌프 ~35 LPM × 2 = 루프 ~70 LPM.)
+> **루프 유량 = 두 분기 센서의 합.** Loop1 = AIN1 + AIN2, Loop2 = AIN3 + AIN4. (분기 각 ~절반 유량 → 합 = 루프 총유량. 단일 펌프 ~35–45 LPM × 2.)
 
 #### Input / Output 요약 (센서 1개 기준)
 
 | 구분 | 핀 | 내용 |
 |---|---|---|
-| **Input (전원)** | Pin 1 = +U_B | **+12 V** (8~30 V 범위, 12 V 정상 동작) |
+| **Input (전원)** | Pin 1 = +U_B | **12~24 V DC** (±10 %, 아날로그 출력용). 능동소자 <15 mA |
 | | Pin 3 = GND | 전원·신호 공통 기준 |
-| **Output (유량)** | Pin 2 = U_Flow | 아날로그 전압 **0.5~3.5 V** (유량 선형 비례) |
-| 미사용 | Pin 4, 5 | Frequency / 온도용 — 미결선 |
+| **Output (유량)** | Pin 2 = U_Flow | **아날로그 0…10 V** (유량 선형 비례) |
+| 미사용 | Pin 4, 5 | Frequency(push-pull) / IO-Link — 미결선 |
 
-> Pin 1(전원)은 **필수**. 센서는 능동 소자(소비전류 <15 mA)라 +U_B 없으면 Pin 2 에 출력 없음. Pin 3(GND)는 전원·신호 겸용.
+> Pin 1(전원)은 **필수**. +U_B 없으면 Pin 2 에 출력 없음. Pin 3(GND)는 전원·신호 겸용.
 
-#### 환산 (VVX15 통일, 0.5~3.5 V 선형)
+#### 출력별 환산 (VVX15, 센서당 유량 범위 **0 ~ 40 L/min**)
+
+| 출력 | 매핑 | 환산식 (Q = L/min) | rate |
+|---|---|---|---|
+| **0…10 V** (채택) | 0 V = 0, 10 V = 40 | **Q = 4.0 × V** | 0.25 V/(L/min) |
+| 4…20 mA | 4 mA = 0, 20 mA = 40 | Q = 2.5 × (I − 4) | 0.40 mA/(L/min) |
+| Frequency (push-pull) | 500 pulse/L | Q = 0.12 × f (f = 8.333 × Q) | 0…40 L/min → 0…333 Hz |
 
 | 항목 | VVX15 |
 |---|---|
 | 모델 | VVX15 (DN15, G¾) |
-| 센서당 유량 범위 | 2 ~ 40 L/min |
-| 출력 스케일 | 0.5 V=2 / 3.5 V=40 LPM |
-| rate | 0.07895 V/(L/min) |
-| **센서 환산식** | `branch_lpm = 12.667 × V − 4.333` (0 미만 clamp) |
-| **루프 유량** | `loop_lpm = branch_a + branch_b` (루프당 2~80 LPM) |
+| **센서 환산식** (채택) | `branch_lpm = max(0, 4.0 × V)` (0…10 V) |
+| **루프 유량** | `loop_lpm = branch_a + branch_b` (루프당 0~80 LPM) |
 
-> 참고(미사용): VVX20 = `25 × V − 7.5` (0.5 V=5 / 3.5 V=80). 현재 `_FLOW_MODEL="VVX15"` 단일.
+> 참고(다른 모델, 버전 ③): VVX20 = 0…80 L/min (0.125 V/L·min⁻¹), VVX25 = 0…150. 현재 `_FLOW_MODEL="VVX15"` 단일.
 
-**M12 핀맵 (VVX 4-pin, 센서당 동일) — Spec PDF p.9 "Pin assignment" / p.9~10 "Flow U_Flow" 도식**
-- Pin 1: +U_B (전원) / Pin 2: U_Flow (0.5~3.5 V) / Pin 3: GND / Pin 4, 5: 미사용
+**M12 핀맵 (VVX 5-pin) — Spec PDF p.9 "Pin assignment"**
+- Pin 1: +U_B (12~24 V) / Pin 2: U_Flow (**0…10 V**) / Pin 3: GND / Pin 4: frequency(미사용) / Pin 5: 미사용
 
 **MCS_IO 결선 (4 센서)**
 - 각 VVX Pin 1 → +12 V (fuse 권장), Pin 3 → GND (PCB GND 공통)
 - VVX Pin 2 → ADC 전압 입력:
   - **AIN1 = CH1 = IR 32**, **AIN2 = CH2 = IR 33** → **Loop1** (합산)
   - **AIN3 = CH3 = IR 34**, **AIN4 = CH4 = IR 35** → **Loop2** (합산)
-- 단위 0.01 V (350 = 3.50 V). 환산: `branch_lpm = max(0, 12.667 × (IR/100) − 4.333)`, `loop_lpm = branch_a + branch_b`
+- 단위 0.01 V (1000 = 10.00 V). 환산: `branch_lpm = max(0, 4.0 × (IR/100)) = 0.04 × IR`, `loop_lpm = branch_a + branch_b`
 
 **발행 Redis 키 (총합 + 4분기)**: 루프 총합 `sensor:flow_rate_1/2` + 분기별 `sensor:flow_rate_1_1`(AIN1), `_1_2`(AIN2), `_2_1`(AIN3), `_2_2`(AIN4). UI(Local 도식·Web 카드)는 **총합(큰글씨) + 분기 1/2(작은글씨)** 표시, History 는 `sensor_flow_rate_branch{loop,branch}` Prometheus 메트릭.
 
 > **도식 위치**: 유량계는 **outlet manifold ↔ fan+radiator 사이**(귀환선)에 표시. 물리적으로 outlet 에서 2분기로 갈라져 각 분기에 센서 1개씩(=fan+radiator 4 라인) 이지만, UI 도식은 2 유로를 하나로 합쳐 루프당 박스 1개로 표시 ([cooling_health.svg](../src/local_ui/assets/cooling_health.svg)).
 
 > ⚠ **ADC 입력 범위 / 분해능 (실물 검증 시 확인)**
-> PCB ADC 채널은 0~12 V 범위(12-bit, 4095 count). 0.5~3.5 V 신호는 범위의 ~29 %만 사용 → span 75 L/min ≈ 1024 count → 분해능 ≈ 0.073 L/min/count (충분). 최대 출력 3.5 V < ADC 상한 12 V → 클리핑 없음, 분압기 불필요.
-> ADC 게인 캘리브레이션이 9 V 기준이므로 저전압 구간(0.5~3.5 V) 정확도는 실물 도착 후 검증 권장.
+> PCB ADC 채널은 0~12 V 범위(12-bit, 4095 count). 0…10 V 신호는 범위의 ~83 % 사용 → span 40 L/min ≈ 3413 count → 분해능 ≈ 0.012 L/min/count (우수). 최대 출력 10 V < ADC 상한 12 V → 클리핑 없음, 분압 불필요.
+> ADC 게인 캘리브레이션이 9 V 기준이라 0…10 V 구간 정확도 양호 (실물 도착 후 검증 권장).
 
 ### 펌프 배치 (L2A Rev_C)
 

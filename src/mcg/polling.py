@@ -134,25 +134,29 @@ def poll_once(pcb: PCB, r: redis.Redis) -> bool:
     return True
 
 
-# ── Real flow sensors (4× SIKA VVX15, analogue voltage output) ───────────────
+# ── Real flow sensors (4× SIKA VVX15, output version ③) ──────────────────────
 # Config — see docs/PCB.md flow-rate estimation.
-# - 4 sensors on ADC inputs AIN1~4 = IR 32~35 (0.01 V unit, e.g. 350 = 3.50 V).
-#   Each loop has 2 parallel-branch sensors; the loop's total flow is their SUM:
+# Sensor = VVX15, output version ③ "Analogue 0...10 V or 4...20 mA + frequency"
+# (spec PDF p.5); temperature output: none. We use the **0...10 V** analogue
+# output → PCB ADC voltage inputs AIN1~4 = IR 32~35 (0.01 V unit, 1000 = 10.00 V).
+#   (PCB ADC is 0~12 V, so 0...10 V is directly compatible — no burden resistor;
+#    4...20 mA would need one. The push-pull frequency output is unused — pulse
+#    channels are taken by the fan tachs.)
+#   Each loop has 2 parallel-branch sensors; the loop total = their SUM:
 #       Loop 1 = AIN1 (IR 32) + AIN2 (IR 33)
 #       Loop 2 = AIN3 (IR 34) + AIN4 (IR 35)
-# - Per-sensor linear scaling (0.5 V = min flow, 3.5 V = max flow). Unified to
-#   VVX15 (cert + production):
-#       VVX15:  0.5 V→2 LPM,  3.5 V→40 LPM  ->  flow = 12.667 * V - 4.333
-#   (VVX20 kept for reference: 0.5 V→5, 3.5 V→80 -> flow = 25.0 * V - 7.5)
+# - 0...10 V linear scaling: 0 V = 0 LPM, 10 V = 40 LPM  ->  flow = 4.0 * V.
+#   (4...20 mA alt: flow = 2.5*(I-4). VVX20 = 0...80 LPM @ 0...10 V → flow = 8*V.)
 # - Flip _FLOW_SENSOR_ENABLED = True once the sensors are installed and the ADC
 #   channels are confirmed at PCB bring-up.
 _FLOW_SENSOR_ENABLED = False
 _FLOW_VOLT_IR_BASE   = 32          # IR 32~35 = ADC voltage CH1~4 = AIN1~4
 _FLOW_VOLT_COUNT     = 4
 _FLOW_MODEL          = "VVX15"     # unified (cert + production)
-_FLOW_SCALE          = {           # (slope, intercept) for flow_lpm = slope*V + intercept
-    "VVX15": (12.667, -4.333),
-    "VVX20": (25.0, -7.5),
+# (slope, intercept) for flow_lpm = slope*V + intercept, 0...10 V analogue output.
+_FLOW_SCALE          = {
+    "VVX15": (4.0, 0.0),           # 0 V=0, 10 V=40 LPM
+    "VVX20": (8.0, 0.0),           # 0 V=0, 10 V=80 LPM (reference)
 }
 
 
@@ -171,7 +175,7 @@ def _read_flow_lpm(pcb: PCB) -> tuple[float, float, float, float] | None:
     slope, intercept = _FLOW_SCALE[_FLOW_MODEL]
 
     def _branch_lpm(reg: int) -> float:
-        # IR unit is 0.01 V; clamp ≥0 (below the 0.5 V floor the fit goes negative).
+        # IR unit is 0.01 V; 0...10 V analogue output → flow = slope*V. Clamp ≥0.
         return max(0.0, slope * (reg / 100.0) + intercept)
 
     return (_branch_lpm(raw[0]), _branch_lpm(raw[1]),
