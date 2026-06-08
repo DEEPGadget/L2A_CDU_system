@@ -271,7 +271,8 @@ class ChartPanel(QWidget):
 class HistoryPage(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self._selected_ids: set[str] = {"coolant_inlet", "coolant_outlet", "flow_1", "flow_2"}
+        self._selected_ids: set[str] = {"coolant_inlet", "coolant_outlet", "delta_t",
+                                        "flow_1", "flow_2", "flow_branch"}
         self._range_seconds = TIME_RANGES[1][1]   # 30m default
         self._form = "Line"
         self._threads: list[QThread] = []
