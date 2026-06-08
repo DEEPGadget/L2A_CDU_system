@@ -8,8 +8,10 @@ const LOOP_COLOR = { '1': '#1f77b4', '2': '#9467bd' };
 export const METRICS = [
   { id: 'coolant_inlet',  group: 'Coolant Temp', label: 'Inlet',   unit: '°C',    query: 'sensor_coolant_temp_inlet',  dash: false },
   { id: 'coolant_outlet', group: 'Coolant Temp', label: 'Outlet',  unit: '°C',    query: 'sensor_coolant_temp_outlet', dash: true  },
-  { id: 'flow_total',     group: 'Flow',         label: 'Flow',    unit: 'L/min', query: 'sensor_flow_rate',           dash: false },
-  { id: 'flow_branch',    group: 'Flow',         label: 'Flow',    unit: 'L/min', query: 'sensor_flow_rate_branch',    dash: true  },
+  { id: 'delta_t',        group: 'Coolant Temp', label: 'ΔT',      unit: '°C',    query: 'sensor_coolant_temp_delta',  dash: false },
+  { id: 'flow_1',         group: 'Flow',         label: 'Flow L1', unit: 'L/min', query: 'sensor_flow_rate{loop="1"}', dash: false, noAutoLoop: true },
+  { id: 'flow_2',         group: 'Flow',         label: 'Flow L2', unit: 'L/min', query: 'sensor_flow_rate{loop="2"}', dash: false, noAutoLoop: true },
+  { id: 'flow_branch',    group: 'Flow',         label: 'Flow branch', unit: 'L/min', query: 'sensor_flow_rate_branch', dash: true  },
   { id: 'fan_rpm',        group: 'Fan',          label: 'Fan RPM', unit: 'RPM',   query: 'sensor_fan_rpm',             dash: false },
   { id: 'pump_duty',      group: 'PWM Duty',     label: 'Pump',    unit: '%',     query: 'sensor_pump_pwm_duty',       dash: false },
   { id: 'fan_duty',       group: 'PWM Duty',     label: 'Fan',     unit: '%',     query: 'sensor_fan_pwm_duty',        dash: true  },
@@ -30,6 +32,7 @@ export const METRIC_GROUPS = [...new Set(METRICS.map((m) => m.group))];
 
 // Build a display name for a Prometheus result series from its labels.
 export function seriesName(metric, labels = {}) {
+  if (metric.noAutoLoop) return metric.label;   // label already encodes the loop (e.g. "Flow L1")
   let n = metric.label;
   if (labels.loop) n += ` L${labels.loop}`;
   if (labels.branch) n += `-${labels.branch}`;

@@ -85,8 +85,10 @@ PALETTE = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b",
 METRICS = [
     {"id": "coolant_inlet",  "group": "Coolant Temp", "label": "Inlet",   "unit": "°C",    "query": "sensor_coolant_temp_inlet"},
     {"id": "coolant_outlet", "group": "Coolant Temp", "label": "Outlet",  "unit": "°C",    "query": "sensor_coolant_temp_outlet"},
-    {"id": "flow_total",     "group": "Flow",         "label": "Flow",    "unit": "L/min", "query": "sensor_flow_rate"},
-    {"id": "flow_branch",    "group": "Flow",         "label": "Flow",    "unit": "L/min", "query": "sensor_flow_rate_branch"},
+    {"id": "delta_t",        "group": "Coolant Temp", "label": "ΔT",      "unit": "°C",    "query": "sensor_coolant_temp_delta"},
+    {"id": "flow_1",         "group": "Flow",         "label": "Flow L1", "unit": "L/min", "query": 'sensor_flow_rate{loop="1"}', "no_auto_loop": True},
+    {"id": "flow_2",         "group": "Flow",         "label": "Flow L2", "unit": "L/min", "query": 'sensor_flow_rate{loop="2"}', "no_auto_loop": True},
+    {"id": "flow_branch",    "group": "Flow",         "label": "Flow branch", "unit": "L/min", "query": "sensor_flow_rate_branch"},
     {"id": "fan_rpm",        "group": "Fan",          "label": "Fan RPM", "unit": "RPM",   "query": "sensor_fan_rpm"},
     {"id": "pump_duty",      "group": "PWM Duty",     "label": "Pump",    "unit": "%",     "query": "sensor_pump_pwm_duty"},
     {"id": "fan_duty",       "group": "PWM Duty",     "label": "Fan",     "unit": "%",     "query": "sensor_fan_pwm_duty"},
@@ -108,6 +110,8 @@ def _form_compatible(form: str, metric: dict) -> bool:
 
 
 def _series_name(metric: dict, labels: dict) -> str:
+    if metric.get("no_auto_loop"):   # label already encodes the loop (e.g. "Flow L1")
+        return f"{metric['label']} ({metric['unit']})"
     n = metric["label"]
     if labels.get("loop"):
         n += f" L{labels['loop']}"
@@ -267,7 +271,7 @@ class ChartPanel(QWidget):
 class HistoryPage(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self._selected_ids: set[str] = {"coolant_inlet", "coolant_outlet"}
+        self._selected_ids: set[str] = {"coolant_inlet", "coolant_outlet", "flow_1", "flow_2"}
         self._range_seconds = TIME_RANGES[1][1]   # 30m default
         self._form = "Line"
         self._threads: list[QThread] = []
