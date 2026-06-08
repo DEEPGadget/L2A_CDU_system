@@ -100,8 +100,8 @@
       type="button"
       onclick={save}
       disabled={disabled || !dirty || saving || !!validationError}
-      class="px-4 py-1.5 rounded-md text-[13px] font-semibold bg-cdu-l1 text-white
-             hover:bg-cdu-l1/90 disabled:bg-gray-300 disabled:cursor-not-allowed"
+      class="px-4 py-1.5 rounded-md text-[13px] font-semibold bg-blue-600 text-white
+             hover:bg-blue-700 disabled:bg-indigo-200 disabled:cursor-not-allowed"
     >
       {saving ? 'Saving…' : 'Save'}
     </button>
