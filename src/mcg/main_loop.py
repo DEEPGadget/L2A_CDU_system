@@ -129,15 +129,16 @@ _SENSED_KEYS = (
 )
 
 
-def _clear_sensed_keys(r: redis.Redis) -> None:
-    """Delete the polled sensor values on PCB link loss. The DELETE fires a
-    redis keyspace `:del` event → Web /ws pushes value=null → UI no-data.
-    (Local UI clears its displays via comm:status — see monitoring_page.)"""
+def _clear_sensed_keys(r: redis.Redis) -> int:
+    """Delete the polled sensor values when the PCB link is down. The DELETE
+    fires a redis keyspace `:del` event → Web /ws pushes value=null → UI
+    no-data. (Local UI clears its displays via comm:status — see
+    monitoring_page.) Returns the number of keys that actually existed."""
     pipe = r.pipeline()
     for key in _SENSED_KEYS:
         pipe.delete(key)
-    pipe.execute()
-    log.warning("PCB link lost (disconnected) — cleared %d sensed keys", len(_SENSED_KEYS))
+    results = pipe.execute()
+    return sum(1 for deleted in results if deleted)
 
 
 # ── Main loop ────────────────────────────────────────────────────────────────
@@ -212,7 +213,8 @@ def run(
             # On the ok/timeout → disconnected transition, clear stale sensed
             # values once so the UI shows no-data (not the last reading).
             if comm_status == "disconnected" and prev_comm_status != "disconnected":
-                _clear_sensed_keys(r)
+                n = _clear_sensed_keys(r)
+                log.warning("PCB link lost (disconnected) — cleared %d sensed keys", n)
             prev_comm_status = comm_status
         except Exception:
             log.exception("comm state update failed")

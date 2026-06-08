@@ -28,6 +28,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from src.config import get_loop_config, get_modbus_config
 from src.mcg import redis_keys as K
+from src.mcg.main_loop import _clear_sensed_keys as clear_sensed_keys
 from src.mcg.main_loop import run as run_main_loop
 from src.mcg.modbus_client import open_pcb
 
@@ -78,6 +79,11 @@ def main() -> int:
             pipe.set(K.COMM_STATUS, "disconnected")
             pipe.publish(K.COMM_STATUS, "disconnected")
             pipe.execute()
+            # No link yet → ensure no stale sensed values linger (UI no-data).
+            # Handles the boot-with-no-PCB case where run() is never reached.
+            cleared = clear_sensed_keys(r)
+            if cleared:
+                log.info("cleared %d stale sensed keys while disconnected", cleared)
         except Exception:
             pass
         time.sleep(retry_seconds)

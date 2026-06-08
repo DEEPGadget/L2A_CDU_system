@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
 log = logging.getLogger(__name__)
 
 _SIOCGIFADDR = 0x8915
-_IP_REFRESH_INTERVAL_MS = 30_000
+_IP_REFRESH_INTERVAL_MS = 1_000
 
 REDIS_HOST = "localhost"
 REDIS_PORT = 6379
