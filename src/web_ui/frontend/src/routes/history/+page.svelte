@@ -164,11 +164,11 @@
       <option value="custom">Custom…</option>
     </select>
     {#if rangeKey === 'custom'}
-      <input type="text" bind:value={customFrom} placeholder="YYYY-MM-DD HH:MM"
-        class="border border-gray-300 rounded-md px-2 py-1.5 text-[13px] w-40 font-mono" />
+      <input type="datetime-local" lang="en" bind:value={customFrom}
+        class="border border-gray-300 rounded-md px-2 py-1.5 text-[13px]" />
       <span class="text-gray-400">~</span>
-      <input type="text" bind:value={customTo} placeholder="YYYY-MM-DD HH:MM"
-        class="border border-gray-300 rounded-md px-2 py-1.5 text-[13px] w-40 font-mono" />
+      <input type="datetime-local" lang="en" bind:value={customTo}
+        class="border border-gray-300 rounded-md px-2 py-1.5 text-[13px]" />
     {/if}
 
     <button class="border border-gray-300 rounded-md px-3 py-1.5 text-[13px] font-medium hover:bg-gray-100 disabled:opacity-40"
