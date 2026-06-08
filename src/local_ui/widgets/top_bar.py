@@ -333,6 +333,7 @@ class TopBarWidget(QWidget):
         # Mode toggle switch (default: Auto = ON)
         self._mode_switch = ToggleSwitch(checked=True)
         self._mode_switch.toggled.connect(self._on_mode_toggled)
+        self._mode_switch.setEnabled(False)  # 인증(cert): 모드 변경 잠금
         self._current_mode = "auto"
         center_layout.addWidget(self._mode_switch)
 

@@ -34,12 +34,14 @@
   <div class="flex-1"></div>
 
   {#if !isEmergency}
+    <!-- 인증(cert): 모드 변경 잠금 — 토글 비활성화 -->
+    <span class="text-[11px] text-gray-400">인증: 모드 변경 잠금</span>
     <button
       type="button"
       onclick={toggle}
-      disabled={saving}
+      disabled
       aria-pressed={isAuto}
-      class="relative inline-flex items-center h-7 w-14 rounded-full transition-colors disabled:opacity-50
+      class="relative inline-flex items-center h-7 w-14 rounded-full transition-colors opacity-50 cursor-not-allowed
              {isAuto ? 'bg-cdu-l1' : 'bg-gray-300'}"
     >
       <span
