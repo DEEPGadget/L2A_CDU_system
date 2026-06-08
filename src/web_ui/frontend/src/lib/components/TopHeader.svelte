@@ -22,10 +22,10 @@
 
   <div class="ml-auto flex items-center gap-2.5">
     <span class="px-2.5 py-1 rounded text-[11px] font-semibold
-      {mode === 'auto' ? 'bg-blue-100 text-blue-700'
-        : mode === 'manual' ? 'bg-amber-100 text-amber-700'
+      {mode === 'auto' ? 'bg-green-100 text-green-700'
+        : mode === 'manual' ? 'bg-blue-100 text-blue-700'
         : mode === 'unknown' ? 'bg-gray-100 text-gray-400'
-        : 'bg-rose-100 text-rose-700'}">
+        : 'bg-red-100 text-red-700'}">
       {mode === 'unknown' ? '—' : cap(mode)}
     </span>
     <span class="px-2.5 py-1 rounded text-[11px] font-semibold
