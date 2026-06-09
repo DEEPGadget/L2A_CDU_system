@@ -83,10 +83,10 @@ UI가 Redis `control:mode`에 직접 SET. 메인 루프는 매 cycle Redis에서
   4. Polling (항상 실행)
        → Modbus Read (센서 레지스터)
        → 디코딩 → Redis SET + Pub/Sub
-       → 알람 threshold 검사
-       → 실 유량 센서(IR 32~35, ADC 전압 4ch) 루프별 합산 → sensor:flow_rate_1/2 publish (센서 미가용 시 미발행)
+       → (알람/threshold 검사: 미구현 — 인증 후 재설계. 현재 `alarm:*` 미발행)
+       → 실 유량 센서(IR 32~35, SIKA VVX15 0…10V, Q=4.0×V) 루프별 2분기 합산 → 총합 sensor:flow_rate_1/2 + 분기별 sensor:flow_rate_1_1/_1_2/_2_1/_2_2 publish (링크/센서 미가용 시 미발행)
 
-  5. if Auto: Stage 2 PI 알고리즘 (control:auto 파라미터 사용) → Modbus Write
+  5. if Auto: Fan curve(Stage 1) 로 팬 duty 결정 + 펌프는 루프별 고정 duty(`control:pump_duty_1`/`_2`) → 변경분 Modbus Write. (Stage 2 PI 는 미구현 — auto_control.md 설계 참고용)
 
   6. sleep(max(0, cycle - elapsed))
 ```

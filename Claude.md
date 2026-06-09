@@ -12,7 +12,7 @@ L2A CDU system running on Raspberry Pi 4. See [ARCHITECTURE.md](ARCHITECTURE.md)
 
 Key components:
 - **MCG** (Modbus Control Gateway): Modbus RTU master, central control hub — see [docs/MCG.md](docs/MCG.md)
-- **PCB** (Modbus Slave): MCS_IO Board Rev2 (STM32G474) — see [docs/PCB.md](docs/PCB.md)
+- **PCB** (Modbus Slave): MCS_IO Board REV_C (STM32G474) — see [docs/PCB.md](docs/PCB.md)
 - **UI** (Local + Web): PySide6 / Svelte + FastAPI — see [docs/UI.md](docs/UI.md)
 - **UI Design**: Layout wireframes (Local + Web, Monitoring + History) — see [docs/UI_Design.md](docs/UI_Design.md)
 - **Kiosk**: Kiosk mode configuration — see [docs/Kiosk.md](docs/Kiosk.md)

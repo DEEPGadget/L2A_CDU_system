@@ -52,8 +52,9 @@ src/local_ui/
 
 | File | Description |
 |---|---|
-| `pages/monitoring_page.py` | Main operational view. Stacks `CoolingHealthWidget` (stretch) above `StatusStripWidget` (fixed 60px). Hosts `AlarmOverlayWidget` as a floating child (not in layout). Handles tap-outside dismissal of the overlay via `eventFilter`. |
-| `pages/history_page.py` | Historical data view. Sidebar (time range, graph/table toggle, metric checkboxes) + main view area (pyqtgraph line chart or `QTableWidget`). Queries Prometheus `/api/v1/query_range`; step auto-calculated to keep ~60 data points per range. |
+| `pages/monitoring_page.py` | Main operational view. Stacks `CoolingHealthWidget` (stretch) above `StatusStripWidget` (fixed 76px). Hosts `AlarmOverlayWidget` as a floating child (not in layout). Handles tap-outside dismissal of the overlay via `eventFilter`. Routes `on_comm_updated` to children. |
+| `pages/history_page.py` | Historical data view. Sidebar (time range, graph/table toggle, metric checkboxes) + main view area (pyqtgraph line chart or `QTableWidget`). Queries Prometheus `/api/v1/query_range`. Metric registry `METRICS` (Coolant Temp: Inlet/Outlet/ΔT, Flow: L1/L2/branch, Fan, PWM Duty, Ambient). Default selected = inlet, outlet, ΔT, Flow L1, Flow L2, Flow branch. |
+| `pages/settings_page.py` | Control mode bar (Auto/Manual `ToggleSwitch`) + per-mode detail panels — `AutoControlPanel` (FanCurveCard + PumpFixedCard, per-loop L1/L2) and `ManualPanel` (manual PWM duty). **인증(cert): 모드 ToggleSwitch `setEnabled(False)` 로 잠금.** |
 
 ---
 
@@ -61,8 +62,8 @@ src/local_ui/
 
 | File | Description |
 |---|---|
-| `widgets/top_bar.py` | Fixed 52px bar across the top. Left: `Monitoring` / `History` / `Settings` tab buttons. Centre: alarm badge (`🔔 N`, hidden when no alarms), IP address, `System:` status (bold, colour-coded), `Link:` status (bold, colour-coded), `Manual/Auto` mode toggle. Right: `HH:MM:SS` clock (1 s tick). |
-| `widgets/cooling_health.py` | Loads `cooling_health.svg` as a string template, substitutes `{PLACEHOLDER}` values and `{PLACEHOLDER_C}` colour tokens on every sensor update, then reloads into `QSvgWidget`. Transparent `QPushButton` overlays sit on top of the Pump and Fan+Radiator boxes; tapping opens `NumpadDialog`. On startup, reads current Redis values directly (GET) to avoid missing the initial Pub/Sub publish. Threshold colours sourced from `src/thresholds.py`. |
+| `widgets/top_bar.py` | Fixed 64px bar across the top. Left: `Monitoring` / `History` / `Settings` tab buttons. Centre: alarm badge (`🔔 N`, hidden when no alarms), IP address (refreshed every 1s, eth 우선), `System:` status (bold, colour-coded), `Link:` status (bold, colour-coded), `Manual/Auto` mode `ToggleSwitch`. Right: `HH:MM:SS` clock (1 s tick). **인증(cert): 모드 토글 `setEnabled(False)` 잠금.** |
+| `widgets/cooling_health.py` | Loads `cooling_health.svg` as a string template, substitutes `{PLACEHOLDER}` values and `{PLACEHOLDER_C}` colour tokens on every sensor update, then reloads into `QSvgWidget`. Transparent `QPushButton` overlays sit on top of the Pump and Fan+Radiator boxes; tapping opens `NumpadDialog` (per-loop independent, no L1↔L2 mirror). On startup, reads current Redis values directly (GET). On disconnect resets sensed placeholders to no-data. **인증(cert): 임계 색상 비활성 — `_update_colors()` 가 모든 `_C` 토큰을 중립(검정)으로 고정. `_color_*` 헬퍼는 인증 후 재작업용으로 보존(미사용).** |
 | `widgets/status_strip.py` | Fixed 76px bottom bar. Displays ΔT1, ΔT2 (computed outlet − inlet), Temp, Humidity (device-internal ambient via RPi I2C/GPIO), and a 5th placeholder slot reserved for Leak (D1). Updated via `on_sensor_updated()`. |
 | `widgets/alarm_overlay.py` | Floating panel, child of `MonitoringPage` but outside the layout. Shows active alarm list. Appears when alarm badge is tapped; auto-closes when all alarms clear. |
 | `widgets/control_panel.py` | `NumpadDialog` — modal `QDialog` with a 3×4 numpad grid (0–9, ⌫, C), value display, and Apply / Cancel buttons. Validates 0–100 range on Apply. Used by `CoolingHealthWidget` overlay taps. |
