@@ -83,7 +83,8 @@
 | 31 | NTC Temp | **T4 = Inlet  L2** (NTC CH16) | 0.1°C signed |
 
 > Pin map matches the PCB silkscreen order T1/T2/T3/T4 = inlet/outlet/outlet/inlet (the T2/T3 outlets sit between the two inlets so a single thermistor bundle can be routed straight). Open-circuit returns -40.4 °C (NTC measurement-range floor).
-| 32~39 | Voltage | 전압 (CH1~8) — 현재 전부 미사용(예약) | 0.01V (900=9.00V) |
+| 32~35 | Voltage | 유량 센서 (SIKA VVX15, 0…10V, AIN1~4) — L1: 32·33, L2: 34·35 | 0.01V (900=9.00V) |
+| 36~39 | Voltage | 전압 (CH5~8) — 미사용(예약) | 0.01V (900=9.00V) |
 
 > ΔT 계산: `ΔT_Lx = outlet_Lx − inlet_Lx`
 

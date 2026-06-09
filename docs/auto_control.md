@@ -2,6 +2,8 @@
 
 > Auto 모드에서 MCG 메인 루프가 Polling 직후 호출하여 Pump/Fan PWM duty를 결정하는 알고리즘의 설계 문서.
 > MCG 서비스 명세는 [MCG.md](MCG.md) 참고.
+>
+> **⚠ 구현 상태**: 현재 코드는 **Stage 1(Fan Curve 룩업) + 펌프 루프별 고정 duty(`control:pump_duty_1`/`_2`, 레거시 `control:pump_duty` fallback)** 만 구현됨. 아래 **Stage 2 PI** 관련 내용은 **설계 참고용**이며 미구현. (인증 기간에는 Manual 모드만 사용)
 
 ---
 

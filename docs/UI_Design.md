@@ -4,6 +4,14 @@
 > - `dg5r dashboard.png` — Local UI reference (Cooling Health panel + Alert List)
 > - `ui layout 1~4.png` — Web UI reference (SCADA service UI)
 
+> ## ⚠ 최신 상태 (이 문서의 와이어프레임 대비 변경점)
+> 아래 §1·§2 와이어프레임은 초기 설계안이며, 현재 코드는 다음과 같이 진행됐다. (코드가 source of truth)
+> - **Web UI 재설계** : 레이아웃 = **Sidebar + TopHeader** 셸 (구 TopBar 제거, `routes/settings/` 제거). **Dashboard**(`+page.svelte`)가 모니터링+제어 통합(CoolingDiagram·Loop 카드·ModeToggle·ManualDutyCard/PumpFixedCard/FanCurveCard·Ambient/Status). **History**(`history/+page.svelte`)는 `metrics.js` 레지스트리 기반, Custom 범위는 **`DateTimeSelect.svelte`**(영어 전용 `<select>` — 네이티브 datetime-local 로캘 한글 회피), **CSV 다운로드** 지원. Web UI 한국어 없음.
+> - **History 메트릭(Local·Web 공통)** : `Coolant Temp`(Inlet·Outlet·**ΔT**) · `Flow`(**Flow L1·L2·branch** — 루프별 분리) · `Fan` · `PWM Duty` · `Ambient`. **기본 선택 = inlet·outlet·ΔT·Flow L1·L2·branch.** 차트는 (group, unit) 단위로 자동 분리. ΔT = exporter 파생 메트릭 `sensor_coolant_temp_delta`.
+> - **인증(cert) 잠금** : 제어 모드 **Manual 고정**(top_bar·Settings 토글 모두 `setEnabled(False)`, Web ModeToggle disabled). 임계 **색상 코딩 비활성**(모든 값 중립색), `alarm:*` 미발행 — 알람/임계 시스템은 **인증 후 재설계**.
+> - **치수** : Local top_bar 64px, status_strip 76px.
+> - **버튼 색** : Web 버튼 blue-600(=Local Save 색), 상단 모드 배지 auto=green·manual=blue·emergency=red(Local 토글 색 스킴).
+
 ---
 
 ## 1. Local UI (PySide6)

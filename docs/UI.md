@@ -4,6 +4,7 @@
 > They share the same data sources and pages (real-time monitoring, history), but layout, information density,
 > and interaction model are designed independently for each environment.
 > See [UI_Design.md](UI_Design.md) for detailed layout and component specifications.
+> **최신 구현 상태**(Web 재설계 Sidebar+TopHeader, 인증 모드/색상 잠금, History 메트릭 ΔT·Flow L1/L2)는 UI_Design.md 상단 "⚠ 최신 상태" 참고.
 
 ## System Access (Admin)
 
@@ -75,7 +76,7 @@
   - `/api/sensor/comm` — 통신 상태 현재값 (별도 fetch)
   - `/api/sensor/alarms` — 활성 알람 목록
 - 기록 확인 페이지: Prometheus에서 센서 이력 및 제어 명령 이력 조회 및 표시
-- 접속: http://<RPi-IP>:3000 (User Laptop 등 외부 브라우저 — IP는 Local UI Top bar에서 확인)
+- 접속: http://<RPi-IP> (User Laptop 등 외부 브라우저 — nginx :80 → FastAPI :8000. IP는 Local UI Top bar에서 확인)
 
 **BE (FastAPI)**
 - MCG와 REST API 기반 통신 (제어 요청 전달)
