@@ -49,9 +49,11 @@ echo ">>> Running rpi-clone (force init, unattended)..."
 /usr/local/sbin/rpi-clone "$DEST" -f -U
 
 # rpi-clone sometimes unmounts the source /boot/firmware — re-mount it.
-if ! findmnt -q /boot/firmware; then
+# (findmnt has no -q on this build; `|| true` so an already-mounted source
+#  doesn't abort the script under `set -e` before the cmdline.txt fix below.)
+if ! findmnt /boot/firmware >/dev/null 2>&1; then
     echo ">>> Re-mounting source /boot/firmware (rpi-clone left it unmounted)..."
-    mount /boot/firmware
+    mount /boot/firmware || true
 fi
 
 # Re-read the destination partition table.
