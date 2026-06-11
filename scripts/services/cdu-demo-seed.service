@@ -1,0 +1,17 @@
+[Unit]
+Description=L2A CDU Demo Data Seeder (fake sensor values, demo SDs only)
+After=redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=gadgetini
+WorkingDirectory=/home/gadgetini/L2A_CDU_system
+ExecStart=/home/gadgetini/venv/bin/python -m src.demo.seeder
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
