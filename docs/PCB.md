@@ -73,7 +73,7 @@
 |---|---|---|---|
 | 0 | System Timer | 시스템 가동 시간 | 0~9999 초 |
 | 1~12 | ADC Raw Data | ADC 12채널 원시값 | 0~4095 (12-bit) |
-| 13~24 | Pulse Freq | 펄스 주파수 12채널 (팬 RPM 피드백; **RPM = Hz × 30**, 2 pulse/rev). ※ L2A Rev_C 운용: 팬 RPM 4 채널 = CH 5~8 = IR 17~20, MCG 가 loop 별 2ch 평균을 `sensor:fan_rpm_1/2` 로 publish. 펌프 (CH 9~12) 는 Tach 미사용 | 0~65535 Hz |
+| 13~24 | Pulse Freq | 펄스 주파수 12채널. ※ L2A Rev_C 운용: **CH 1~4 = IR 13~16 = 유량 센서**(SIKA VVX15 PushPull, 500 pulse/L → `flow = Hz × 0.12`); **CH 5~8 = IR 17~20 = 팬 RPM**(**RPM = Hz × 30**, 2 pulse/rev, loop 별 2ch 평균 → `sensor:fan_rpm_1/2`). 펌프 (CH 9~12) 는 Tach 미사용 | 0~65535 Hz |
 | 25 | DIN Status | 디지털 입력 DIN1~6 | bit0~5 |
 | 26 | Pulse State | 펄스 핀 H/L 상태 | bit0~11 |
 | 27 | DIP Switch | DIP 스위치 1~6 | bit0~5 |
@@ -83,8 +83,7 @@
 | 31 | NTC Temp | **T4 = Inlet  L2** (NTC CH16) | 0.1°C signed |
 
 > Pin map matches the PCB silkscreen order T1/T2/T3/T4 = inlet/outlet/outlet/inlet (the T2/T3 outlets sit between the two inlets so a single thermistor bundle can be routed straight). Open-circuit returns -40.4 °C (NTC measurement-range floor).
-| 32~35 | Voltage | 유량 센서 (SIKA VVX15, 0…10V, AIN1~4) — L1: 32·33, L2: 34·35 | 0.01V (900=9.00V) |
-| 36~39 | Voltage | 전압 (CH5~8) — 미사용(예약) | 0.01V (900=9.00V) |
+| 32~39 | Voltage | ADC 전압 CH1~8 (AIN1~8) — 미사용(예약). 유량은 IR 13~16 펄스로 측정 | 0.01V (900=9.00V) |
 
 > ΔT 계산: `ΔT_Lx = outlet_Lx − inlet_Lx`
 
@@ -141,45 +140,46 @@ Config Command(HR 17)에 0x01을 쓰거나, BT2 Factory Reset 시 자동 저장.
 
 ## 유량 추정
 
-Rev_C 부터 **유량 센서 4개 (병렬 분기당 1개, 루프당 2개)** 도입. [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` 가 IR 32~35(ADC 전압 4ch)을 읽어 **루프별로 2개를 합산** → `sensor:flow_rate_1/2` 로 publish. 유량은 **실측값**이며 펌프 추정이 아님 — 센서 미가용 시 미발행(아래 참고).
+Rev_C 부터 **유량 센서 4개 (병렬 분기당 1개, 루프당 2개)** 도입. [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` 가 **IR 13~16(펄스 주파수 4ch = CH1~4 'T' 입력)** 을 읽어 **루프별로 2개를 합산** → `sensor:flow_rate_1/2` 로 publish. 유량은 **실측값**이며 펌프 추정이 아님 — 센서 미가용 시 미발행(아래 참고).
 
-### 실 센서: SIKA **VVX15** × 4 (Vortex) — Output 버전 ③ (0…10 V / 4…20 mA + Frequency)
+### 실 센서: SIKA **VVX15** × 4 (Vortex) — Art.No. `VVXA1SGAAK003514`
 
-카탈로그 + 벤더 회신 (docs/private/Flowmeter spec.pdf **p.5 "Output signals"**). **모델 = VVX15**, **출력 = 버전 ③ "Analogue 0…10 V or 4…20 mA and frequency output", Temp 출력 없음**. (p.5 에 4개 버전: ① Frequency / ② 0.5–3.5 V + freq / ③ **0–10 V·4–20 mA + freq** / ④ IO-Link. 이전 문서가 쓰던 0.5–3.5 V 는 **버전 ②** 로 우리 센서와 다름 → 환산식 교체.) 각 루프 병렬 2분기에 1개씩 = 루프당 2개 = 총 4개. 실물 미도착 — 결선·환산 아래대로. **별도 enable 플래그 없음**: PCB 연결(Modbus 응답)되면 ADC 를 읽어 자동 발행, 미연결이면 미발행(no-data).
+실물 라벨 확인: **모델 = VVX15** (DN15, G¾, 2…40 L/min), **아날로그 출력 = 4…20 mA** (Pin2, 끝자리 `A`), **+ PushPull 주파수** (Pin4, **500 pulse/L**). (Flowmeter spec.pdf **p.5 "Output signals"** + 라벨.) 각 루프 병렬 2분기에 1개씩 = 루프당 2개 = 총 4개. **별도 enable 플래그 없음**: PCB 연결(Modbus 응답)되면 펄스를 읽어 자동 발행, 미연결이면 미발행(no-data).
 
-> **채택 = Analogue 0…10 V (Pin 2 → ADC 전압 입력 AIN1~4).** PCB ADC 가 **0~12 V 전압 입력**이라 0…10 V 출력이 **직접 호환**(burden 저항·분압 불필요). 4…20 mA 도 지원하나 ADC 가 전압만 읽으므로 burden 저항(예 250 Ω → 1…5 V) 이 필요 → **0…10 V 채택**. Frequency(push-pull, 500 pulse/L)는 펄스 입력 채널이 fan tach 로 점유돼 미사용.
+> **채택 = PushPull 주파수 (Pin 4 → CH1~4 'T' 펄스 입력 = IR 13~16).** 이 센서의 아날로그는 **4…20 mA 전용**인데 PCB ADC 는 **전압만** 읽으므로(전류 레지스터 없음) 4…20 mA 를 쓰려면 burden 저항(예 250 Ω → 1…5 V)이 필요. 반면 **PushPull 주파수**는 보드 펄스 입력(0~10 kHz)이 **직접** 읽으므로 저항·변환 불필요 → **주파수 채택**.
 >
-> **루프 유량 = 두 분기 센서의 합.** Loop1 = AIN1 + AIN2, Loop2 = AIN3 + AIN4. (분기 각 ~절반 유량 → 합 = 루프 총유량. 단일 펌프 ~35–45 LPM × 2.)
+> **센서 전원 = CH1~4 'V' 핀.** CH1~4 는 **T/G/V 채널**로 V = 12 V × PWM duty%. [src/mcg/main.py](../src/mcg/main.py) 가 부팅 시 **CH1~4 duty=100% (HR 0~3 = 1000) → V = 12 V** 를 인가해 센서를 구동(VVX15 정격 12~24 V 의 하한). 100% 에선 스위칭 없는 정전압이라 TIM1 주파수는 무관.
+>
+> **루프 유량 = 두 분기 센서의 합.** Loop1 = CH1(IR13) + CH2(IR14), Loop2 = CH3(IR15) + CH4(IR16). (분기 각 ~절반 유량 → 합 = 루프 총유량. 단일 펌프 ~35–45 LPM × 2.)
 
-#### Input / Output 요약 (센서 1개 기준)
+#### 결선 (센서 1개 기준, CH1~4 'T/G/V' 채널)
 
-| 구분 | 핀 | 내용 |
+| 채널 핀 | ← 센서 핀 | 내용 |
 |---|---|---|
-| **Input (전원)** | Pin 1 = +U_B | **12~24 V DC** (±10 %, 아날로그 출력용). 능동소자 <15 mA |
-| | Pin 3 = GND | 전원·신호 공통 기준 |
-| **Output (유량)** | Pin 2 = U_Flow | **아날로그 0…10 V** (유량 선형 비례) |
-| 미사용 | Pin 4, 5 | Frequency(push-pull) / IO-Link — 미결선 |
+| **V** (= 12 V × duty%) | Pin 1 = +U_B | **12 V 전원** (duty 100% 고정). 능동소자 <15 mA |
+| **G** | Pin 3 = GND | 전원·신호 공통 기준 |
+| **T** (펄스 입력) | Pin 4 = PushPull | **주파수 출력** (500 pulse/L) → IR 13~16 |
+| 미사용 | Pin 2 (4…20 mA), Pin 5 (NC) | 미결선 |
 
-> Pin 1(전원)은 **필수**. +U_B 없으면 Pin 2 에 출력 없음. Pin 3(GND)는 전원·신호 겸용.
+> 센서 Pin 4(출력)는 반드시 **'T' 핀**(입력)에. PWM/전압 출력 핀에 꽂으면 출력끼리 충돌.
 
 #### 출력별 환산 (VVX15, 센서당 유량 범위 **0 ~ 40 L/min**)
 
 | 출력 | 매핑 | 환산식 (Q = L/min) | rate |
 |---|---|---|---|
-| **0…10 V** (채택) | 0 V = 0, 10 V = 40 | **Q = 4.0 × V** | 0.25 V/(L/min) |
-| 4…20 mA | 4 mA = 0, 20 mA = 40 | Q = 2.5 × (I − 4) | 0.40 mA/(L/min) |
-| Frequency (push-pull) | 500 pulse/L | Q = 0.12 × f (f = 8.333 × Q) | 0…40 L/min → 0…333 Hz |
+| **Frequency (PushPull)** (채택) | 500 pulse/L | **Q = 0.12 × f** (= f × 60/500) | 0…40 L/min → 0…333 Hz |
+| 4…20 mA (Pin2, 미사용) | 4 mA = 0, 20 mA = 40 | Q = 2.5 × (I − 4) | 0.40 mA/(L/min) |
 
 | 항목 | VVX15 |
 |---|---|
-| 모델 | VVX15 (DN15, G¾) |
-| **센서 환산식** (채택) | `branch_lpm = max(0, 4.0 × V)` (0…10 V) |
+| 모델 | VVX15 (DN15, G¾), Art.No. VVXA1SGAAK003514 |
+| **센서 환산식** (채택) | `branch_lpm = max(0, 0.12 × Hz)` (500 pulse/L) |
 | **루프 유량** | `loop_lpm = branch_a + branch_b` (루프당 0~80 LPM) |
 
-> 참고(다른 모델, 버전 ③): VVX20 = 0…80 L/min (0.125 V/L·min⁻¹), VVX25 = 0…150. 현재 `_FLOW_MODEL="VVX15"` 단일.
+> 참고: 펄스레이트 500 pulse/L 은 모델 무관 라벨값. `0.12 = 60 s ÷ 500 pulse` (Hz→L/min). L/h 면 ×7.2, L/s 면 ×0.002.
 
-**M12 핀맵 (VVX 5-pin) — Spec PDF p.9 "Pin assignment"**
-- Pin 1: +U_B (12~24 V) / Pin 2: U_Flow (**0…10 V**) / Pin 3: GND / Pin 4: frequency(미사용) / Pin 5: 미사용
+**M12 핀맵 (VVX 5-pin) — 라벨/Spec PDF**
+- Pin 1: +U_B (12~24 V) / Pin 2: I_Flow (**4…20 mA**, 미사용) / Pin 3: GND / Pin 4: **PushPull 주파수(채택)** / Pin 5: do not connect
 
 **MCS_IO 결선 (4 센서)**
 - 각 VVX Pin 1 → +12 V (fuse 권장), Pin 3 → GND (PCB GND 공통)
@@ -236,7 +236,7 @@ Pump spec 4.2.1 동작 구간 (참고):
 
 ### 유량 = 실 센서 측정값 (펌프 추정 폐기)
 
-유량은 **실 센서(SIKA VVX 0…10 V)로 측정한 값**이며, **펌프 duty 로부터 추정하지 않는다.** PCB read 실패(link 없음) 시 MCG 는 `sensor:flow_rate_*` 를 **발행하지 않으며**, 링크가 끊기면(disconnected) 다른 센싱키와 함께 **삭제되어 UI 는 no-data("--")** 를 표시한다 (조작된 추정치를 만들지 않음).
+유량은 **실 센서(SIKA VVX15 PushPull 주파수, 500 pulse/L)로 측정한 값**이며, **펌프 duty 로부터 추정하지 않는다.** PCB read 실패(link 없음) 시 MCG 는 `sensor:flow_rate_*` 를 **발행하지 않으며**, 링크가 끊기면(disconnected) 다른 센싱키와 함께 **삭제되어 UI 는 no-data("--")** 를 표시한다 (조작된 추정치를 만들지 않음).
 
 > 과거에는 센서 hook 이 비기 전까지 `flow_loop_lpm = 70 × (ui_duty/100)` 펌프-추정 fallback 을 publish 했으나, 유량을 실측값으로 일원화하면서 **제거함** ([polling.py](../src/mcg/polling.py) `_read_flow_lpm()`).
 

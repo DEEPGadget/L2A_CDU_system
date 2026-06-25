@@ -16,22 +16,24 @@ Register map (docs/PCB.md "Modbus Registers"):
   - Input Register 25     : DIN Status (bit0~5) - water level / leak inputs
                              (bit assignment TBD until PCB bring-up;
                              currently published as raw integer only)
-  - Input Register 32~35  : ADC Voltage CH1~4 (0.01 V unit) - real flow
-                             sensor analogue output (SIKA VVX15, 0.5~3.5 V),
-                             4 sensors on AIN1~4. Two per loop (parallel
-                             branches): Loop1 = AIN1+AIN2 (IR 32,33),
-                             Loop2 = AIN3+AIN4 (IR 34,35).
+  - Input Register 13~16  : Pulse Freq CH1~CH4 (Hz) - real flow sensor
+                             frequency output (SIKA VVX15 PushPull, 500
+                             pulses/L). 4 sensors on the CH1~4 'T' pulse
+                             inputs. Two per loop (parallel branches):
+                             Loop1 = CH1+CH2 (IR 13,14),
+                             Loop2 = CH3+CH4 (IR 15,16).
 
 Flow rate (PCB.md flow-rate estimation):
   Rev_C introduces real flow sensors on the PCB. There are 4 sensors (one per
   parallel pump branch); each loop has 2, summed to the loop's total flow.
-  Each SIKA VVX15 (output version 3) emits a 0...10 V analogue signal
-  proportional to flow, wired to ADC inputs AIN1~4 and read back as IR 32~35
-  (0.01 V). `_read_flow_lpm()` converts each branch (flow = 4.0 * V, 0...40
-  LPM) and sums the two branches per loop. Flow is a *measured* value —
-  never derived from pump duty. It returns None on PCB read failure (link
-  down); while None the flow keys are simply not published (UI shows no-data,
-  no fabrication). Gating is automatic — no manual enable flag.
+  Each SIKA VVX15 emits a PushPull frequency output (500 pulses/L) wired to the
+  CH1~4 'T' pulse inputs and read back as IR 13~16 (Hz). The sensors are powered
+  from the CH1~4 'V' pins (12 V, set at boot via CH1~4 duty=100%).
+  `_read_flow_lpm()` converts each branch (flow = Hz * 60/500 = Hz * 0.12) and
+  sums the two branches per loop. Flow is a *measured* value — never derived
+  from pump duty. It returns None on PCB read failure (link down); while None
+  the flow keys are simply not published (UI shows no-data, no fabrication).
+  Gating is automatic — no manual enable flag.
 """
 
 from __future__ import annotations
@@ -114,11 +116,11 @@ def poll_once(pcb: PCB, r: redis.Redis) -> bool:
         # wiring is confirmed; for now keep the raw value reachable for ops.
         _publish(pipe, "sensor:din_raw", str(din[0]))
 
-    # 4. Flow rate — real PCB flow sensors only (4× SIKA VVX15 on AIN1~4 =
-    #    IR 32~35). Publishes per-loop totals AND the 4 branch values:
-    #    Loop1 = AIN1+AIN2, Loop2 = AIN3+AIN4. Flow is measured, NOT derived
-    #    from pump duty. On read failure (PCB link down) we publish nothing —
-    #    UI shows no-data.
+    # 4. Flow rate — real PCB flow sensors only (4× SIKA VVX15 frequency
+    #    output on CH1~4 'T' pulse inputs = IR 13~16). Publishes per-loop totals
+    #    AND the 4 branch values: Loop1 = CH1+CH2, Loop2 = CH3+CH4. Flow is
+    #    measured, NOT derived from pump duty. On read failure (PCB link down)
+    #    we publish nothing — UI shows no-data.
     branches = _read_flow_lpm(pcb)
     if branches is not None:
         b11, b12, b21, b22 = branches
@@ -134,47 +136,46 @@ def poll_once(pcb: PCB, r: redis.Redis) -> bool:
     return True
 
 
-# ── Real flow sensors (4× SIKA VVX15, output version ③) ──────────────────────
+# ── Real flow sensors (4× SIKA VVX15, frequency output) ──────────────────────
 # Config — see docs/PCB.md flow-rate estimation.
-# Sensor = VVX15, output version ③ "Analogue 0...10 V or 4...20 mA + frequency"
-# (spec PDF p.5); temperature output: none. We use the **0...10 V** analogue
-# output → PCB ADC voltage inputs AIN1~4 = IR 32~35 (0.01 V unit, 1000 = 10.00 V).
-#   (PCB ADC is 0~12 V, so 0...10 V is directly compatible — no burden resistor;
-#    4...20 mA would need one. The push-pull frequency output is unused — pulse
-#    channels are taken by the fan tachs.)
+# Sensor = VVX15 (Art.No. VVXA1SGAA…): analogue output is 4...20 mA (Pin2) and
+# PushPull frequency (Pin4). The PCB ADC reads voltage only (no current
+# register), so the 4...20 mA output would need a burden resistor. Instead we
+# use the **PushPull frequency output** (500 pulses/L, spec PDF p.5) → CH1~4 'T'
+# pulse inputs = IR 13~16 (Hz). The sensors are powered from the CH1~4 'V' pins
+# (V = 12 V × duty%, held at 100% by main.py → 12 V).
 #   Each loop has 2 parallel-branch sensors; the loop total = their SUM:
-#       Loop 1 = AIN1 (IR 32) + AIN2 (IR 33)
-#       Loop 2 = AIN3 (IR 34) + AIN4 (IR 35)
-# - 0...10 V linear scaling: 0 V = 0 LPM, 10 V = 40 LPM  ->  flow = 4.0 * V.
-#   (4...20 mA alt: flow = 2.5*(I-4). VVX20 = 0...80 LPM @ 0...10 V → flow = 8*V.)
-# Gating is automatic: flow is published whenever the ADC read succeeds (PCB
+#       Loop 1 = CH1 (IR 13) + CH2 (IR 14)
+#       Loop 2 = CH3 (IR 15) + CH4 (IR 16)
+# - Pulse scaling: 500 pulses/L → flow[L/min] = Hz × 60/500 = Hz × 0.12.
+#   (40 LPM ≈ 333 Hz, 2 LPM ≈ 17 Hz — well within the PCB's 0~10 kHz range.)
+# Gating is automatic: flow is published whenever the pulse read succeeds (PCB
 # link up). When the PCB is unreachable the read returns None → not published →
 # UI shows no-data. No manual enable flag.
-_FLOW_VOLT_IR_BASE   = 32          # IR 32~35 = ADC voltage CH1~4 = AIN1~4
-_FLOW_VOLT_COUNT     = 4
-_FLOW_MODEL          = "VVX15"     # unified (cert + production)
-# (slope, intercept) for flow_lpm = slope*V + intercept, 0...10 V analogue output.
-_FLOW_SCALE          = {
-    "VVX15": (4.0, 0.0),           # 0 V=0, 10 V=40 LPM
-    "VVX20": (8.0, 0.0),           # 0 V=0, 10 V=80 LPM (reference)
-}
+_FLOW_PULSE_IR_BASE  = 13          # IR 13~16 = pulse freq CH1~4 ('T' inputs)
+_FLOW_PULSE_COUNT    = 4
+_FLOW_PULSES_PER_L   = 500.0       # SIKA VVX15 pulse rate (spec PDF p.5)
+_FLOW_HZ_TO_LPM      = 60.0 / _FLOW_PULSES_PER_L   # = 0.12 (Hz → L/min)
 
 
 def _read_flow_lpm(pcb: PCB) -> tuple[float, float, float, float] | None:
-    """Read the 4 branch flow rates (LPM) from the PCB ADC inputs IR 32~35.
+    """Read the 4 branch flow rates (LPM) from the PCB pulse inputs IR 13~16.
 
-    Returns (b1_1, b1_2, b2_1, b2_2) — loop1 branches then loop2 branches
-    (AIN1, AIN2, AIN3, AIN4). poll_once() sums each loop's two branches.
-    Returns None on read failure (PCB link down) → flow not published.
+    The 4× SIKA VVX15 sensors emit a PushPull frequency (500 pulses/L) on their
+    Pin4, wired to the CH1~4 'T' pulse inputs → IR 13~16 (Hz). They are powered
+    from the CH1~4 'V' pins (12 V, set at boot via CH1~4 duty=100% in main.py).
+
+    Returns (b1_1, b1_2, b2_1, b2_2) — loop1 branches (CH1,CH2 = IR 13,14) then
+    loop2 branches (CH3,CH4 = IR 15,16). poll_once() sums each loop's two
+    branches. Returns None on read failure (PCB link down) → flow not published.
     """
-    raw = pcb.read_input_registers(_FLOW_VOLT_IR_BASE, _FLOW_VOLT_COUNT)
+    raw = pcb.read_input_registers(_FLOW_PULSE_IR_BASE, _FLOW_PULSE_COUNT)
     if raw is None or len(raw) < 4:
         return None
-    slope, intercept = _FLOW_SCALE[_FLOW_MODEL]
 
-    def _branch_lpm(reg: int) -> float:
-        # IR unit is 0.01 V; 0...10 V analogue output → flow = slope*V. Clamp ≥0.
-        return max(0.0, slope * (reg / 100.0) + intercept)
+    def _branch_lpm(hz: int) -> float:
+        # 500 pulses/L → flow[L/min] = Hz × 60/500 = Hz × 0.12. Clamp ≥0.
+        return max(0.0, hz * _FLOW_HZ_TO_LPM)
 
     return (_branch_lpm(raw[0]), _branch_lpm(raw[1]),
             _branch_lpm(raw[2]), _branch_lpm(raw[3]))
