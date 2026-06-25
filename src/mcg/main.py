@@ -92,7 +92,7 @@ def main() -> int:
 
     # PWM frequency init. PCB Flash default is 1 kHz for all three timers
     # (PCB.md flash-stored items). For L2A Rev_C: fans on TIM2 need 25 kHz,
-    # pumps on TIM8 need 1 kHz (Johnson eModule spec). TIM1 is unused.
+    # pumps on TIM8 need 1 kHz (Johnson eModule spec).
     # Idempotent — safe to re-write every boot.
     try:
         pcb.write_register(13, 25000)  # HR 13 = TIM2 = fans @ 25 kHz
@@ -100,6 +100,19 @@ def main() -> int:
         log.info("PWM freq init: TIM2=25 kHz (fan), TIM8=1 kHz (pump)")
     except Exception as e:
         log.warning("PWM freq init failed: %s", e)
+
+    # Flow-sensor supply. CH1~4 (TIM1 group) are T/G/V channels: the V pin
+    # outputs 12 V × duty%. The 4× SIKA VVX15 flow sensors are powered from the
+    # V pins and feed their PushPull frequency output back on the T pins
+    # (pulse IR 13~16). So CH1~4 must sit at 100% duty → V = 12 V. At 100% the
+    # output is a steady 12 V (no PWM switching), so TIM1 frequency is moot.
+    # mcg never writes CH1~4 in the main loop, so this one-shot write holds.
+    # Idempotent — safe to re-write every boot.
+    try:
+        pcb.write_registers(0, [1000] * 4)  # HR 0~3 = CH1~4 duty 100% → V=12 V
+        log.info("CH1~4 duty=100%% (12 V supply for flow sensors)")
+    except Exception as e:
+        log.warning("CH1~4 flow-sensor supply init failed: %s", e)
 
     # Clear stale comm state from a previous run so the UI does not show
     # a red "disconnected" flash before the first poll cycle.
