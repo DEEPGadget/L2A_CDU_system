@@ -186,10 +186,13 @@ sequenceDiagram
 
 | 대상 | HR 주소 | 기동 default | 비고 |
 |---|---|---|---|
-| Pump L1/L2 PWM (P1~P4) | HR 8~11 | **UI 78 %** → HR round((17+0.68×78)×10)=**700 (PWM 70 %)** | TIM8 (1 kHz). 루프당 2채널 동일 duty |
-| Fan L1/L2 PWM | HR 4~7 (2ch burst) | **UI 100 %** → HR **1000 (PWM 100 %)** | TIM2 (25 kHz). 그룹 내 동일 duty |
-| PWM Freq (TIM2) | HR 13 | **25000 (Hz)** — MCG 시작 시 write | 팬 CH 5~8. Flash 기본 1 kHz 를 25 kHz 로 (Cooltron 팬 정격). |
-| PWM Freq (TIM8) | HR 14 | **1000 (Hz)** — MCG 시작 시 write (idempotent) | 펌프 CH 9~12 (Johnson eModule typical). |
+| Pump L1/L2 PWM (P1~P4) | HR 8~11 | **UI 78 %** → HR round((17+0.68×78)×10)=**700 (PWM 70 %)** | TIM8 (1 kHz). 루프당 2채널 동일 duty. 매 cycle write (자가복구) |
+| Fan L1/L2 PWM | HR 4~7 (2ch burst) | **UI 100 %** → HR **1000 (PWM 100 %)** | TIM2 (25 kHz). 그룹 내 동일 duty. 매 cycle write (자가복구) |
+| **Flow 센서 급전** | HR 0~3 (CH1~4) | **1000 (duty 100 %)** → V=12 V | 유량센서 4개 전원. **시작+재연결 시** write (Flash 미저장) |
+| PWM Freq (TIM2) | HR 13 | **25000 (Hz)** | 팬 CH 5~8. Flash 기본 1 kHz → 25 kHz. **시작+재연결 시** write |
+| PWM Freq (TIM8) | HR 14 | **1000 (Hz)** | 펌프 CH 9~12 (Johnson eModule typical). **시작+재연결 시** write (idempotent) |
+
+> **재인가(re-assert) 정책**: HR 0~3(급전)·HR 13/14(주파수)는 PCB Flash 에 저장되지 않아 PCB 리셋/전원 재투입 시 사라진다. 펌프/팬 duty 는 매 cycle write 라 자가복구되지만 이 둘은 그렇지 않으므로, MCG 는 **시작 시 1회 + poll 복구(재연결)마다** [`init_pcb_outputs()`](../src/mcg/main_loop.py) 로 재인가한다. (PCB 만 전원 재투입돼도 MCG 재시작 없이 복구)
 
 > 듀티 register 포맷: 0~1000 (0.1 % 단위) — UI % ×10. 펌프는 [PCB.md "UI / MCG duty 매핑"](PCB.md) 적용(UI 78 → PWM 70 %). 주파수 register 는 Hz 정수 (MCS_BE 매뉴얼 확인 필요).
 > PWM 주파수는 MCG main.py 가 매 부팅 write. duty/mode default 는 Local UI SETNX (persistent → 사용자 변경 보존). 전원 재인가 시 systemd Restart=always 로 서비스 자동 복귀.
@@ -261,7 +264,7 @@ sequenceDiagram
 | `sensor:fan_pwm_duty_2` | 팬 PWM L2 (0–100%) | **HR 6, 7** (CH7+CH8, TIM2 @ 25 kHz, 2ch burst) | COOLTRON FD8038B12W7 (최대 수량 §10 참고). 2채널 동일 duty |
 
 > **PWM 채널 매핑 (control_board 기준)**: HR 0~11 = PWM 12ch 전체 (TIM1/TIM2/TIM8 각 4ch). 자세한 표는 [PCB.md "Holding Registers"](PCB.md) 참고.
-> **L2A Rev_C 운용**: TIM1 (HR 0~3, CH 1~4) = 미사용. **TIM2 (HR 4~7, CH 5~8) = 팬 4채널** (L1 = HR 4,5 / L2 = HR 6,7, 루프당 2채널 동일 duty burst). **TIM8 (HR 8~11, CH 9~12) = 펌프 4채널** (L1 = HR 8,9 / L2 = HR 10,11, 루프당 2개 병렬 P1‖P2 / P3‖P4, 동일 duty burst). 펌프는 PWM 만 사용 (Tach 미연결), 팬은 PWM + Tach (Pulse CH 5~8 = IR 17~20) 모두 사용. 변형별 매핑 상세: §10.2.
+> **L2A Rev_C 운용**: TIM1 (HR 0~3, CH 1~4) = **유량센서 12 V 급전** (duty 100% 고정, T/G/V 채널 — 액추에이터 아님). **TIM2 (HR 4~7, CH 5~8) = 팬 4채널** (L1 = HR 4,5 / L2 = HR 6,7, 루프당 2채널 동일 duty burst). **TIM8 (HR 8~11, CH 9~12) = 펌프 4채널** (L1 = HR 8,9 / L2 = HR 10,11, 루프당 2개 병렬 P1‖P2 / P3‖P4, 동일 duty burst). 펌프는 PWM 만 사용 (Tach 미연결), 팬은 PWM + Tach (Pulse CH 5~8 = IR 17~20) 모두 사용. 변형별 매핑 상세: §10.2.
 
 > **펌프 ui_duty → 펌프 입력 PWM 변환 (사용구간 17~85%, 0=정지)**
 > Redis 키 `sensor:pump_pwm_duty_x` 는 UI 도메인 (0~100%). MCG 가 [duty_mapper.ui_to_pump_hr](../src/mcg/duty_mapper.py) 로 변환:
@@ -304,7 +307,7 @@ sequenceDiagram
 | `sensor:flow_rate_2_1` | 유량 L2 분기1 (CH3) | **IR 15** (Hz) |
 | `sensor:flow_rate_2_2` | 유량 L2 분기2 (CH4) | **IR 16** (Hz) |
 
-> **Rev_C+ 실 유량 센서**: SIKA **VVX15 × 4** (Vortex, Art.No. VVXA1SGAAK003514). 각 루프의 병렬 분기마다 1개씩(루프당 2개). 아날로그는 **4…20 mA 전용**이지만 PCB ADC 는 전압만 읽으므로(burden 저항 필요), 대신 **PushPull 주파수**(500 pulse/L)를 CH1~4 'T' 펄스 입력 (IR 13~16) 으로 읽어 센서별 `branch_lpm = 0.12 × Hz`(0 clamp) 환산 후 **루프당 2개를 합산**: Loop1=CH1+CH2, Loop2=CH3+CH4. 센서 전원은 CH1~4 'V' 핀(12 V, main.py 가 CH1~4 duty=100% 인가). 결선·환산 상세는 [PCB.md "유량 추정"](PCB.md) 참고. [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` 가 IR 13~16 을 읽으며 **별도 enable 플래그 없이** PCB read 성공(link up) 시 발행, 실패(link 없음) 시 미발행(펌프 추정 fallback 없음).
+> **Rev_C+ 실 유량 센서**: SIKA **VVX15 × 4** (Vortex, Art.No. VVXA1SGAAK003514). 각 루프의 병렬 분기마다 1개씩(루프당 2개). 아날로그는 **4…20 mA 전용**이지만 PCB ADC 는 전압만 읽으므로(burden 저항 필요), 대신 **PushPull 주파수**(500 pulse/L)를 CH1~4 'T' 펄스 입력 (IR 13~16) 으로 읽어 센서별 `branch_lpm = 0.12 × Hz`(0 clamp) 환산 후 **루프당 2개를 합산**: Loop1=CH1+CH2, Loop2=CH3+CH4. 센서 전원은 CH1~4 'V' 핀(12 V, `init_pcb_outputs()` 가 시작+재연결 시 CH1~4 duty=100% 인가). 결선·환산 상세는 [PCB.md "유량 추정"](PCB.md) 참고. [src/mcg/polling.py](../src/mcg/polling.py) `_read_flow_lpm()` 가 IR 13~16 을 읽으며 **별도 enable 플래그 없이** PCB read 성공(link up) 시 발행, 실패(link 없음) 시 미발행(펌프 추정 fallback 없음).
 
 > **유량 = 실측값 (펌프 추정 폐기)**: 유량은 실 센서(IR 13~16, 루프별 합산) 측정값으로만 publish 한다. 센서 미가용 시 `sensor:flow_rate_*` 를 발행하지 않으며(조작된 추정치 없음), UI 는 no-data 를 표시. 과거의 펌프 duty 기반 추정 fallback(`70 × ui_duty/100`)은 제거됨 ([PCB.md "유량 = 실 센서 측정값"](PCB.md)).
 

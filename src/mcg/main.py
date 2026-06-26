@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from src.config import get_loop_config, get_modbus_config
 from src.mcg import redis_keys as K
 from src.mcg.main_loop import _clear_sensed_keys as clear_sensed_keys
+from src.mcg.main_loop import init_pcb_outputs
 from src.mcg.main_loop import run as run_main_loop
 from src.mcg.modbus_client import open_pcb
 
@@ -90,29 +91,12 @@ def main() -> int:
     log.info("PCB connected on %s @ %d, slave %d (probe OK)",
              port, modbus_cfg.baud, modbus_cfg.slave)
 
-    # PWM frequency init. PCB Flash default is 1 kHz for all three timers
-    # (PCB.md flash-stored items). For L2A Rev_C: fans on TIM2 need 25 kHz,
-    # pumps on TIM8 need 1 kHz (Johnson eModule spec).
-    # Idempotent — safe to re-write every boot.
-    try:
-        pcb.write_register(13, 25000)  # HR 13 = TIM2 = fans @ 25 kHz
-        pcb.write_register(14, 1000)   # HR 14 = TIM8 = pumps @ 1 kHz
-        log.info("PWM freq init: TIM2=25 kHz (fan), TIM8=1 kHz (pump)")
-    except Exception as e:
-        log.warning("PWM freq init failed: %s", e)
-
-    # Flow-sensor supply. CH1~4 (TIM1 group) are T/G/V channels: the V pin
-    # outputs 12 V × duty%. The 4× SIKA VVX15 flow sensors are powered from the
-    # V pins and feed their PushPull frequency output back on the T pins
-    # (pulse IR 13~16). So CH1~4 must sit at 100% duty → V = 12 V. At 100% the
-    # output is a steady 12 V (no PWM switching), so TIM1 frequency is moot.
-    # mcg never writes CH1~4 in the main loop, so this one-shot write holds.
-    # Idempotent — safe to re-write every boot.
-    try:
-        pcb.write_registers(0, [1000] * 4)  # HR 0~3 = CH1~4 duty 100% → V=12 V
-        log.info("CH1~4 duty=100%% (12 V supply for flow sensors)")
-    except Exception as e:
-        log.warning("CH1~4 flow-sensor supply init failed: %s", e)
+    # PCB output init (NOT flash-persisted on the board): PWM frequencies
+    # (fans 25 kHz, pumps 1 kHz) + CH1~4 flow-sensor 12 V supply (duty 100%).
+    # The same routine is re-run on every reconnect inside the main loop — a PCB
+    # power-cycle while MCG keeps running would otherwise leave fans at the wrong
+    # frequency and the flow sensors unpowered. See main_loop.init_pcb_outputs.
+    init_pcb_outputs(pcb)
 
     # Clear stale comm state from a previous run so the UI does not show
     # a red "disconnected" flash before the first poll cycle.
