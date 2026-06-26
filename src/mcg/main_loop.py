@@ -45,6 +45,15 @@ HR_PUMP_BASE      = 8   # pumps -> HR 8~11 (CH 9~12, TIM8 @ 1 kHz)
 HR_FAN_BASE       = 4   # fans  -> HR 4~7  (CH 5~8,  TIM2 @ 25 kHz)
 CHANNELS_PER_LOOP = 2
 
+# Non-flash-persisted PCB outputs — re-asserted at startup AND on every
+# reconnect (the PCB drops these on any reset/power-cycle; see init_pcb_outputs).
+HR_FLOW_SUPPLY_BASE = 0       # CH 1~4 duty -> HR 0~3 (T/G/V channels)
+FLOW_SUPPLY_DUTY    = 1000    # 100.0% -> V pin = 12 V (flow-sensor supply)
+HR_FREQ_FAN         = 13      # TIM2 freq (CH 5~8)
+HR_FREQ_PUMP        = 14      # TIM8 freq (CH 9~12)
+FAN_FREQ_HZ         = 25000
+PUMP_FREQ_HZ        = 1000
+
 
 # ── Mode + duty source ───────────────────────────────────────────────────────
 
@@ -89,6 +98,29 @@ def _write_fans(pcb: PCB, fan_l1_ui: float, fan_l2_ui: float) -> bool:
         HR_FAN_BASE,
         [hr_l1] * CHANNELS_PER_LOOP + [hr_l2] * CHANNELS_PER_LOOP,
     )
+
+
+def init_pcb_outputs(pcb: PCB) -> bool:
+    """(Re)assert PCB outputs the board does NOT flash-persist, so they survive
+    a PCB reset/power-cycle:
+      - PWM frequency: fans 25 kHz (TIM2), pumps 1 kHz (TIM8).
+      - CH1~4 flow-sensor 12 V supply: duty 100% on the T/G/V 'V' pins.
+    Pump/fan *duties* self-heal each cycle (manual/auto write them every loop),
+    but frequency + flow supply are written only here — so this runs once at
+    MCG startup and again on every PCB reconnect (poll recovery). Idempotent."""
+    try:
+        pcb.write_register(HR_FREQ_FAN, FAN_FREQ_HZ)    # CH 5~8 fans @ 25 kHz
+        pcb.write_register(HR_FREQ_PUMP, PUMP_FREQ_HZ)  # CH 9~12 pumps @ 1 kHz
+        # HR 0~3 = CH1~4 duty 100% → 'V' pin = 12 V (4 flow sensors). At 100%
+        # the output is steady DC (no switching) so TIM1 frequency is moot.
+        pcb.write_registers(HR_FLOW_SUPPLY_BASE,
+                            [FLOW_SUPPLY_DUTY] * (2 * CHANNELS_PER_LOOP))
+        log.info("PCB outputs init: fan %d Hz, pump %d Hz, CH1~4 duty=100%% (12 V)",
+                 FAN_FREQ_HZ, PUMP_FREQ_HZ)
+        return True
+    except Exception as e:
+        log.warning("PCB outputs init failed: %s", e)
+        return False
 
 
 # ── Comm state ───────────────────────────────────────────────────────────────
@@ -201,6 +233,13 @@ def run(
             log.exception("poll_once raised")
 
         if ok:
+            # Recovered from one or more failures → the PCB may have reset and
+            # lost its non-persisted outputs (PWM freq + CH1~4 12 V supply).
+            # Re-assert them so fans run at 25 kHz and flow sensors stay powered.
+            if consecutive_fail > 0:
+                log.info("PCB poll recovered after %d failures — re-asserting outputs",
+                         consecutive_fail)
+                init_pcb_outputs(pcb)
             consecutive_fail = 0
         else:
             consecutive_fail += 1
